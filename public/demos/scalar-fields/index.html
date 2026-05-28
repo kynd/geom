@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scalar Fields</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      flex-shrink: 0;
+    }
+
+    #canvas {
+      display: block;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    #overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #label {
+      position: absolute;
+      bottom: 56px;
+      left: 56px;
+      text-align: left;
+    }
+
+    #shape-name {
+      font-family: 'Sora', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    #shape-func {
+      font-family: 'Google Sans Code', 'Fira Mono', monospace;
+      font-size: 12px;
+      color: #ffffff;
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    /* ---- play/pause button ---- */
+    #play-btn {
+      position: absolute;
+      top: 32px;
+      right: 32px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      transition: background 0.15s;
+      z-index: 10;
+    }
+    #play-btn:hover { background: rgba(255, 255, 255, 0.26); }
+
+    /* ---- embedded mode ---- */
+    body.embedded #overlay {
+      transform: scale(2);
+      transform-origin: bottom left;
+    }
+    body.embedded #play-btn {
+      transform: scale(2);
+      transform-origin: top right;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="label">
+        <div id="shape-name">elliptic paraboloid</div>
+        <div id="shape-func">y = x² + z²</div>
+      </div>
+    </div>
+    <button id="play-btn" aria-label="Play"></button>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      document.body.classList.add('embedded');
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

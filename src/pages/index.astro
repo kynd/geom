@@ -1,0 +1,467 @@
+---
+const title = 'Geom';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <script is:inline>
+    (function() {
+      var f = localStorage.getItem('font-mode') || 'serif';
+      document.documentElement.setAttribute('data-font', f);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Sora:wght@300;400;500;600&family=Google+Sans+Code:ital,wght@0,400;0,500;1,400&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function() {
+      function tryRender() {
+        if (typeof renderMathInElement !== 'undefined') {
+          renderMathInElement(document.body, {
+            delimiters: [
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ]
+          });
+        } else {
+          setTimeout(tryRender, 50);
+        }
+      }
+      tryRender();
+    });
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #ffffff;
+      --fg:             #343434;
+      --fg-muted:       #777777;
+      --border:         #e8e8e8;
+      --sidebar-width:  280px;
+      --header-height:  64px;
+      --font-body:      'Sora', sans-serif;
+      --font-code:      'Google Sans Code', 'Fira Mono', monospace;
+    }
+    html[data-font="serif"] {
+      --font-body: 'Lora', serif;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 18px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ---- Layout shell ---- */
+    .shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ---- Top bar ---- */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .topbar-controls {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.76);
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      pointer-events: all;
+    }
+    .topbar-controls-left { padding: 0.22rem; }
+    .topbar-controls-right { padding: 0.22rem 0.55rem; }
+
+    .topbar-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg);
+      border-radius: 5px;
+      transition: background 0.15s;
+    }
+    .topbar-toggle:hover { background: rgba(0,0,0,0.06); }
+
+    .topbar-font-switcher {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .font-opt {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.2rem 0.1rem;
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+      letter-spacing: 0.01em;
+      transition: color 0.15s;
+    }
+    .font-opt:hover { color: var(--fg); }
+    .font-opt.active { color: var(--fg); font-weight: 600; }
+    .font-sep { color: #ccc; font-size: 0.75rem; user-select: none; }
+
+    /* ---- Sidebar ---- */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.08);
+      z-index: 98;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width);
+      background: var(--bg);
+      overflow-y: auto;
+      z-index: 101;
+      transform: translateX(calc(-1 * var(--sidebar-width)));
+      transition: transform 0.22s ease;
+      padding: 1rem 0 2rem;
+    }
+
+    .shell.sidebar-open .sidebar {
+      transform: translateX(0);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.07);
+    }
+    .shell.no-transition .sidebar,
+    .shell.no-transition .main-wrap { transition: none !important; }
+
+    .shell.sidebar-open .sidebar-backdrop { display: block; }
+
+    .sidebar-header {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      padding: 1rem 1.25rem 0.6rem;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.82rem;
+      color: var(--fg-muted);
+      text-decoration: none;
+      padding: 0.42rem 1.25rem;
+      transition: background 0.1s;
+    }
+    .sidebar-nav a:hover { background: #f4f4f4; color: var(--fg); }
+    .sidebar-nav a.current { font-weight: 600; color: var(--fg); background: #f0f0f0; }
+
+    /* ---- Main content ---- */
+    .main-wrap {
+      flex: 1;
+      margin-top: var(--header-height);
+      transition: margin-left 0.22s ease;
+      min-width: 0;
+    }
+    .shell.sidebar-open .main-wrap {
+      margin-left: var(--sidebar-width);
+    }
+
+    .main-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 3rem 2rem 6rem;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      margin-bottom: 3.5rem;
+    }
+
+    /* ---- Demo section ---- */
+    .demo-section { margin-bottom: 4rem; }
+
+    .demo-header {
+      display: flex;
+      align-items: baseline;
+      gap: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .demo-header h2 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+    .demo-header a {
+      font-family: var(--font-code);
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .demo-header a:hover { color: var(--fg); border-color: var(--fg); }
+
+    /* Scale 1920x1080 to 50%: 960x540 */
+    .demo-embed {
+      position: relative;
+      width: 960px;
+      height: 540px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .demo-embed iframe {
+      width: 1920px;
+      height: 1080px;
+      border: none;
+      transform: scale(0.5);
+      transform-origin: top left;
+      display: block;
+    }
+
+    /* ---- Prose ---- */
+    .prose {
+      max-width: 640px;
+      margin-top: 2.5rem;
+      font-size: 1rem;
+      line-height: 1.75;
+      color: var(--fg);
+    }
+    .prose p { margin-bottom: 1.1rem; }
+    .prose em { font-style: italic; }
+    .prose a {
+      color: var(--fg);
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px;
+      transition: text-decoration-color 0.15s;
+    }
+    .prose a:hover { text-decoration-color: var(--fg); }
+    .prose .math-block {
+      margin: 1.4rem 0;
+      text-align: left;
+      overflow-x: auto;
+    }
+    .prose code {
+      font-family: var(--font-code);
+      font-size: 0.88em;
+      background: #f5f5f5;
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+    }
+
+    /* ---- Mobile ---- */
+    @media (max-width: 768px) {
+      .shell.sidebar-open .main-wrap { margin-left: 0; }
+      .main-inner { padding: 1.5rem 1.25rem 3rem; }
+      h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-controls topbar-controls-left">
+      <button class="topbar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+          <line x1="0" y1="1" x2="18" y2="1"/>
+          <line x1="0" y1="7" x2="18" y2="7"/>
+          <line x1="0" y1="13" x2="18" y2="13"/>
+        </svg>
+      </button>
+    </div>
+    <div class="topbar-controls topbar-controls-right">
+      <div class="topbar-font-switcher">
+        <button class="font-opt" id="font-btn-serif" style="font-family:'Lora',serif">Serif</button>
+        <span class="font-sep">|</span>
+        <button class="font-opt" id="font-btn-sans" style="font-family:'Sora',sans-serif">Sans</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell" id="app-shell">
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <nav class="sidebar" aria-label="Site navigation">
+      <div class="sidebar-header">Demos</div>
+      <ul class="sidebar-nav">
+        <li><a href="#sdf-raymarching">SDF ray marching</a></li>
+        <li><a href="#scalar-fields">Scalar fields</a></li>
+      </ul>
+    </nav>
+
+    <main class="main-wrap">
+      <div class="main-inner">
+        <h1>Geom</h1>
+
+        <section class="demo-section" id="sdf-raymarching">
+          <div class="demo-header">
+            <h2>SDF ray marching</h2>
+            <a href="/demos/01-sdf-raymarching/index.html" target="_blank" rel="noopener">open full screen ↗</a>
+          </div>
+          <div class="demo-embed">
+            <iframe
+              src="/demos/01-sdf-raymarching/index.html?embedded"
+              title="SDF Ray Marching Demo"
+              scrolling="no"
+              allow="autoplay"
+            ></iframe>
+          </div>
+          <div class="prose">
+            <p>
+              Each shape above is defined by a signed distance function — one of the 3D SDFs collected by
+              <a href="https://iquilezles.org/articles/distfunctions/" target="_blank" rel="noopener">Inigo Quilez</a>.
+              The GPU evaluates millions of these functions per frame to produce the image.
+            </p>
+
+            <p>
+              A signed distance function \(f(\mathbf&#123;p&#125;)\) takes a point \(\mathbf&#123;p&#125;\) in space and returns
+              how far it is from the nearest surface of a shape — positive outside, negative inside, zero
+              exactly on the surface. That sign is what makes it "signed."
+            </p>
+
+            <p>
+              A sphere of radius \(r\) centered at the origin is the cleanest example.
+              The distance from any point \(\mathbf&#123;p&#125;\) to the sphere's surface is simply how far \(\mathbf&#123;p&#125;\)
+              is from the origin, minus the radius:
+            </p>
+
+            <div class="math-block">\[ f(\mathbf&#123;p&#125;) = \|\mathbf&#123;p&#125;\| - r \]</div>
+
+            <p>
+              The surface itself is the set of all points where \(f(\mathbf&#123;p&#125;) = 0\).
+              This is the <em>implicit representation</em> of a shape: rather than listing vertices or triangles,
+              you write an equation whose zero-set <em>is</em> the shape.
+              Any closed-form function produces a valid shape, which makes it easy to
+              blend, subtract, or transform shapes by composing their distance functions.
+            </p>
+
+            <p>
+              To render these shapes, the fragment shader uses <em>ray marching</em>.
+              A ray is cast from the camera through each pixel.
+              At each step along the ray, the SDF is evaluated to find the distance to the nearest surface.
+              That distance is safe to advance — stepping that far in any direction can't overshoot the surface.
+              This continues until the distance is nearly zero (a hit) or the ray travels too far (a miss).
+              No mesh, no rasterization — just a function queried repeatedly until the surface is found.
+            </p>
+          </div>
+        </section>
+
+        <section class="demo-section" id="scalar-fields">
+          <div class="demo-header">
+            <h2>Scalar fields</h2>
+            <a href="/demos/scalar-fields/index.html" target="_blank" rel="noopener">open full screen ↗</a>
+          </div>
+          <div class="demo-embed">
+            <iframe
+              src="/demos/scalar-fields/index.html?embedded"
+              title="Scalar Fields Demo"
+              scrolling="no"
+              allow="autoplay"
+            ></iframe>
+          </div>
+          <div class="prose">
+            <p>
+              A scalar field assigns a single number to every point in space — temperature, pressure, elevation.
+              The shapes above are <em>level sets</em> of scalar fields: the set of all points where the field equals a fixed value.
+              Written as an equation, that is \(F(x, y, z) = 0\), where \(F\) is the field function.
+            </p>
+
+            <p>
+              When one or two of the variables appear squared (or multiplied together), the resulting surfaces are called
+              <em>quadric surfaces</em> — the 3D cousins of the conic sections you draw in 2D.
+              The elliptic paraboloid \(y = x^2 + z^2\) is a bowl: horizontal cross-sections are circles, vertical ones are parabolas.
+              Flip one sign and you get the hyperbolic paraboloid \(y = x^2 - z^2\) — a saddle that curves up in one direction
+              and down in the other, popular in architecture because it can be built from straight beams.
+              The cone \(y^2 = x^2 + z^2\) is the boundary case between them.
+            </p>
+
+            <p>
+              Higher-degree polynomials produce richer geometry.
+              The monkey saddle \(y = x^3 - 3xz^2\) has three valleys meeting at the origin — enough room for two legs and a tail.
+              The torus and hyperboloid come from quadratics involving a square root, encoding the distance to a circle rather than a point.
+            </p>
+
+            <p>
+              These surfaces are rendered the same way as the SDF demo — a ray is cast per pixel and marched through space —
+              but without a true distance field to guide the step size.
+              Instead, the shader takes uniform small steps and watches for a sign change in \(F\),
+              meaning the ray has crossed the surface. A short binary search then pins down the exact crossing point.
+              Colours map to height; the horizontal bands are contour lines at equal \(y\) intervals.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const shell = document.getElementById('app-shell')!;
+    const toggleBtn = document.getElementById('sidebar-toggle')!;
+    const backdrop = document.getElementById('sidebar-backdrop')!;
+
+    function applyOpen(open: boolean) {
+      shell.classList.toggle('sidebar-open', open);
+      localStorage.setItem('sidebar-open', String(open));
+    }
+
+    shell.classList.add('no-transition');
+    applyOpen(localStorage.getItem('sidebar-open') === 'true');
+    requestAnimationFrame(() => shell.classList.remove('no-transition'));
+
+    toggleBtn.addEventListener('click', () => applyOpen(!shell.classList.contains('sidebar-open')));
+    backdrop.addEventListener('click', () => applyOpen(false));
+
+    // Font switcher
+    const btnSerif = document.getElementById('font-btn-serif')!;
+    const btnSans  = document.getElementById('font-btn-sans')!;
+
+    function applyFont(mode: string) {
+      document.documentElement.setAttribute('data-font', mode);
+      localStorage.setItem('font-mode', mode);
+      btnSerif.classList.toggle('active', mode === 'serif');
+      btnSans.classList.toggle('active',  mode === 'sans');
+    }
+
+    applyFont(localStorage.getItem('font-mode') || 'serif');
+    btnSerif.addEventListener('click', () => applyFont('serif'));
+    btnSans.addEventListener('click',  () => applyFont('sans'));
+  </script>
+</body>
+</html>
