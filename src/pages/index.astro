@@ -1,5 +1,6 @@
 ---
 const title = 'Geom';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <!DOCTYPE html>
@@ -333,11 +334,11 @@ const title = 'Geom';
         <section class="demo-section" id="sdf-raymarching">
           <div class="demo-header">
             <h2>SDF ray marching</h2>
-            <a href="/demos/01-sdf-raymarching/index.html" target="_blank" rel="noopener">open full screen ↗</a>
+            <a href={`${base}/demos/01-sdf-raymarching/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
           </div>
           <div class="demo-embed">
             <iframe
-              src="/demos/01-sdf-raymarching/index.html?embedded"
+              src={`${base}/demos/01-sdf-raymarching/index.html?embedded`}
               title="SDF Ray Marching Demo"
               scrolling="no"
               allow="autoplay"
@@ -386,11 +387,11 @@ const title = 'Geom';
         <section class="demo-section" id="scalar-fields">
           <div class="demo-header">
             <h2>Scalar fields</h2>
-            <a href="/demos/scalar-fields/index.html" target="_blank" rel="noopener">open full screen ↗</a>
+            <a href={`${base}/demos/scalar-fields/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
           </div>
           <div class="demo-embed">
             <iframe
-              src="/demos/scalar-fields/index.html?embedded"
+              src={`${base}/demos/scalar-fields/index.html?embedded`}
               title="Scalar Fields Demo"
               scrolling="no"
               allow="autoplay"
