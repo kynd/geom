@@ -1,6 +1,18 @@
 ---
-const title = 'Parametric shapes — Geom';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+interface Props {
+  title: string;
+  slug: string;
+  isProse?: boolean;
+}
+
+const { title, slug, isProse = false } = Astro.props;
+
+const navItems = [
+  { label: 'Geom',               href: `${base}/`,                   slug: '' },
+  { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,  slug: 'parametric-shapes' },
+];
 ---
 
 <!DOCTYPE html>
@@ -8,7 +20,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title}</title>
+  <title>{title === 'Geom' ? 'Geom' : `${title} — Geom`}</title>
   <script is:inline>
     (function() {
       var f = localStorage.getItem('font-mode') || 'serif';
@@ -41,7 +53,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       tryRender();
     });
   </script>
-  <style>
+  <style is:global>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -79,8 +91,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       pointer-events: none;
     }
     .topbar-controls {
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center;
       background: rgba(255,255,255,0.76);
       border-radius: 8px;
       backdrop-filter: blur(6px);
@@ -123,12 +134,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     .shell.no-transition .main-wrap { transition: none !important; }
     .shell.sidebar-open .sidebar-backdrop { display: block; }
 
-    .sidebar-header {
-      font-family: 'Sora', sans-serif;
-      font-size: 0.75rem; font-weight: 600;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--fg-muted); padding: 1rem 1.25rem 0.6rem;
-    }
     .sidebar-nav { list-style: none; padding: 0; margin: 0; }
     .sidebar-nav a {
       display: block; font-family: 'Sora', sans-serif;
@@ -153,6 +158,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       letter-spacing: -0.03em; margin-bottom: 3.5rem;
     }
 
+    /* Demo sections */
     .demo-section { margin-bottom: 4rem; }
     .demo-header { display: flex; align-items: baseline; gap: 1.2rem; margin-bottom: 1rem; }
     .demo-header h2 { font-size: 1.1rem; font-weight: 500; letter-spacing: -0.01em; }
@@ -163,7 +169,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       transition: color 0.15s, border-color 0.15s;
     }
     .demo-header a:hover { color: var(--fg); border-color: var(--fg); }
-
     .demo-embed {
       position: relative; width: 960px; height: 540px;
       overflow: hidden; border: 1px solid var(--border); border-radius: 4px;
@@ -173,7 +178,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       transform: scale(0.5); transform-origin: top left; display: block;
     }
 
-    .prose { max-width: 640px; margin-top: 2.5rem; font-size: 1rem; line-height: 1.75; color: var(--fg); }
+    /* Prose */
+    .prose {
+      max-width: 640px; margin-top: 2.5rem;
+      font-size: 1rem; line-height: 1.75; color: var(--fg);
+    }
     .prose p { margin-bottom: 1.1rem; }
     .prose em { font-style: italic; }
     .prose a {
@@ -183,6 +192,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     }
     .prose a:hover { text-decoration-color: var(--fg); }
     .prose .math-block { margin: 1.4rem 0; text-align: left; overflow-x: auto; }
+    .prose h2 {
+      font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+      margin-top: 2.5rem; margin-bottom: 0.8rem;
+    }
+    .prose ul { list-style: disc; padding-left: 1.4rem; }
+    .prose ul li { margin-bottom: 0.4rem; }
     .prose code {
       font-family: var(--font-code); font-size: 0.88em;
       background: #f5f5f5; padding: 0.1em 0.35em; border-radius: 3px;
@@ -220,113 +235,32 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <nav class="sidebar" aria-label="Site navigation">
       <ul class="sidebar-nav">
-        <li><a href={`${base}/`}>Geom</a></li>
-        <li><a href={`${base}/parametric-shapes`} class="current">Parametric shapes</a></li>
-        <li><a href="#sdf-raymarching" class="sub">SDF ray marching</a></li>
-        <li><a href="#scalar-fields" class="sub">Scalar fields</a></li>
+        {navItems.map(item => (
+          <li>
+            <a href={item.href} class={item.slug === slug ? 'current' : ''}>
+              {item.label}
+            </a>
+          </li>
+        ))}
+        {slug === 'parametric-shapes' && (
+          <>
+            <li><a href="#sdf-raymarching" class="sub">SDF ray marching</a></li>
+            <li><a href="#scalar-fields" class="sub">Scalar fields</a></li>
+          </>
+        )}
       </ul>
     </nav>
 
     <main class="main-wrap">
       <div class="main-inner">
-        <h1>Parametric shapes</h1>
-
-        <section class="demo-section" id="sdf-raymarching">
-          <div class="demo-header">
-            <h2>SDF ray marching</h2>
-            <a href={`${base}/demos/01-sdf-raymarching/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
-          </div>
-          <div class="demo-embed">
-            <iframe
-              src={`${base}/demos/01-sdf-raymarching/index.html?embedded`}
-              title="SDF Ray Marching Demo"
-              scrolling="no"
-              allow="autoplay"
-            ></iframe>
-          </div>
+        <h1>{title}</h1>
+        {isProse ? (
           <div class="prose">
-            <p>
-              Each shape above is defined by a signed distance function — one of the 3D SDFs collected by
-              <a href="https://iquilezles.org/articles/distfunctions/" target="_blank" rel="noopener">Inigo Quilez</a>.
-              The GPU evaluates millions of these functions per frame to produce the image.
-            </p>
-
-            <p>
-              A signed distance function \(f(\mathbf&#123;p&#125;)\) takes a point \(\mathbf&#123;p&#125;\) in space and returns
-              how far it is from the nearest surface of a shape — positive outside, negative inside, zero
-              exactly on the surface. That sign is what makes it "signed."
-            </p>
-
-            <p>
-              A sphere of radius \(r\) centered at the origin is the cleanest example.
-              The distance from any point \(\mathbf&#123;p&#125;\) to the sphere's surface is simply how far \(\mathbf&#123;p&#125;\)
-              is from the origin, minus the radius:
-            </p>
-
-            <div class="math-block">\[ f(\mathbf&#123;p&#125;) = \|\mathbf&#123;p&#125;\| - r \]</div>
-
-            <p>
-              The surface itself is the set of all points where \(f(\mathbf&#123;p&#125;) = 0\).
-              This is the <em>implicit representation</em> of a shape: rather than listing vertices or triangles,
-              you write an equation whose zero-set <em>is</em> the shape.
-              Any closed-form function produces a valid shape, which makes it easy to
-              blend, subtract, or transform shapes by composing their distance functions.
-            </p>
-
-            <p>
-              To render these shapes, the fragment shader uses <em>ray marching</em>.
-              A ray is cast from the camera through each pixel.
-              At each step along the ray, the SDF is evaluated to find the distance to the nearest surface.
-              That distance is safe to advance — stepping that far in any direction can't overshoot the surface.
-              This continues until the distance is nearly zero (a hit) or the ray travels too far (a miss).
-              No mesh, no rasterization — just a function queried repeatedly until the surface is found.
-            </p>
+            <slot />
           </div>
-        </section>
-
-        <section class="demo-section" id="scalar-fields">
-          <div class="demo-header">
-            <h2>Scalar fields</h2>
-            <a href={`${base}/demos/scalar-fields/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
-          </div>
-          <div class="demo-embed">
-            <iframe
-              src={`${base}/demos/scalar-fields/index.html?embedded`}
-              title="Scalar Fields Demo"
-              scrolling="no"
-              allow="autoplay"
-            ></iframe>
-          </div>
-          <div class="prose">
-            <p>
-              A scalar field assigns a single number to every point in space — temperature, pressure, elevation.
-              The shapes above are <em>level sets</em> of scalar fields: the set of all points where the field equals a fixed value.
-              Written as an equation, that is \(F(x, y, z) = 0\), where \(F\) is the field function.
-            </p>
-
-            <p>
-              When one or two of the variables appear squared (or multiplied together), the resulting surfaces are called
-              <em>quadric surfaces</em> — the 3D cousins of the conic sections you draw in 2D.
-              The elliptic paraboloid \(y = x^2 + z^2\) is a bowl: horizontal cross-sections are circles, vertical ones are parabolas.
-              Flip one sign and you get the hyperbolic paraboloid \(y = x^2 - z^2\) — a saddle that curves up in one direction
-              and down in the other, popular in architecture because it can be built from straight beams.
-              The cone \(y^2 = x^2 + z^2\) is the boundary case between them.
-            </p>
-
-            <p>
-              Higher-degree polynomials produce richer geometry.
-              The monkey saddle \(y = x^3 - 3xz^2\) has three valleys meeting at the origin — enough room for two legs and a tail.
-              The torus and hyperboloid come from quadratics involving a square root, encoding the distance to a circle rather than a point.
-            </p>
-
-            <p>
-              These surfaces are rendered the same way as the SDF demo — a ray is cast per pixel and marched through space —
-              but without a true distance field to guide the step size.
-              Instead, the shader takes uniform small steps and watches for a sign change in \(F\),
-              meaning the ray has crossed the surface. A short binary search then pins down the exact crossing point.
-            </p>
-          </div>
-        </section>
+        ) : (
+          <slot />
+        )}
       </div>
     </main>
   </div>
