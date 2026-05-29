@@ -94,15 +94,6 @@
     }
     #play-btn:hover { background: rgba(255, 255, 255, 0.26); }
 
-    /* ---- embedded mode ---- */
-    body.embedded #overlay {
-      transform: scale(2);
-      transform-origin: bottom left;
-    }
-    body.embedded #play-btn {
-      transform: scale(2);
-      transform-origin: top right;
-    }
   </style>
 </head>
 <body>
@@ -119,6 +110,11 @@
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       document.body.classList.add('embedded');
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960;  canvas.height  = 540;
+      canvas.style.width  = '960px';  canvas.style.height  = '540px';
+      wrap.style.width    = '960px';  wrap.style.height    = '540px';
     }
   </script>
   <script type="module" src="./main.js"></script>

@@ -63,7 +63,7 @@ vec3 render3D(vec2 uv) {
   vec3 ww = normalize(ta - ro);
   vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
   vec3 vv = cross(uu, ww);
-  vec3 rd = normalize(uv.x * uu + uv.y * vv + 1.5 * ww);
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + 3.0 * ww);
 
   // Cull against bounding sphere
   vec2 tb = raySphere(ro, rd, 1.58);
@@ -110,10 +110,10 @@ vec3 render3D(vec2 uv) {
 
 void main() {
   vec3 col = vec3(0.0);
-  col += render3D((gl_FragCoord.xy + vec2(-0.25, -0.25) - 0.5 * iResolution) / iResolution.y);
-  col += render3D((gl_FragCoord.xy + vec2( 0.25, -0.25) - 0.5 * iResolution) / iResolution.y);
-  col += render3D((gl_FragCoord.xy + vec2(-0.25,  0.25) - 0.5 * iResolution) / iResolution.y);
-  col += render3D((gl_FragCoord.xy + vec2( 0.25,  0.25) - 0.5 * iResolution) / iResolution.y);
+  col += render3D(((gl_FragCoord.xy + vec2(-0.25, -0.25)) * 2.0 - iResolution.xy) / iResolution.y);
+  col += render3D(((gl_FragCoord.xy + vec2( 0.25, -0.25)) * 2.0 - iResolution.xy) / iResolution.y);
+  col += render3D(((gl_FragCoord.xy + vec2(-0.25,  0.25)) * 2.0 - iResolution.xy) / iResolution.y);
+  col += render3D(((gl_FragCoord.xy + vec2( 0.25,  0.25)) * 2.0 - iResolution.xy) / iResolution.y);
   col *= 0.25;
   col  = pow(max(col, 0.0), vec3(0.4545));
   gl_FragColor = vec4(col, 1.0);
