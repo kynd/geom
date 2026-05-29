@@ -56,8 +56,13 @@ def process_audio_to_text(input_wav, output_txt, fft_channels=32, fps=60, precis
     num_frames = min(len(rms_norm), len(fft_norm))
 
     with open(output_txt, 'w') as f:
-        # Header: first value is RMS amplitude, followed by N FFT channels
+        # Header lines (lines starting with # are comments, skip when parsing)
+        f.write(f"# Audio data extracted from: {os.path.basename(input_wav)}\n")
         f.write(f"# fps={fps} channels={fft_channels} precision={precision} frames={num_frames}\n")
+        f.write(f"# Each row: col 0 = overall RMS amplitude (0.0–1.0, normalised to loudest frame)\n")
+        f.write(f"#            col 1..{fft_channels} = FFT magnitude per frequency bin, low→high\n")
+        f.write(f"#                    (each bin normalised to its global max across the file)\n")
+        f.write(f"# Total values per row: {fft_channels + 1}  (1 amplitude + {fft_channels} FFT bins)\n")
 
         for i in range(num_frames):
             amp_val = fmt_str % rms_norm[i]
