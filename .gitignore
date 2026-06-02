@@ -19,6 +19,9 @@ Thumbs.db
 .env
 .env.*
 
+# Audio source files (too large for GitHub)
+*.wav
+
 # Project-internal docs (not for the repo)
 CLAUDE.md
 writing-style-guide.md
