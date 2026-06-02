@@ -1,0 +1,60 @@
+---
+title: Sound process
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Audio data visualiser</h2>
+<a href={`${base}/demos/sound-process/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/sound-process/index.html?embedded`} title="Sound Process Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Press play and watch the kick drum register as a spike in the low-frequency bins on the left.
+  The bars show the frequency content of the audio at each moment — a spectrum, updated sixty times a second.
+  Below them, a 12-second strip of the overall amplitude scrolls left as the track plays.
+</p>
+<p>
+  The data is pre-computed as a plain text file at 60 fps, with 32 frequency bins plus one overall
+  RMS amplitude value per row. The browser loads it once and advances through it in lockstep with the audio.
+</p>
+
+## What is an FFT?
+
+<p>
+  Sound is a pressure wave — a single signal that varies over time.
+  The <strong>Fourier transform</strong> decomposes that time signal into a sum of pure sine waves,
+  each at a distinct frequency.
+  For a short window of audio samples, it answers: <em>how much energy is present at each frequency right now?</em>
+  The result is a spectrum — a list of magnitudes, one per frequency bin.
+</p>
+<p>
+  The <strong>Fast Fourier Transform</strong> (FFT) is an efficient algorithm for computing this decomposition.
+  Applying it to overlapping windows across the full track produces a <em>Short-Time Fourier Transform</em> (STFT):
+  a spectrum for each frame, giving the time-varying bar graph you see above.
+  Low-frequency content (bass, kick) appears on the left; high-frequency content (cymbals, air) on the right.
+</p>
+
+## Log transform
+
+<p>
+  On a linear scale, loud transients dominate and quiet detail disappears.
+  Human hearing is roughly logarithmic — equal steps of perceived loudness correspond to
+  multiplicative changes in physical intensity, not additive ones.
+</p>
+<p>
+  Applying this formula to a normalised value {"\\("}x \in [0, 1]{"\\)"}:
+</p>
+<div class="math-block">{"\\["} y = \frac&#123;\log(1 + k \cdot x)&#125;&#123;\log(1 + k)&#125; {"\\]"}</div>
+<p>
+  boosts the low end while compressing the top, keeping the output in {"\\("}[0, 1]{"\\)"}.
+  At {"\\("}k = 100{"\\)"} (the setting used here), a value of 0.01 maps to roughly 0.33 —
+  three times what the linear scale would show.
+  Toggle the <strong>log</strong> button in the demo to compare the two views.
+</p>
+</div>
+</section>

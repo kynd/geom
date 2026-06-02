@@ -12,6 +12,8 @@ const { title, slug, isProse = false } = Astro.props;
 const navItems = [
   { label: 'Geom',               href: `${base}/`,                   slug: '' },
   { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,  slug: 'parametric-shapes' },
+  { label: 'Sound process',      href: `${base}/sound-process`,      slug: 'sound-process' },
+  { label: 'Sound analysis',     href: `${base}/sound-analysis`,     slug: 'sound-analysis' },
 ];
 ---
 
@@ -171,10 +173,12 @@ const navItems = [
     .demo-header a:hover { color: var(--fg); border-color: var(--fg); }
     .demo-embed {
       width: 960px; height: 540px;
+      max-width: 100%; position: relative;
       border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
     }
     .demo-embed iframe {
       width: 960px; height: 540px; border: none; display: block;
+      transform-origin: top left;
     }
 
     /* Prose */
@@ -206,6 +210,7 @@ const navItems = [
       .shell.sidebar-open .main-wrap { margin-left: 0; }
       .main-inner { padding: 1.5rem 1.25rem 3rem; }
       h1 { font-size: 2rem; }
+      .prose { max-width: 100%; }
     }
   </style>
 </head>
@@ -247,6 +252,12 @@ const navItems = [
             <li><a href="#scalar-fields" class="sub">Scalar fields</a></li>
           </>
         )}
+        {slug === 'sound-process' && (
+          <>
+            <li><a href="#what-is-an-fft" class="sub">What is an FFT?</a></li>
+            <li><a href="#log-transform" class="sub">Log transform</a></li>
+          </>
+        )}
       </ul>
     </nav>
 
@@ -269,12 +280,32 @@ const navItems = [
     const toggleBtn = document.getElementById('sidebar-toggle')!;
     const backdrop  = document.getElementById('sidebar-backdrop')!;
 
+    const isMobile = () => window.innerWidth <= 768;
+
+    // Scale fixed-size demo iframes to fit their container on narrow screens
+    function scaleDemoEmbeds() {
+      document.querySelectorAll<HTMLElement>('.demo-embed').forEach(wrap => {
+        const iframe = wrap.querySelector<HTMLIFrameElement>('iframe');
+        if (!iframe) return;
+        const scale = Math.min(1, wrap.clientWidth / 960);
+        iframe.style.transform = scale < 1 ? `scale(${scale})` : '';
+        wrap.style.height      = scale < 1 ? `${Math.round(540 * scale)}px` : '';
+      });
+    }
+    window.addEventListener('resize', scaleDemoEmbeds);
+    // Run after layout settles
+    requestAnimationFrame(scaleDemoEmbeds);
+
     function applyOpen(open: boolean) {
       shell.classList.toggle('sidebar-open', open);
       localStorage.setItem('sidebar-open', String(open));
+      // Re-scale iframes after sidebar transition completes
+      setTimeout(scaleDemoEmbeds, 250);
     }
     shell.classList.add('no-transition');
-    applyOpen(localStorage.getItem('sidebar-open') === 'true');
+    // On mobile, default to closed regardless of stored state
+    const storedOpen = localStorage.getItem('sidebar-open') === 'true';
+    applyOpen(isMobile() ? false : storedOpen);
     requestAnimationFrame(() => shell.classList.remove('no-transition'));
     toggleBtn.addEventListener('click', () => applyOpen(!shell.classList.contains('sidebar-open')));
     backdrop.addEventListener('click',  () => applyOpen(false));

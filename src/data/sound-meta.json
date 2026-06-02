@@ -1,0 +1,34 @@
+{
+  "250621_a1_mix1_arp": {
+    "freqMin": 21.53,
+    "freqMax": 6438.43
+  },
+  "250621_a1_mix1_bass": {
+    "freqMin": 43.07,
+    "freqMax": 2043.07
+  },
+  "250621_a1_mix1_hat": {
+    "freqMin": 1658.06,
+    "freqMax": 11046.53
+  },
+  "250621_a1_mix1_kick1": {
+    "freqMin": 21.53,
+    "freqMax": 7493.55
+  },
+  "250621_a1_mix1_kick2": {
+    "freqMin": 21.53,
+    "freqMax": 6869.09
+  },
+  "250621_a1_mix1_master_88.2k24": {
+    "freqMin": 20.0,
+    "freqMax": 6847.56
+  },
+  "250621_a1_mix1_pad": {
+    "freqMin": 150.73,
+    "freqMax": 968.99
+  },
+  "250621_a1_mix1_snare": {
+    "freqMin": 236.87,
+    "freqMax": 5878.56
+  }
+}

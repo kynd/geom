@@ -19,18 +19,18 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   The GPU evaluates millions of these functions per frame to produce the image.
 </p>
 <p>
-  A signed distance function \(f(\mathbf&#123;p&#125;)\) takes a point \(\mathbf&#123;p&#125;\) in space and returns
+  A signed distance function {"\\("}f(\mathbf&#123;p&#125;){"\\)"} takes a point {"\\("}\mathbf&#123;p&#125;{"\\)"} in space and returns
   how far it is from the nearest surface of a shape — positive outside, negative inside, zero
   exactly on the surface. That sign is what makes it "signed."
 </p>
 <p>
-  A sphere of radius \(r\) centered at the origin is the cleanest example.
-  The distance from any point \(\mathbf&#123;p&#125;\) to the sphere's surface is simply how far \(\mathbf&#123;p&#125;\)
+  A sphere of radius {"\\("}r{"\\)"} centered at the origin is the cleanest example.
+  The distance from any point {"\\("}\mathbf&#123;p&#125;{"\\)"} to the sphere's surface is simply how far {"\\("}\mathbf&#123;p&#125;{"\\)"}
   is from the origin, minus the radius:
 </p>
-<div class="math-block">\[ f(\mathbf&#123;p&#125;) = \|\mathbf&#123;p&#125;\| - r \]</div>
+<div class="math-block">{"\\["} f(\mathbf&#123;p&#125;) = {"\\|"}\mathbf&#123;p&#125;{"\\|"} - r {"\\]"}</div>
 <p>
-  The surface itself is the set of all points where \(f(\mathbf&#123;p&#125;) = 0\).
+  The surface itself is the set of all points where {"\\("}f(\mathbf&#123;p&#125;) = 0{"\\)"}.
   This is the <em>implicit representation</em> of a shape: rather than listing vertices or triangles,
   you write an equation whose zero-set <em>is</em> the shape.
   Any closed-form function produces a valid shape, which makes it easy to
@@ -59,25 +59,25 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <p>
   A scalar field assigns a single number to every point in space — temperature, pressure, elevation.
   The shapes above are <em>level sets</em> of scalar fields: the set of all points where the field equals a fixed value.
-  Written as an equation, that is \(F(x, y, z) = 0\), where \(F\) is the field function.
+  Written as an equation, that is {"\\("}F(x, y, z) = 0{"\\)"}, where {"\\("}F{"\\)"} is the field function.
 </p>
 <p>
   When one or two of the variables appear squared (or multiplied together), the resulting surfaces are called{' '}
   <em>quadric surfaces</em> — the 3D cousins of the conic sections you draw in 2D.
-  The elliptic paraboloid \(y = x^2 + z^2\) is a bowl: horizontal cross-sections are circles, vertical ones are parabolas.
-  Flip one sign and you get the hyperbolic paraboloid \(y = x^2 - z^2\) — a saddle that curves up in one direction
+  The elliptic paraboloid {"\\("}y = x^2 + z^2{"\\)"} is a bowl: horizontal cross-sections are circles, vertical ones are parabolas.
+  Flip one sign and you get the hyperbolic paraboloid {"\\("}y = x^2 - z^2{"\\)"} — a saddle that curves up in one direction
   and down in the other, popular in architecture because it can be built from straight beams.
-  The cone \(y^2 = x^2 + z^2\) is the boundary case between them.
+  The cone {"\\("}y^2 = x^2 + z^2{"\\)"} is the boundary case between them.
 </p>
 <p>
   Higher-degree polynomials produce richer geometry.
-  The monkey saddle \(y = x^3 - 3xz^2\) has three valleys meeting at the origin — enough room for two legs and a tail.
+  The monkey saddle {"\\("}y = x^3 - 3xz^2{"\\)"} has three valleys meeting at the origin — enough room for two legs and a tail.
   The torus and hyperboloid come from quadratics involving a square root, encoding the distance to a circle rather than a point.
 </p>
 <p>
   These surfaces are rendered the same way as the SDF demo — a ray is cast per pixel and marched through space —
   but without a true distance field to guide the step size.
-  Instead, the shader takes uniform small steps and watches for a sign change in \(F\),
+  Instead, the shader takes uniform small steps and watches for a sign change in {"\\("}F{"\\)"},
   meaning the ray has crossed the surface. A short binary search then pins down the exact crossing point.
 </p>
 </div>

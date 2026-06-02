@@ -1,0 +1,166 @@
+---
+title: Sound analysis
+---
+
+import soundMeta from '../../data/sound-meta.json';
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+export function formatHz(hz) {
+  return hz >= 1000 ? `${(hz / 1000).toFixed(1)} kHz` : `${Math.round(hz)} Hz`;
+}
+
+export const stems = [
+  { label: 'arp',    base: '250621_a1_mix1_arp' },
+  { label: 'bass',   base: '250621_a1_mix1_bass' },
+  { label: 'hat',    base: '250621_a1_mix1_hat' },
+  { label: 'kick 1', base: '250621_a1_mix1_kick1' },
+  { label: 'kick 2', base: '250621_a1_mix1_kick2' },
+  { label: 'pad',    base: '250621_a1_mix1_pad' },
+  { label: 'snare',  base: '250621_a1_mix1_snare' },
+  { label: 'master', base: '250621_a1_mix1_master_88.2k24' },
+].map(s => ({ ...s, ...soundMeta[s.base] }));
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Amplitude and spectrum</h2>
+<a href={`${base}/demos/sound-analysis/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/sound-analysis/index.html?embedded`} title="Sound Analysis Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Select a stem from the dropdown and press play.
+  The top graph traces the overall RMS amplitude over the last 15 seconds — a running picture of how loud the signal is.
+  The bottom chart shows the frequency content of the current frame: 128 Mel-spaced bands, updated at 60 fps.
+  The frequency label in the corner shows the active range the analysis detected for that stem.
+</p>
+<p>
+  A Python script analyses each WAV file offline before the browser touches it.
+  It computes a full-file STFT at 2048-point resolution, then builds a global energy profile across all frequencies.
+  Spectral roll-off at 5 % and 85 % of cumulative energy marks where the track actually lives — ignoring sub-bass rumble
+  below the content and empty headroom above it.
+  A Mel-scale filterbank then maps 128 bands logarithmically across that active range, concentrating resolution
+  where the musical content is densest.
+  The script processes left and right channels separately and writes one row of numbers per frame at 60 fps:
+  L and R RMS amplitude followed by 128 Mel band magnitudes for each channel.
+</p>
+<p>
+  The browser loads that text file and advances through it in lockstep with the audio,
+  without doing any signal processing at runtime.
+  This matters for video export: every frame's visual state comes from a specific row in the data file,
+  so rendering the same frame twice always produces the same result —
+  no timing drift, no decoding variance between the audio and the visuals.
+</p>
+<p>
+  The demo skips the silent part at the start of each stem.
+  It scans the data file for the first frame where amplitude exceeds a small threshold,
+  then cues both the audio and the display to that point.
+</p>
+</div>
+</section>
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Spectrograms</h2>
+</div>
+<div class="spectrograms">
+  {stems.map(s => (
+    <div class="spec-row" key={s.base}>
+      <div class="spec-meta">
+        <span class="spec-label">{s.label}</span>
+        <span class="spec-range">{formatHz(s.freqMin)} – {formatHz(s.freqMax)}</span>
+      </div>
+      <img src={`${base}/sound/${s.base}_L.png`} class="spec-img" data-ch="L" alt={`${s.label} L`} loading="lazy" />
+      <img src={`${base}/sound/${s.base}_R.png`} class="spec-img" data-ch="R" alt={`${s.label} R`} loading="lazy" />
+    </div>
+  ))}
+</div>
+<div class="prose">
+<p>
+  Each strip is the full stem from start to finish.
+  The horizontal axis is time — ten frames collapsed into one pixel column.
+  The vertical axis runs from the stem's lowest active frequency at the bottom to its highest at the top.
+  Pixel brightness is the peak Mel-band amplitude within that 10-frame window, with a square-root curve applied so quieter detail stays visible.
+  L and R channels are shown separately.
+</p>
+</div>
+</section>
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Wave</h2>
+<a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/sound-wave/index.html?embedded`} title="Sound Wave Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Each frequency band drives a sine wave across the surface at a different spatial frequency.
+  Low bands produce slow, wide swells; high bands add fast fine ripples on top.
+  The waves travel forward continuously.
+</p>
+</div>
+</section>
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Warp</h2>
+<a href={`${base}/demos/sound-blob/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/sound-blob/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  A bar viewed through a per-column camera that orbits based on amplitude history.
+  Each column maps to a different moment in the recent past — the leftmost column is the oldest, the rightmost is the current frame.
+  Where the amplitude was quiet the camera sits just below and in front of the bar; a loud moment swings the camera overhead.
+  The bar's twisted shape is a direct trace of how the volume moved over time.
+</p>
+</div>
+</section>
+
+<section class="demo-section">
+<div class="demo-header">
+<h2>Ridge</h2>
+<a href={`${base}/demos/sound-ridge/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/sound-ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Five seconds of spectrum rendered as a height field. The front edge is the current moment;
+  older data recedes into the background as new frames arrive.
+  The left half shows the L channel and the right half the R channel.
+  Both are mirrored so the lowest active frequencies meet at the centre,
+  with the highest frequencies at the outer edges.
+  Silent areas stay flat — peaks only appear where there is energy.
+</p>
+</div>
+</section>
+
+
+<style>{`
+  .spectrograms { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .spec-row { display: flex; align-items: center; gap: 1rem; }
+  .spec-meta {
+    display: flex; flex-direction: column; align-items: flex-end;
+    width: 5.5rem; flex-shrink: 0; gap: 0.1rem;
+  }
+  .spec-label {
+    font-family: 'Google Sans Code', monospace; font-size: 0.78rem;
+    color: var(--fg);
+  }
+  .spec-range {
+    font-family: 'Google Sans Code', monospace; font-size: 0.65rem;
+    color: var(--fg-muted); white-space: nowrap;
+  }
+  .spec-img {
+    flex: 1; min-width: 0; height: 48px;
+    object-fit: fill; image-rendering: pixelated; display: block;
+  }
+`}</style>

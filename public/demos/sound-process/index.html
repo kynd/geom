@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sound Process</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 1920px; height: 1080px;
+      flex-shrink: 0;
+    }
+
+    #canvas { display: block; width: 1920px; height: 1080px; }
+
+    #overlay {
+      position: absolute; inset: 0;
+      pointer-events: none; user-select: none;
+    }
+
+    #select-wrap {
+      position: absolute; top: 28px; left: 56px;
+      pointer-events: all;
+    }
+
+    #sound-select {
+      font-family: 'Google Sans Code', 'Fira Mono', monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+      padding: 8px 32px 8px 12px;
+      cursor: pointer; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    #sound-select:hover { border-color: rgba(255, 255, 255, 0.4); }
+    #sound-select option { background: #111; color: #fff; }
+
+    #play-btn {
+      position: absolute; top: 24px; right: 32px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s;
+      pointer-events: all;
+    }
+    #play-btn:hover { background: rgba(255, 255, 255, 0.24); }
+
+    #log-toggle {
+      position: absolute; bottom: 28px; right: 32px;
+      font-family: 'Google Sans Code', 'Fira Mono', monospace;
+      font-size: 11px; letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 4px; padding: 6px 14px;
+      cursor: pointer; pointer-events: all;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    #log-toggle:hover { color: rgba(255, 255, 255, 0.75); background: rgba(255, 255, 255, 0.12); }
+    #log-toggle.active {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="select-wrap">
+        <select id="sound-select">
+          <option value="arp">arp</option>
+          <option value="bass">bass</option>
+          <option value="hat">hat</option>
+          <option value="kick1">kick 1</option>
+          <option value="kick2">kick 2</option>
+          <option value="master">master</option>
+          <option value="pad">pad</option>
+          <option value="snare">snare</option>
+        </select>
+      </div>
+      <button id="play-btn" aria-label="Play"></button>
+      <button id="log-toggle">log</button>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960;  canvas.height  = 540;
+      canvas.style.width  = '960px';  canvas.style.height  = '540px';
+      wrap.style.width    = '960px';  wrap.style.height    = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
