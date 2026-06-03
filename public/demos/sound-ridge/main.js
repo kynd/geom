@@ -123,7 +123,7 @@ async function init() {
     startFrame = findStartFrame(frames);
     currentFrame = startFrame;
 
-    audio = new Audio(`${basePath}.wav`);
+    audio = new Audio(`${basePath}.mp3`);
     audio.addEventListener('loadedmetadata', () => { audio.currentTime = startFrame / FPS; });
     audio.addEventListener('ended', () => {
       setPlaying(false);

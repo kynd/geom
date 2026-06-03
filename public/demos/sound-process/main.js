@@ -214,7 +214,7 @@ async function loadSound(fileObj) {
   draw();
 
   // prepare audio
-  audio = new Audio(`${base}.wav`);
+  audio = new Audio(`${base}.mp3`);
   audio.addEventListener('loadedmetadata', () => {
     audio.currentTime = startFrame / FPS;
   });

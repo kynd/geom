@@ -243,7 +243,7 @@ async function loadSound(fileObj) {
   historyBufferL  = [];
   historyBufferR  = [];
   currentFrame    = 0;
-  currentFileName = fileObj.base + '.wav';
+  currentFileName = fileObj.base + '.mp3';
   freqMin         = 0;
   freqMax         = 0;
 
@@ -265,7 +265,7 @@ async function loadSound(fileObj) {
   currentFrame = startFrame;
   draw();
 
-  audio = new Audio(`${basePath}.wav`);
+  audio = new Audio(`${basePath}.mp3`);
   audio.addEventListener('loadedmetadata', () => {
     audio.currentTime = startFrame / FPS;
   });

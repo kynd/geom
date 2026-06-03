@@ -19,8 +19,9 @@ Thumbs.db
 .env
 .env.*
 
-# Audio source files (too large for GitHub)
+# Audio originals — too large for GitHub, kept locally in sound/original/
 *.wav
+sound/original/
 
 # Project-internal docs (not for the repo)
 CLAUDE.md
