@@ -10,7 +10,7 @@ Because this repository serves multiple purposes—ranging from text to speciali
 | :--- | :--- | :--- | :--- |
 | **Written Content** | All text, articles, and documentation written by the author | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | Kenichi Yoneda (Kynd) |
 | **Demo Code** | HTML, CSS, JS, GLSL, WebGL scripts, setups | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | Kenichi Yoneda (Kynd) |
-| **Sound Data** | Audio assets located in `/sound` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) | Yaporigami (Yu Miyashita) |
+| **Sound Data** | Audio assets in any format (MP3, WAV, or other) located in `/sound` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) | Yaporigami (Yu Miyashita) |
 | **Underlying Infrastructure**| Repository scaffolding, configuration files | [MIT License](https://opensource.org/licenses/MIT) | Kenichi Yoneda (Kynd) |
 
 ---
@@ -25,12 +25,12 @@ All written text, explanations, articles, and documentation, along with all acco
     > "Based on work by Kenichi Yoneda (Kynd), used under CC BY-SA 4.0."
 
 ### 2. Sound Assets (`/sound`)
-All audio content, samples, and sound data contained within the `sound/` directory are governed by a stricter, non-commercial creative license: **[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/)**.
+All audio content in any format — including the MP3 clips served by the site and the full-length WAV originals stored offline — are governed by a stricter, non-commercial creative license: **[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/)**. This applies regardless of whether the audio has been compressed or trimmed from the original recording.
 
-* **What this means:** You may share and adapt these audio files for **non-commercial purposes only**. If you remix, transform, or build upon the sound data, you must distribute your contributions under the identical license. 
+* **What this means:** You may share and adapt these audio files for **non-commercial purposes only**. If you remix, transform, or build upon the sound data, you must distribute your contributions under the identical license.
 * **Attribution Format:** Please attribute the audio creator as follows:
     > "Audio assets by Yaporigami (Yu Miyashita), used under CC BY-NC-SA 4.0."
-* A dedicated `README.md` and license descriptor are located inside the `sound/` directory for clarity.
+* A dedicated `README.md` is located inside the `public/sound/` directory for further detail.
 
 ### 3. Core Software Infrastructure
 For completeness, any generic baseline configuration files, repository boilerplate, or automated deployment scripts not covering the main creative and written content are explicitly licensed under the flexible **[MIT License](https://opensource.org/licenses/MIT)**.

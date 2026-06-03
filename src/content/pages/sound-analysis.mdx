@@ -21,6 +21,13 @@ export const stems = [
   { label: 'master', base: '250621_a1_mix1_master_88.2k24' },
 ].map(s => ({ ...s, ...soundMeta[s.base] }));
 
+<div class="page-note">
+  The audio used throughout this page is compressed to MP3 and trimmed to approximately one minute per stem.
+  Each clip is the densest section of the original recording — the sixty-second window with the highest cumulative amplitude.
+  The full-length originals are kept offline and are not served by the site.
+  All audio is by <strong>Yaporigami (Yu Miyashita)</strong>, licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>.
+</div>
+
 <section class="demo-section">
 <div class="demo-header">
 <h2>Amplitude and spectrum</h2>
@@ -37,7 +44,7 @@ export const stems = [
   The frequency label in the corner shows the active range the analysis detected for that stem.
 </p>
 <p>
-  A Python script analyses each WAV file offline before the browser touches it.
+  A Python script analyses each sound file offline before the browser touches it.
   It computes a full-file STFT at 2048-point resolution, then builds a global energy profile across all frequencies.
   Spectral roll-off at 5 % and 85 % of cumulative energy marks where the track actually lives — ignoring sub-bass rumble
   below the content and empty headroom above it.
@@ -145,6 +152,13 @@ export const stems = [
 
 
 <style>{`
+  .page-note {
+    margin-bottom: 2.5rem; padding: 0.9rem 1.1rem;
+    border-left: 3px solid var(--border);
+    font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted);
+  }
+  .page-note a { color: var(--fg-muted); text-decoration: underline; }
+  .page-note strong { color: var(--fg); font-weight: 500; }
   .spectrograms { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
   .spec-row { display: flex; align-items: center; gap: 1rem; }
   .spec-meta {

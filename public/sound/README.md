@@ -1,6 +1,8 @@
 # Sound Assets License Directory
 
-This directory (`public/sound/`, served at `/geom/sound/` on GitHub Pages) is the primary location for original audio assets, sound data, and waveforms used across the demos and technical writings. The license below applies to all sound files anywhere in this repository, regardless of their location.
+This directory (`public/sound/`, served at `/geom/sound/` on GitHub Pages) contains the audio assets and pre-computed analysis data used across the demos and technical writings.
+
+The files here are compressed MP3 clips — approximately one minute each, trimmed to the densest section of each stem. The full-length original WAV recordings are stored offline and are not committed to this repository. The license below applies to all audio content in any format (WAV, MP3, or other), regardless of location or how the files have been processed or compressed.
 
 ## License Information
 
