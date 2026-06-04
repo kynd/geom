@@ -54,8 +54,8 @@ async function init() {
   const scene = new THREE.Scene();
   const cam   = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  // 1920-sample amplitude history: index 0 = oldest, index 1919 = newest (1 sample per screen pixel column)
-  const AMP_HIST = 1920;
+  // 240-sample amplitude history (≈4 s at 60 fps): index 0 = oldest, index 239 = newest
+  const AMP_HIST = 240;
   const ampHistData = new Uint8Array(AMP_HIST * 4);
   const ampHistTex  = new THREE.DataTexture(ampHistData, AMP_HIST, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
   ampHistTex.magFilter = THREE.LinearFilter;

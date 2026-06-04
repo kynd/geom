@@ -2,7 +2,7 @@ precision highp float;
 
 uniform vec2      iResolution;
 uniform float     iTime;
-uniform sampler2D u_amp_hist;  // 1920×1: t=0 oldest, t=1 newest (centre of screen)
+uniform sampler2D u_amp_hist;  // 240×1: t=0 oldest (left), t=1 newest (right edge)
 uniform float     u_amp;
 
 // INCLUDE_LIGHTING
@@ -50,28 +50,16 @@ void main() {
         float normX = clamp(uv.x / aspect, -1.0, 1.0);
         float barX  = normX * 1.07;
 
-        // Symmetric display: centre = newest frame (t=1), edges = oldest (t=0)
-        float t      = 1.0 - abs(normX);
+        // Linear display: left edge = oldest (t=0), right edge = newest (t=1)
+        float t      = normX * 0.5 + 0.5;
         float energy = texture2D(u_amp_hist, vec2(t, 0.5)).r;
 
-        // Base camera orbit in the YZ plane around (barX, 0, 0)
-        float camR  = 2.2;
-        float angle = iTime * 0.7 + energy * 7.0;
-        vec3  ro    = vec3(barX, camR * sin(angle), -camR * cos(angle));
+        // Fixed camera looking along +Z, positioned behind the bar
+        vec3 ro = vec3(barX, 0.0, -2.2);
 
-        // Pre-rotation up direction (perpendicular to fwd and X axis)
-        vec3 fwd0 = normalize(vec3(barX, 0.0, 0.0) - ro);
-        vec3 up0  = normalize(cross(fwd0, vec3(1.0, 0.0, 0.0)));
-
-        // Warp: translate camera in up0 near centre; envelope decays over ~1/16 screen width
-        // sigma = 1/16 of normX range → 1/(2*sigma^2) ≈ 128
-        float warpEnv = exp(-normX * normX * 128.0);
-        ro += up0 * (u_amp * 1.5 * warpEnv);
-
-        // Recompute view direction from warped position
-        vec3 fwd    = normalize(vec3(barX, 0.0, 0.0) - ro);
-        vec3 up_dir = normalize(cross(fwd, vec3(1.0, 0.0, 0.0)));
-        vec3 rd     = normalize(fwd * 3.5 + uv.y * up_dir);
+        // Tilt ray up/down based on local energy: loud = ray tilts down (bar looks up)
+        float tilt = (energy - 0.15) * 0.6;
+        vec3 rd = normalize(vec3(0.0, 0.0, 1.0) * 3.5 + vec3(0.0, uv.y - tilt, 0.0));
 
         float dist = 0.02;
         for (int i = 0; i < MAX_STEPS; i++) {
