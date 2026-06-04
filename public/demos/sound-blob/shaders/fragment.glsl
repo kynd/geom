@@ -2,7 +2,7 @@ precision highp float;
 
 uniform vec2      iResolution;
 uniform float     iTime;
-uniform sampler2D u_amp_hist;  // 240×1: t=0 oldest (left), t=1 newest (right edge)
+uniform sampler2D u_amp_hist;  // 240×1: t=0 oldest (left edge), t=1 newest (right edge)
 uniform float     u_amp;
 
 // INCLUDE_LIGHTING
@@ -19,7 +19,6 @@ float sdRoundBox(vec3 p, vec3 b, float r) {
 }
 
 float sceneSDF(vec3 p) {
-    // Long axis X, short Y, medium depth Z — cross-section is a rounded rectangle
     return sdRoundBox(p, vec3(1.07, 0.025, 0.20), 0.010);
 }
 
@@ -50,16 +49,14 @@ void main() {
         float normX = clamp(uv.x / aspect, -1.0, 1.0);
         float barX  = normX * 1.07;
 
-        // Linear display: left edge = oldest (t=0), right edge = newest (t=1)
+        // Linear: left edge = oldest (t=0), right edge = newest (t=1)
         float t      = normX * 0.5 + 0.5;
         float energy = texture2D(u_amp_hist, vec2(t, 0.5)).r;
 
-        // Fixed camera looking along +Z, positioned behind the bar
-        vec3 ro = vec3(barX, 0.0, -2.2);
-
-        // Tilt ray up/down based on local energy: loud = ray tilts down (bar looks up)
-        float tilt = (energy - 0.15) * 0.6;
-        vec3 rd = normalize(vec3(0.0, 0.0, 1.0) * 3.5 + vec3(0.0, uv.y - tilt, 0.0));
+        // Camera moves up/down with energy; no rotation, no tilt
+        float camY = (energy - 0.15) * 0.6;
+        vec3 ro = vec3(barX, camY, -2.2);
+        vec3 rd = normalize(vec3(0.0, uv.y, 3.5));
 
         float dist = 0.02;
         for (int i = 0; i < MAX_STEPS; i++) {
