@@ -15,12 +15,13 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <div class="prose">
 <p>
   Press play and watch the kick drum register as a spike in the low-frequency bins on the left.
-  The bars show the frequency content of the audio at each moment — a spectrum, updated sixty times a second.
+  The bars show the frequency content of the audio at each moment — 128 Mel-spaced bands, updated sixty times a second.
   Below them, a 12-second strip of the overall amplitude scrolls left as the track plays.
 </p>
 <p>
-  The data is pre-computed as a plain text file at 60 fps, with 32 frequency bins plus one overall
-  RMS amplitude value per row. The browser loads it once and advances through it in lockstep with the audio.
+  The data is pre-computed as a plain text file at 60 fps.
+  Each row contains the L and R RMS amplitude followed by 128 Mel-band magnitudes for each channel — 258 values in total.
+  The browser loads it once and advances through it in lockstep with the audio.
 </p>
 
 ## What is an FFT?
