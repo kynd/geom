@@ -12,7 +12,6 @@ const { title, slug, isProse = false } = Astro.props;
 const navItems = [
   { label: 'Geom',               href: `${base}/`,                   slug: '' },
   { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,  slug: 'parametric-shapes' },
-  { label: 'Sound process',      href: `${base}/sound-process`,      slug: 'sound-process' },
   { label: 'Sound analysis',     href: `${base}/sound-analysis`,     slug: 'sound-analysis' },
 ];
 ---
@@ -252,12 +251,7 @@ const navItems = [
             <li><a href="#scalar-fields" class="sub">Scalar fields</a></li>
           </>
         )}
-        {slug === 'sound-process' && (
-          <>
-            <li><a href="#what-is-an-fft" class="sub">What is an FFT?</a></li>
-            <li><a href="#log-transform" class="sub">Log transform</a></li>
-          </>
-        )}
+
       </ul>
     </nav>
 
