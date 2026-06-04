@@ -45,16 +45,25 @@ void main() {
     for (int s = 0; s < 4; s++) {
         vec2 uv = ((gl_FragCoord.xy + offs[s]) * 2.0 - iResolution.xy) / iResolution.y;
 
-        // normX in [-1,1] across the screen (aspect-corrected)
         float normX = clamp(uv.x / aspect, -1.0, 1.0);
         float barX  = normX * 1.07;
 
         // Linear: left edge = oldest (t=0), right edge = newest (t=1)
-        float t      = normX * 0.5 + 0.5;
-        float energy = texture2D(u_amp_hist, vec2(t, 0.5)).r;
+        float t = normX * 0.5 + 0.5;
 
-        // Camera moves up/down with energy; no rotation, no tilt
-        float camY = (energy - 0.15) * 0.6;
+        // 5-tap Gaussian blur across history samples for spatial smoothness
+        float dt = 1.0 / 240.0;
+        float energy =
+            texture2D(u_amp_hist, vec2(t - 2.0 * dt, 0.5)).r * 0.0625 +
+            texture2D(u_amp_hist, vec2(t -       dt, 0.5)).r * 0.25   +
+            texture2D(u_amp_hist, vec2(t,             0.5)).r * 0.375  +
+            texture2D(u_amp_hist, vec2(t +       dt, 0.5)).r * 0.25   +
+            texture2D(u_amp_hist, vec2(t + 2.0 * dt, 0.5)).r * 0.0625;
+
+        // Centre emphasis: 2x at normX=0, 1x outside ±1/16, smooth S-curve transition
+        float emphasisW = smoothstep(1.0 / 16.0, 0.0, abs(normX));
+        float camY = (energy - 0.15) * 0.6 * (1.0 + emphasisW);
+
         vec3 ro = vec3(barX, camY, -2.2);
         vec3 rd = normalize(vec3(0.0, uv.y, 3.5));
 
