@@ -54,9 +54,10 @@ async function init() {
   const scene = new THREE.Scene();
   const cam   = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  // 128-sample amplitude history: index 0 = oldest, index 127 = newest
-  const ampHistData = new Uint8Array(128 * 4);
-  const ampHistTex  = new THREE.DataTexture(ampHistData, 128, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
+  // 1920-sample amplitude history: index 0 = oldest, index 1919 = newest (1 sample per screen pixel column)
+  const AMP_HIST = 1920;
+  const ampHistData = new Uint8Array(AMP_HIST * 4);
+  const ampHistTex  = new THREE.DataTexture(ampHistData, AMP_HIST, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
   ampHistTex.magFilter = THREE.LinearFilter;
   ampHistTex.minFilter = THREE.LinearFilter;
   ampHistTex.needsUpdate = true;
@@ -69,34 +70,37 @@ async function init() {
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
 
-  let startTs = null;
+  let startTs = null, pauseStart = 0, rafId = null;
+
   function loop(ts) {
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
     if (startTs === null) startTs = ts;
     uniforms.iTime.value = (ts - startTs) * 0.001;
-
-    if (isPlaying && audio)
-      currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
-
+    currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
     if (frames.length > 0) {
       const f = frames[Math.min(currentFrame, frames.length - 1)];
-      // Shift history left (drop oldest), append current amplitude at index 127
-      ampHistData.copyWithin(0, 4, 128 * 4);
-      ampHistData[127 * 4]     = Math.round(f.amp * 255);
-      ampHistData[127 * 4 + 3] = 255;
+      ampHistData.copyWithin(0, 4, AMP_HIST * 4);
+      ampHistData[(AMP_HIST - 1) * 4]     = Math.round(f.amp * 255);
+      ampHistData[(AMP_HIST - 1) * 4 + 3] = 255;
       ampHistTex.needsUpdate = true;
       uniforms.u_amp.value = f.amp;
     }
     renderer.render(scene, cam);
   }
-  requestAnimationFrame(loop);
 
   function setPlaying(play) {
     if (!audio) return;
     isPlaying = play;
     playBtn.innerHTML = play ? pauseIcon() : playIcon();
-    if (play) audio.play().catch(() => {});
-    else audio.pause();
+    if (play) {
+      if (pauseStart > 0) { startTs += performance.now() - pauseStart; pauseStart = 0; }
+      audio.play().catch(() => {});
+      if (!rafId) rafId = requestAnimationFrame(loop);
+    } else {
+      audio.pause();
+      pauseStart = performance.now();
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
   }
 
   async function loadSound(fileObj) {

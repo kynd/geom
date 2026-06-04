@@ -77,38 +77,40 @@ async function init() {
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
 
-  let startTs = null;
+  let startTs = null, pauseStart = 0, rafId = null;
+
   function loop(ts) {
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
     if (startTs === null) startTs = ts;
     uniforms.iTime.value = (ts - startTs) * 0.001;
-
-    if (isPlaying && audio)
-      currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
-
+    currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
     if (frames.length > 0) {
       const f = frames[Math.min(currentFrame, frames.length - 1)];
       uniforms.u_amp.value = f.amp;
-
-      // Shift history back one row (row 0 = newest)
       histData.copyWithin(NUM_BANDS * 4, 0, NUM_BANDS * (HISTORY_FRAMES - 1) * 4);
       for (let b = 0; b < NUM_BANDS; b++) {
-        histData[b * 4]     = Math.round(f.fftL[b] * 255); // L → r
-        histData[b * 4 + 1] = Math.round(f.fftR[b] * 255); // R → g
+        histData[b * 4]     = Math.round(f.fftL[b] * 255);
+        histData[b * 4 + 1] = Math.round(f.fftR[b] * 255);
         histData[b * 4 + 3] = 255;
       }
       histTexture.needsUpdate = true;
     }
     renderer.render(scene, cam);
   }
-  requestAnimationFrame(loop);
 
   function setPlaying(play) {
     if (!audio) return;
     isPlaying = play;
     playBtn.innerHTML = play ? pauseIcon() : playIcon();
-    if (play) audio.play().catch(() => {});
-    else audio.pause();
+    if (play) {
+      if (pauseStart > 0) { startTs += performance.now() - pauseStart; pauseStart = 0; }
+      audio.play().catch(() => {});
+      if (!rafId) rafId = requestAnimationFrame(loop);
+    } else {
+      audio.pause();
+      pauseStart = performance.now();
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
   }
 
   async function loadSound(fileObj) {

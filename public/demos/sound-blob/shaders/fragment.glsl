@@ -2,28 +2,29 @@ precision highp float;
 
 uniform vec2      iResolution;
 uniform float     iTime;
-uniform sampler2D u_amp_hist;  // 128×1, amplitude history: left=oldest, right=newest
+uniform sampler2D u_amp_hist;  // 1920×1: t=0 oldest, t=1 newest (centre of screen)
 uniform float     u_amp;
 
 // INCLUDE_LIGHTING
 
-#define MAX_STEPS 80
+#define MAX_STEPS 100
 #define MAX_DIST  10.0
-#define SURF_DIST 0.0008
+#define SURF_DIST 0.0006
 
 float sceneSDF(vec3 p);
 
-float sdBox(vec3 p, vec3 b) {
-    vec3 q = abs(p) - b;
-    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+float sdRoundBox(vec3 p, vec3 b, float r) {
+    vec3 q = abs(p) - b + r;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
 }
 
 float sceneSDF(vec3 p) {
-    return sdBox(p, vec3(3.2, 0.03, 0.6));
+    // Long axis X, short Y, medium depth Z — cross-section is a rounded rectangle
+    return sdRoundBox(p, vec3(1.07, 0.025, 0.20), 0.010);
 }
 
 vec3 calcNormal(vec3 p) {
-    const vec2 e = vec2(0.002, 0.0);
+    const vec2 e = vec2(0.0015, 0.0);
     return normalize(vec3(
         sceneSDF(p + e.xyy) - sceneSDF(p - e.xyy),
         sceneSDF(p + e.yxy) - sceneSDF(p - e.yxy),
@@ -45,24 +46,32 @@ void main() {
     for (int s = 0; s < 4; s++) {
         vec2 uv = ((gl_FragCoord.xy + offs[s]) * 2.0 - iResolution.xy) / iResolution.y;
 
-        // Screen x → bar x position and history lookup [0, 1]
+        // normX in [-1,1] across the screen (aspect-corrected)
         float normX = clamp(uv.x / aspect, -1.0, 1.0);
-        float barX  = normX * 3.2;
-        float t     = normX * 0.5 + 0.5;  // [0=oldest, 1=newest]
+        float barX  = normX * 1.07;
 
-        // Amplitude at this moment in history drives the camera orbit angle
+        // Symmetric display: centre = newest frame (t=1), edges = oldest (t=0)
+        float t      = 1.0 - abs(normX);
         float energy = texture2D(u_amp_hist, vec2(t, 0.5)).r;
 
-        // Per-column camera orbits in the YZ plane around (barX, 0, 0)
-        // Base spin + audio kick on top
+        // Base camera orbit in the YZ plane around (barX, 0, 0)
         float camR  = 2.2;
         float angle = iTime * 0.7 + energy * 7.0;
         vec3  ro    = vec3(barX, camR * sin(angle), -camR * cos(angle));
 
+        // Pre-rotation up direction (perpendicular to fwd and X axis)
+        vec3 fwd0 = normalize(vec3(barX, 0.0, 0.0) - ro);
+        vec3 up0  = normalize(cross(fwd0, vec3(1.0, 0.0, 0.0)));
+
+        // Warp: translate camera in up0 near centre; envelope decays over ~1/16 screen width
+        // sigma = 1/16 of normX range → 1/(2*sigma^2) ≈ 128
+        float warpEnv = exp(-normX * normX * 128.0);
+        ro += up0 * (u_amp * 1.5 * warpEnv);
+
+        // Recompute view direction from warped position
         vec3 fwd    = normalize(vec3(barX, 0.0, 0.0) - ro);
         vec3 up_dir = normalize(cross(fwd, vec3(1.0, 0.0, 0.0)));
-
-        vec3 rd = normalize(fwd * 3.5 + uv.y * up_dir);
+        vec3 rd     = normalize(fwd * 3.5 + uv.y * up_dir);
 
         float dist = 0.02;
         for (int i = 0; i < MAX_STEPS; i++) {
