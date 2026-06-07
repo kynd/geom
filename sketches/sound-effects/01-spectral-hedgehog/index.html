@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>01 — Spectral Hedgehog</title>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js"}}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #000; width: 100%; height: 100%; overflow: hidden; }
+
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+
+    #overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    .label {
+      padding: 0 56px 52px;
+      font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 300;
+      color: rgba(255,255,255,0.40); letter-spacing: 0.06em;
+    }
+    .label strong { font-weight: 400; color: rgba(255,255,255,0.70); }
+
+    #controls {
+      position: absolute; top: 28px; right: 28px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #aa-btn {
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.38);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 400;
+      letter-spacing: 0.06em; color: rgba(255,255,255,0.90);
+      transition: all 0.15s; z-index: 10;
+    }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    #play-btn {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; z-index: 10;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.26); }
+
+    #sound-select {
+      height: 48px; padding: 0 36px 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.70); cursor: pointer; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+    #sound-select option { background: #1a1a1a; }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div class="label">
+        <strong>Spectral Hedgehog</strong><br>
+        azimuthal angle → FFT bin → radial spike
+      </div>
+    </div>
+    <div id="controls">
+      <select id="sound-select">
+        <option value="arp">arp</option>
+        <option value="bass">bass</option>
+        <option value="hat">hat</option>
+        <option value="kick1">kick 1</option>
+        <option value="kick2">kick 2</option>
+        <option value="pad">pad</option>
+        <option value="snare">snare</option>
+        <option value="master">master</option>
+      </select>
+      <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias ON</button>
+      <button id="play-btn" aria-label="Play"></button>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

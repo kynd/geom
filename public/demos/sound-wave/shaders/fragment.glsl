@@ -5,6 +5,7 @@ uniform float iTime;
 uniform float u_fft[128];   // L channel
 uniform float u_fft_R[128]; // R channel
 uniform float u_amp;
+uniform int   u_ssaa;
 
 // INCLUDE_LIGHTING
 
@@ -70,7 +71,8 @@ void main() {
     offs[3] = vec2( 0.25,  0.25);
 
     for (int s = 0; s < 4; s++) {
-        vec2 uv = ((gl_FragCoord.xy + offs[s]) * 2.0 - iResolution.xy) / iResolution.y;
+        vec2 off = u_ssaa == 1 ? offs[s] : vec2(0.0);
+        vec2 uv = ((gl_FragCoord.xy + off) * 2.0 - iResolution.xy) / iResolution.y;
 
         // Camera directly overhead, looking straight down
         vec3 ro  = vec3(0.0, 4.5, 0.0);
@@ -94,9 +96,10 @@ void main() {
             col = grazingLight(p, n, rd);
         }
         totalCol += col;
+        if (u_ssaa == 0) break;
     }
 
-    totalCol /= 4.0;
+    totalCol /= u_ssaa == 1 ? 4.0 : 1.0;
     totalCol = pow(max(totalCol, 0.0), vec3(0.4545));
     gl_FragColor = vec4(totalCol, 1.0);
 }

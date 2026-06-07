@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 
 const SURFACES = [
-  { name: 'elliptic paraboloid',      func: 'y = x² + z²',                duration: 4.0 },
-  { name: 'hyperbolic paraboloid',    func: 'y = x² − z²',           duration: 4.0 },
-  { name: 'cone',                     func: 'y² = x² + z²',               duration: 4.0 },
-  { name: 'sphere',                   func: 'x² + y² + z² = r²',          duration: 4.0 },
-  { name: 'torus',                    func: '(√(x²+z²) − R)² + y² = r²', duration: 4.0 },
-  { name: 'hyperboloid',              func: 'x² + z² − y² = r²',     duration: 4.0 },
-  { name: 'monkey saddle',            func: 'y = x³ − 3xz²', duration: 4.0 },
-  { name: 'wave surface',             func: 'y = sin(x) cos(z)',           duration: 4.0 },
-  { name: 'ripple',                   func: 'y = e⁻ʳ cos(r)',    duration: 4.0 },
-  { name: 'ellipsoid',                func: 'x²/a² + y²/b² + z²/c² = 1', duration: 4.0 },
+  { name: 'elliptic paraboloid',      func: 'y = x² + z²',                duration: 1.0 },
+  { name: 'hyperbolic paraboloid',    func: 'y = x² − z²',                duration: 1.0 },
+  { name: 'cone',                     func: 'y² = x² + z²',               duration: 1.0 },
+  { name: 'sphere',                   func: 'x² + y² + z² = r²',          duration: 1.0 },
+  { name: 'torus',                    func: '(√(x²+z²) − R)² + y² = r²', duration: 1.0 },
+  { name: 'hyperboloid',              func: 'x² + z² − y² = r²',          duration: 1.0 },
+  { name: 'monkey saddle',            func: 'y = x³ − 3xz²',              duration: 1.0 },
+  { name: 'wave surface',             func: 'y = sin(x) cos(z)',           duration: 1.0 },
+  { name: 'ripple',                   func: 'y = e⁻ʳ cos(r)',             duration: 1.0 },
+  { name: 'ellipsoid',                func: 'x²/a² + y²/b² + z²/c² = 1', duration: 1.0 },
 ];
 
 const PLAY_ICON  = '<svg viewBox="0 0 10 12" fill="currentColor" width="14" height="14"><polygon points="1,0 10,6 1,12"/></svg>';
@@ -22,13 +22,16 @@ async function init() {
   const W = canvas.width;
   const H = canvas.height;
 
-  const [lightingSrc, fragTemplate, vertSrc] = await Promise.all([
+  const [scalarMarcherSrc, lightingSrc, fragTemplate, vertSrc] = await Promise.all([
+    fetch('../../shaders/scalar-marcher.glsl').then(r => r.text()),
     fetch('../../shaders/lighting.glsl').then(r => r.text()),
     fetch('./shaders/fragment.glsl').then(r => r.text()),
     fetch('./shaders/vertex.glsl').then(r => r.text()),
   ]);
 
-  const fragSrc = fragTemplate.replace('// INCLUDE_LIGHTING', lightingSrc);
+  const fragSrc = fragTemplate
+    .replace('// INCLUDE_SCALAR_MARCHER', scalarMarcherSrc)
+    .replace('// INCLUDE_LIGHTING', lightingSrc);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setSize(W, H, false);
@@ -41,6 +44,7 @@ async function init() {
     iResolution:    { value: new THREE.Vector2(W, H) },
     iTime:          { value: 0.0 },
     u_surfaceIndex: { value: 1 },
+    u_ssaa:         { value: 1 },
   };
 
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
@@ -61,7 +65,6 @@ async function init() {
     return 0;
   }
 
-  // ---- Playback state ----
   let isPlaying = false;
   let startTime = null;
   let pausedAt  = 0;
@@ -110,7 +113,14 @@ async function init() {
 
   playBtn.addEventListener('click', () => isPlaying ? pause() : play());
 
-  // Render first frame and start paused
+  const aaBtn = document.getElementById('aa-btn');
+  aaBtn.addEventListener('click', () => {
+    const on = aaBtn.classList.toggle('active');
+    uniforms.u_ssaa.value = on ? 1 : 0;
+    aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
+    aaBtn.textContent = on ? 'Antialias ON' : 'Antialias OFF';
+  });
+
   renderAt(0);
   updateBtn();
 }

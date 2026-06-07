@@ -92,6 +92,17 @@
       z-index: 10;
     }
     #play-btn:hover { background: rgba(255, 255, 255, 0.26); }
+    #aa-btn {
+      position: absolute; top: 32px; right: 96px;
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30);
+      transition: all 0.15s; z-index: 10;
+    }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
 
   </style>
 </head>
@@ -104,6 +115,7 @@
         <div id="shape-func">y = x² + z²</div>
       </div>
     </div>
+    <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias ON</button>
     <button id="play-btn" aria-label="Play"></button>
   </div>
   <script>

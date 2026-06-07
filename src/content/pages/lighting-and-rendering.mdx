@@ -1,0 +1,43 @@
+---
+title: Lighting and rendering
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+<section class="demo-section" id="rim-light">
+<div class="demo-header">
+<h2>Rim light</h2>
+<a href={`${base}/demos/lighting-rendering/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/lighting-rendering/index.html?embedded`} title="Rim Light Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Rim intensity is {"\\( r = (1 - |\\, n \\cdot (-d) \\,|)^{p} \\)"} — bright at silhouette edges,
+  dark face-on. The SSS term does a secondary march through the shape to measure thickness,
+  then {"\\( e^{-\\,\\text{thickness} \\times \\text{density}} \\)"} lets thin regions glow.
+  The sliders expose rim exponent, face-on fill, SSS strength, and density.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="side-light">
+<div class="demo-header">
+<h2>Side light</h2>
+<a href={`${base}/demos/side-light/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/side-light/index.html?embedded`} title="Side Light Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Two back-lights driven by the audio — left channel from the left, right channel from the right.
+  Because both lights are placed behind the object, the front face stays dark
+  and only the corresponding rim lights up. The shape cycles every five seconds.
+</p>
+</div>
+</section>
+
+<style>{`
+`}</style>

@@ -3,10 +3,14 @@ precision highp float;
 uniform vec2  iResolution;
 uniform float iTime;
 uniform int   u_shapeIndex;
+uniform float u_rimPow;
+uniform float u_base;
+uniform float u_sssDensity;
+uniform float u_sssStr;
 uniform int   u_ssaa;
 
 // INCLUDE_SDF_FUNCTIONS
-// INCLUDE_LIGHTING
+// INCLUDE_RIM_LIGHTING
 
 float sceneSDF(vec3 p);
 // INCLUDE_SDF_MARCHER
@@ -61,7 +65,18 @@ vec3 render3D(vec2 uv) {
   float t; vec3 nor;
   if (!castRay(ro, rd, t, nor)) return vec3(0.0);
   vec3 pos = ro + rd * t;
-  return stdLighting(pos, nor, rd);
+  if (dot(nor, -rd) < 0.0) nor = -nor;
+
+  // Secondary march through the interior to the back face
+  float tb = t + 0.005;
+  for (int i = 0; i < 48; i++) {
+    float d = sceneSDF(ro + rd * tb);
+    if (d > 0.0) break;
+    tb += max(-d, 0.005);
+  }
+  float thickness = tb - t;
+
+  return rimLight(pos, nor, rd, thickness);
 }
 
 void main() {

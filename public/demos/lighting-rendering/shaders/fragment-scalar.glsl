@@ -3,9 +3,13 @@ precision highp float;
 uniform vec2  iResolution;
 uniform float iTime;
 uniform int   u_surfaceIndex;
+uniform float u_rimPow;
+uniform float u_base;
+uniform float u_sssDensity;
+uniform float u_sssStr;
 uniform int   u_ssaa;
 
-// INCLUDE_LIGHTING
+// INCLUDE_RIM_LIGHTING
 
 float surfaceF(vec3 p);
 // INCLUDE_SCALAR_MARCHER
@@ -46,7 +50,9 @@ vec3 render3D(vec2 uv) {
   float t; vec3 nor;
   if (!castRay(ro, rd, t, nor)) return vec3(0.0);
   vec3 pos = ro + rd * t;
-  return stdLighting(pos, nor, rd);
+  if (dot(nor, -rd) < 0.0) nor = -nor;
+  // Open surfaces have no back face — large thickness suppresses SSS
+  return rimLight(pos, nor, rd, 100.0);
 }
 
 void main() {

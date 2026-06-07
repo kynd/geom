@@ -4,6 +4,7 @@ uniform vec2      iResolution;
 uniform float     iTime;
 uniform sampler2D u_amp_hist;  // 240×1: t=0 oldest (left edge), t=1 newest (right edge)
 uniform float     u_amp;
+uniform int       u_ssaa;
 
 // INCLUDE_LIGHTING
 
@@ -19,7 +20,9 @@ float sdRoundBox(vec3 p, vec3 b, float r) {
 }
 
 float sceneSDF(vec3 p) {
-    return sdRoundBox(p, vec3(1.07, 0.025, 0.20), 0.010);
+    // Y=0.025 thin face toward camera; Z=0.35 gives deep top/bottom faces visible from above/below
+    // r=0.022 makes the cross-section a near-capsule shape
+    return sdRoundBox(p, vec3(1.07, 0.025, 0.35), 0.022);
 }
 
 vec3 calcNormal(vec3 p) {
@@ -43,12 +46,13 @@ void main() {
     float aspect = iResolution.x / iResolution.y;
 
     for (int s = 0; s < 4; s++) {
-        vec2 uv = ((gl_FragCoord.xy + offs[s]) * 2.0 - iResolution.xy) / iResolution.y;
+        vec2 off = u_ssaa == 1 ? offs[s] : vec2(0.0);
+        vec2 uv = ((gl_FragCoord.xy + off) * 2.0 - iResolution.xy) / iResolution.y;
 
         float normX = clamp(uv.x / aspect, -1.0, 1.0);
         float barX  = normX * 1.07;
 
-        // Linear: left edge = oldest (t=0), right edge = newest (t=1)
+        // Centre = current (t=0.5), left = past, right = future
         float t = normX * 0.5 + 0.5;
 
         // 5-tap Gaussian blur across history samples for spatial smoothness
@@ -60,11 +64,13 @@ void main() {
             texture2D(u_amp_hist, vec2(t +       dt, 0.5)).r * 0.25   +
             texture2D(u_amp_hist, vec2(t + 2.0 * dt, 0.5)).r * 0.0625;
 
-        // Centre emphasis: 2x at normX=0, 1x outside ±1/16, smooth S-curve transition
+        // Centre emphasis: 2x at normX=0, 1x outside ±1/16, smooth S-curve
         float emphasisW = smoothstep(1.0 / 16.0, 0.0, abs(normX));
-        float camY = (energy - 0.15) * 0.6 * (1.0 + emphasisW);
 
+        // camY < 0 = camera below bar → bar appears higher on screen when loud
+        float camY = -(energy - 0.15) * 0.55 * (1.0 + emphasisW);
         vec3 ro = vec3(barX, camY, -2.2);
+        // Straight rays: camY shifts bar vertically so loud columns rise, quiet ones sit near centre
         vec3 rd = normalize(vec3(0.0, uv.y, 3.5));
 
         float dist = 0.02;
@@ -83,9 +89,10 @@ void main() {
             col = stdLighting(p, n, rd) * brightness;
         }
         totalCol += col;
+        if (u_ssaa == 0) break;
     }
 
-    totalCol /= 4.0;
+    totalCol /= u_ssaa == 1 ? 4.0 : 1.0;
     totalCol = pow(max(totalCol, 0.0), vec3(0.4545));
     gl_FragColor = vec4(totalCol, 1.0);
 }

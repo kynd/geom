@@ -11,7 +11,6 @@ const SHAPES = [
   { name: 'infinite cylinder',   func: 'sdCylinder( p, c )',                       duration: 1.0 },
   { name: 'cone',                func: 'sdCone( p, c, h )',                        duration: 1.0 },
   { name: 'infinite cone',       func: 'sdInfiniteCone( p, c )',                   duration: 1.0 },
-  { name: 'plane',               func: 'sdPlane( p, n, h )',                       duration: 1.0 },
   { name: 'hexagonal prism',     func: 'sdHexPrism( p, h )',                       duration: 1.0 },
   { name: 'capsule',             func: 'sdCapsule( p, a, b, r )',                  duration: 1.0 },
   { name: 'vertical capsule',    func: 'sdVerticalCapsule( p, h, r )',             duration: 1.0 },
@@ -31,8 +30,6 @@ const SHAPES = [
   { name: 'octahedron',          func: 'sdOctahedron( p, s )',                     duration: 1.0 },
   { name: 'octahedron (fast)',   func: 'sdOctahedronFast( p, s )  [approx]',       duration: 1.0 },
   { name: 'pyramid',             func: 'sdPyramid( p, h )',                        duration: 1.0 },
-  { name: 'triangle',            func: 'udTriangle( p, a, b, c )  [unsigned]',     duration: 1.0 },
-  { name: 'quad',                func: 'udQuad( p, a, b, c, d )  [unsigned]',      duration: 1.0 },
   { name: 'ellipsoid',           func: 'sdEllipsoid( p, r )  [approx]',            duration: 1.0 },
   { name: 'triangular prism',    func: 'sdTriPrism( p, h )  [approx]',             duration: 1.0 },
 ];
@@ -46,8 +43,9 @@ async function init() {
   const W = canvas.width;
   const H = canvas.height;
 
-  const [sdfSrc, lightingSrc, fragTemplate, vertSrc] = await Promise.all([
-    fetch('./shaders/sdf-functions.glsl').then(r => r.text()),
+  const [sdfSrc, sdfMarcherSrc, lightingSrc, fragTemplate, vertSrc] = await Promise.all([
+    fetch('../../shaders/sdf-functions.glsl').then(r => r.text()),
+    fetch('../../shaders/sdf-marcher.glsl').then(r => r.text()),
     fetch('../../shaders/lighting.glsl').then(r => r.text()),
     fetch('./shaders/fragment.glsl').then(r => r.text()),
     fetch('./shaders/vertex.glsl').then(r => r.text()),
@@ -55,6 +53,7 @@ async function init() {
 
   const fragSrc = fragTemplate
     .replace('// INCLUDE_SDF_FUNCTIONS', sdfSrc)
+    .replace('// INCLUDE_SDF_MARCHER', sdfMarcherSrc)
     .replace('// INCLUDE_LIGHTING', lightingSrc);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
@@ -68,6 +67,7 @@ async function init() {
     iResolution:  { value: new THREE.Vector2(W, H) },
     iTime:        { value: 0.0 },
     u_shapeIndex: { value: 1 },
+    u_ssaa:       { value: 1 },
   };
 
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
@@ -88,7 +88,6 @@ async function init() {
     return 0;
   }
 
-  // ---- Playback state ----
   let isPlaying = false;
   let startTime = null;
   let pausedAt  = 0;
@@ -137,7 +136,14 @@ async function init() {
 
   playBtn.addEventListener('click', () => isPlaying ? pause() : play());
 
-  // Render first frame and start paused
+  const aaBtn = document.getElementById('aa-btn');
+  aaBtn.addEventListener('click', () => {
+    const on = aaBtn.classList.toggle('active');
+    uniforms.u_ssaa.value = on ? 1 : 0;
+    aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
+    aaBtn.textContent = on ? 'Antialias ON' : 'Antialias OFF';
+  });
+
   renderAt(0);
   updateBtn();
 }

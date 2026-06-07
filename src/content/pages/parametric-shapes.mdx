@@ -82,3 +82,26 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 </p>
 </div>
 </section>
+
+<section class="demo-section" id="platonic-duals">
+<div class="demo-header">
+<h2>Platonic duals</h2>
+<a href={`${base}/demos/platonic-duals/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/platonic-duals/index.html?embedded`} title="Platonic Duals Demo" scrolling="no"></iframe>
+</div>
+<div class="prose">
+<p>
+  The five Platonic solids are the only convex polyhedra where every face is the same regular polygon
+  and every vertex joins the same number of faces. Each has a dual, formed by placing a new vertex at
+  the centre of every face and connecting adjacent face-centres with new edges.
+</p>
+<p>
+  The swap is exact. The cube has 6 faces and 8 vertices; its dual, the octahedron, has 6 vertices and
+  8 faces. Both share 12 edges. The tetrahedron is its own dual — its four face-centres form a second
+  tetrahedron pointing the opposite way. The dodecahedron and icosahedron are duals of each other,
+  exchanging 12 and 20 throughout.
+</p>
+</div>
+</section>

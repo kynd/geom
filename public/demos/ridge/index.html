@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sound — Blob</title>
+  <title>Sound — Ridge</title>
   <script type="importmap">
   {
     "imports": {
@@ -23,6 +23,9 @@
     #controls { position: absolute; top: 28px; right: 32px; display: flex; align-items: center; gap: 10px; pointer-events: all; }
     #play-btn { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; transition: background 0.15s; flex-shrink: 0; }
     #play-btn:hover { background: rgba(255,255,255,0.24); }
+    #aa-btn { height: 48px; padding: 0 14px; border-radius: 24px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Google Sans Code', monospace; font-size: 11px; color: rgba(255,255,255,0.30); transition: all 0.15s; flex-shrink: 0; }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.55); }
     #sound-select { font-family: 'Google Sans Code', monospace; font-size: 12px; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; padding: 8px 32px 8px 12px; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color 0.15s; height: 48px; }
     #sound-select:hover { border-color: rgba(255,255,255,0.4); }
     #sound-select option { background: #111; color: #fff; }
@@ -33,6 +36,7 @@
     <canvas id="canvas" width="1920" height="1080"></canvas>
     <div id="overlay">
       <div id="controls">
+        <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias ON</button>
         <button id="play-btn" aria-label="Play"></button>
         <select id="sound-select">
           <option value="arp">arp</option>

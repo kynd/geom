@@ -26,7 +26,7 @@ export const stems = [
   All audio is by <strong>Yaporigami (Yu Miyashita)</strong>, licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>.
 </div>
 
-<section class="demo-section">
+<section class="demo-section" id="amplitude-and-spectrum">
 <div class="demo-header">
 <h2>Amplitude and spectrum</h2>
 <a href={`${base}/demos/sound-analysis/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
@@ -66,7 +66,7 @@ export const stems = [
 </div>
 </section>
 
-<section class="demo-section">
+<section class="demo-section" id="spectrograms">
 <div class="demo-header">
 <h2>Spectrograms</h2>
 </div>
@@ -93,7 +93,7 @@ export const stems = [
 </div>
 </section>
 
-<section class="demo-section">
+<section class="demo-section" id="wave">
 <div class="demo-header">
 <h2>Wave</h2>
 <a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
@@ -110,31 +110,32 @@ export const stems = [
 </div>
 </section>
 
-<section class="demo-section">
+<section class="demo-section" id="warp">
 <div class="demo-header">
 <h2>Warp</h2>
-<a href={`${base}/demos/sound-blob/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/warp/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
 </div>
 <div class="demo-embed">
-<iframe src={`${base}/demos/sound-blob/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
+<iframe src={`${base}/demos/warp/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
 <p>
-  A bar viewed through a per-column camera that orbits based on amplitude history.
-  Each column maps to a different moment in the recent past — the leftmost column is the oldest, the rightmost is the current frame.
-  Where the amplitude was quiet the camera sits just below and in front of the bar; a loud moment swings the camera overhead.
-  The bar's twisted shape is a direct trace of how the volume moved over time.
+  A thin bar in 3D space, viewed through a per-column camera whose height is set by the amplitude at that moment.
+  The centre of the screen is the current playback position; the left half traces the past two seconds, the right half the next two.
+  When a moment is loud the camera rises with the bar, and the top face of the shape comes into view.
+  When it is quiet the bar sits level and appears edge-on — almost a line.
+  Because every column is at a different moment in the track, the varying camera heights bend and twist the bar across the full width of the screen.
 </p>
 </div>
 </section>
 
-<section class="demo-section">
+<section class="demo-section" id="ridge">
 <div class="demo-header">
 <h2>Ridge</h2>
-<a href={`${base}/demos/sound-ridge/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/ridge/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
 </div>
 <div class="demo-embed">
-<iframe src={`${base}/demos/sound-ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
+<iframe src={`${base}/demos/ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
 <p>

@@ -66,6 +66,7 @@ async function init() {
     iTime:       { value: 0.0 },
     u_amp_hist:  { value: ampHistTex },
     u_amp:       { value: 0.0 },
+    u_ssaa:      { value: 1 },
   };
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
@@ -78,12 +79,14 @@ async function init() {
     uniforms.iTime.value = (ts - startTs) * 0.001;
     currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
     if (frames.length > 0) {
-      const f = frames[Math.min(currentFrame, frames.length - 1)];
-      ampHistData.copyWithin(0, 4, AMP_HIST * 4);
-      ampHistData[(AMP_HIST - 1) * 4]     = Math.round(f.amp * 255);
-      ampHistData[(AMP_HIST - 1) * 4 + 3] = 255;
+      const halfHist = AMP_HIST >> 1;
+      for (let i = 0; i < AMP_HIST; i++) {
+        const fi = Math.max(0, Math.min(frames.length - 1, currentFrame + i - halfHist));
+        ampHistData[i * 4]     = Math.round(frames[fi].amp * 255);
+        ampHistData[i * 4 + 3] = 255;
+      }
       ampHistTex.needsUpdate = true;
-      uniforms.u_amp.value = f.amp;
+      uniforms.u_amp.value = frames[currentFrame].amp;
     }
     renderer.render(scene, cam);
   }
@@ -104,7 +107,9 @@ async function init() {
   }
 
   async function loadSound(fileObj) {
+    const wasPlaying = isPlaying;
     setPlaying(false);
+    startTs = null; pauseStart = 0;
     if (audio) { audio.pause(); audio.src = ''; audio = null; }
     frames = []; currentFrame = 0; ampHistData.fill(0); ampHistTex.needsUpdate = true;
 
@@ -114,17 +119,28 @@ async function init() {
     currentFrame = startFrame;
 
     audio = new Audio(`${basePath}.mp3`);
-    audio.addEventListener('loadedmetadata', () => { audio.currentTime = startFrame / FPS; });
+    audio.addEventListener('loadedmetadata', () => {
+      audio.currentTime = startFrame / FPS;
+      if (wasPlaying) setPlaying(true);
+    });
     audio.addEventListener('ended', () => {
       setPlaying(false);
       currentFrame = startFrame;
       audio.currentTime = startFrame / FPS;
     });
-    playBtn.innerHTML = playIcon();
+    if (!wasPlaying) playBtn.innerHTML = playIcon();
   }
 
   playBtn.innerHTML = playIcon();
   playBtn.addEventListener('click', () => { if (frames.length) setPlaying(!isPlaying); });
+
+  const aaBtn = document.getElementById('aa-btn');
+  aaBtn.addEventListener('click', () => {
+    const on = aaBtn.classList.toggle('active');
+    uniforms.u_ssaa.value = on ? 1 : 0;
+    aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
+    aaBtn.textContent = on ? 'Antialias ON' : 'Antialias OFF';
+  });
   selectEl.addEventListener('change', () => {
     loadSound(SOUND_FILES.find(f => f.value === selectEl.value) || SOUND_FILES[0]);
   });

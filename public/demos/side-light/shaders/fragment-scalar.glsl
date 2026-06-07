@@ -3,9 +3,9 @@ precision highp float;
 uniform vec2  iResolution;
 uniform float iTime;
 uniform int   u_surfaceIndex;
+uniform float u_ampL;
+uniform float u_ampR;
 uniform int   u_ssaa;
-
-// INCLUDE_LIGHTING
 
 float surfaceF(vec3 p);
 // INCLUDE_SCALAR_MARCHER
@@ -35,6 +35,25 @@ float surfaceF(vec3 p) {
   return 1e10;
 }
 
+// Camera at +Z, back-lights are placed at −Z
+vec3 sideLight(vec3 nor, vec3 rd) {
+  vec3 mat = vec3(0.88);
+
+  vec3 leftDir  = normalize(vec3(-1.2, 0.2, -1.0));
+  float diffL   = max(dot(nor, leftDir), 0.0);
+  vec3 halfL    = normalize(leftDir - rd);
+  float specL   = pow(max(dot(nor, halfL), 0.0), 48.0);
+  vec3 colLeft  = mat * diffL * 0.90 + vec3(0.40) * specL * 0.40;
+
+  vec3 rightDir = normalize(vec3(1.2, 0.2, -1.0));
+  float diffR   = max(dot(nor, rightDir), 0.0);
+  vec3 halfR    = normalize(rightDir - rd);
+  float specR   = pow(max(dot(nor, halfR), 0.0), 48.0);
+  vec3 colRight = mat * diffR * 0.90 + vec3(0.40) * specR * 0.40;
+
+  return colLeft * u_ampL + colRight * u_ampR;
+}
+
 vec3 render3D(vec2 uv) {
   vec3 ro = vec3(0.0, 1.2, 3.0);
   vec3 ta = vec3(0.0, 0.0, 0.0);
@@ -45,8 +64,8 @@ vec3 render3D(vec2 uv) {
 
   float t; vec3 nor;
   if (!castRay(ro, rd, t, nor)) return vec3(0.0);
-  vec3 pos = ro + rd * t;
-  return stdLighting(pos, nor, rd);
+  // castRay already flips the normal for scalar surfaces
+  return sideLight(nor, rd);
 }
 
 void main() {

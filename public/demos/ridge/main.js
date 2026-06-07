@@ -11,7 +11,10 @@ const SOUND_FILES = [
   { value: 'master', label: 'master', base: '250621_a1_mix1_master_88.2k24' },
 ];
 
-const FPS = 60;
+const FPS            = 60;
+const NUM_BANDS      = 128;
+const HISTORY_FRAMES = 300; // 5 seconds
+
 let frames = [], startFrame = 0, currentFrame = 0;
 let isPlaying = false, audio = null;
 
@@ -54,13 +57,21 @@ async function init() {
   const scene = new THREE.Scene();
   const cam   = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  const fftBuf  = new Float32Array(128);
-  const fftBufR = new Float32Array(128);
+  // History texture: width=NUM_BANDS, height=HISTORY_FRAMES, RGBA Uint8
+  // Row 0 = current frame (newest), row HISTORY_FRAMES-1 = oldest
+  const histData    = new Uint8Array(NUM_BANDS * HISTORY_FRAMES * 4);
+  const histTexture = new THREE.DataTexture(
+    histData, NUM_BANDS, HISTORY_FRAMES,
+    THREE.RGBAFormat, THREE.UnsignedByteType
+  );
+  histTexture.minFilter = THREE.LinearFilter;
+  histTexture.magFilter = THREE.LinearFilter;
+  histTexture.needsUpdate = true;
+
   const uniforms = {
     iResolution: { value: new THREE.Vector2(W, H) },
     iTime:       { value: 0.0 },
-    u_fft:       { value: fftBuf  },
-    u_fft_R:     { value: fftBufR },
+    u_history:   { value: histTexture },
     u_amp:       { value: 0.0 },
     u_ssaa:      { value: 1 },
   };
@@ -76,9 +87,14 @@ async function init() {
     currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
     if (frames.length > 0) {
       const f = frames[Math.min(currentFrame, frames.length - 1)];
-      fftBuf.set(f.fftL);
-      fftBufR.set(f.fftR);
       uniforms.u_amp.value = f.amp;
+      histData.copyWithin(NUM_BANDS * 4, 0, NUM_BANDS * (HISTORY_FRAMES - 1) * 4);
+      for (let b = 0; b < NUM_BANDS; b++) {
+        histData[b * 4]     = Math.round(f.fftL[b] * 255);
+        histData[b * 4 + 1] = Math.round(f.fftR[b] * 255);
+        histData[b * 4 + 3] = 255;
+      }
+      histTexture.needsUpdate = true;
     }
     renderer.render(scene, cam);
   }
@@ -103,7 +119,9 @@ async function init() {
     setPlaying(false);
     startTs = null; pauseStart = 0;
     if (audio) { audio.pause(); audio.src = ''; audio = null; }
-    frames = []; currentFrame = 0; fftBuf.fill(0);
+    frames = []; currentFrame = 0;
+    histData.fill(0);
+    histTexture.needsUpdate = true;
 
     const basePath = `../../sound/${fileObj.base}`;
     frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));

@@ -4,6 +4,7 @@ uniform vec2      iResolution;
 uniform float     iTime;
 uniform sampler2D u_history; // width=128 (bands), height=HISTORY (frames), RGBA Uint8
 uniform float     u_amp;
+uniform int       u_ssaa;
 
 // INCLUDE_LIGHTING
 
@@ -39,8 +40,7 @@ float ridgeHeight(vec2 xz) {
         float fx = clamp(xz.x * 0.5, 0.0, 1.0);
         v = sampleChan(vec2(fx, ft), vec4(0.0, 1.0, 0.0, 0.0));
     }
-    float t = smoothstep(0.04, 0.80, v);
-    return sqrt(t) * 1.1;
+    return pow(v, 0.4) * 1.5;
 }
 
 float sceneSDF(vec3 p) {
@@ -66,8 +66,9 @@ void main() {
     offs[3] = vec2( 0.25,  0.25);
 
     for (int s = 0; s < 4; s++) {
+        vec2 off = u_ssaa == 1 ? offs[s] : vec2(0.0);
         // fc ∈ [-1,1]×[-1,1] (both axes normalised to screen half-height)
-        vec2 fc = ((gl_FragCoord.xy + offs[s]) * 2.0 - iResolution.xy) / iResolution.xy;
+        vec2 fc = ((gl_FragCoord.xy + off) * 2.0 - iResolution.xy) / iResolution.xy;
 
         // Orthographic camera — all rays parallel
         // fc.x * 2.0  →  world x ∈ [-2, 2]  (screen width = freq range exactly)
@@ -94,9 +95,10 @@ void main() {
             col *= exp(-t * 0.02);
         }
         totalCol += col;
+        if (u_ssaa == 0) break;
     }
 
-    totalCol /= 4.0;
+    totalCol /= u_ssaa == 1 ? 4.0 : 1.0;
     totalCol = pow(max(totalCol, 0.0), vec3(0.4545));
     gl_FragColor = vec4(totalCol, 1.0);
 }

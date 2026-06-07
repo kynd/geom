@@ -10,9 +10,29 @@ interface Props {
 const { title, slug, isProse = false } = Astro.props;
 
 const navItems = [
-  { label: 'Geom',               href: `${base}/`,                   slug: '' },
-  { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,  slug: 'parametric-shapes' },
-  { label: 'Sound analysis',     href: `${base}/sound-analysis`,     slug: 'sound-analysis' },
+  { label: 'Geom',               href: `${base}/`,                          slug: '' },
+  { label: 'Sound analysis',     href: `${base}/sound-analysis`,            slug: 'sound-analysis',
+    subLinks: [
+      { label: 'Amplitude and spectrum', href: '#amplitude-and-spectrum' },
+      { label: 'Spectrograms',           href: '#spectrograms' },
+      { label: 'Wave',                   href: '#wave' },
+      { label: 'Warp',                   href: '#warp' },
+      { label: 'Ridge',                  href: '#ridge' },
+    ]
+  },
+  { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,         slug: 'parametric-shapes',
+    subLinks: [
+      { label: 'SDF ray marching', href: '#sdf-raymarching' },
+      { label: 'Scalar fields',    href: '#scalar-fields' },
+      { label: 'Platonic duals',   href: '#platonic-duals' },
+    ]
+  },
+  { label: 'Lighting and rendering', href: `${base}/lighting-and-rendering`, slug: 'lighting-and-rendering',
+    subLinks: [
+      { label: 'Rim light',  href: '#rim-light' },
+      { label: 'Side light', href: '#side-light' },
+    ]
+  },
 ];
 ---
 
@@ -24,8 +44,10 @@ const navItems = [
   <title>{title === 'Geom' ? 'Geom' : `${title} — Geom`}</title>
   <script is:inline>
     (function() {
-      var f = localStorage.getItem('font-mode') || 'serif';
-      document.documentElement.setAttribute('data-font', f);
+      var f = localStorage.getItem('font-mode')  || 'serif';
+      var t = localStorage.getItem('theme-mode') || 'dark';
+      document.documentElement.setAttribute('data-font',  f);
+      document.documentElement.setAttribute('data-theme', t);
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -58,14 +80,35 @@ const navItems = [
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:             #ffffff;
-      --fg:             #343434;
-      --fg-muted:       #777777;
-      --border:         #e8e8e8;
-      --sidebar-width:  280px;
-      --header-height:  64px;
-      --font-body:      'Sora', sans-serif;
-      --font-code:      'Google Sans Code', 'Fira Mono', monospace;
+      /* dark theme defaults */
+      --bg:              #111111;
+      --fg:              #dedede;
+      --fg-muted:        #888888;
+      --border:          #252525;
+      --surface-hover:   rgba(255,255,255,0.045);
+      --surface-active:  rgba(255,255,255,0.07);
+      --topbar-bg:       rgba(15,15,15,0.88);
+      --code-bg:         #1b1b1b;
+      --sidebar-shadow:  4px 0 24px rgba(0,0,0,0.5);
+      --overlay-bg:      rgba(0,0,0,0.5);
+      --sep-color:       #3a3a3a;
+      --sidebar-width:   280px;
+      --header-height:   64px;
+      --font-body:       'Sora', sans-serif;
+      --font-code:       'Google Sans Code', 'Fira Mono', monospace;
+    }
+    html[data-theme="light"] {
+      --bg:              #ffffff;
+      --fg:              #343434;
+      --fg-muted:        #777777;
+      --border:          #e8e8e8;
+      --surface-hover:   rgba(0,0,0,0.04);
+      --surface-active:  rgba(0,0,0,0.06);
+      --topbar-bg:       rgba(255,255,255,0.76);
+      --code-bg:         #f5f5f5;
+      --sidebar-shadow:  4px 0 24px rgba(0,0,0,0.07);
+      --overlay-bg:      rgba(0,0,0,0.08);
+      --sep-color:       #cccccc;
     }
     html[data-font="serif"] { --font-body: 'Lora', serif; }
 
@@ -78,7 +121,7 @@ const navItems = [
       min-height: 100vh;
     }
 
-    .shell { display: flex; min-height: 100vh; }
+    .shell { display: block; min-height: 100vh; }
 
     .topbar {
       position: fixed;
@@ -93,34 +136,35 @@ const navItems = [
     }
     .topbar-controls {
       display: flex; align-items: center;
-      background: rgba(255,255,255,0.76);
+      background: var(--topbar-bg);
       border-radius: 8px;
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
       pointer-events: all;
     }
     .topbar-controls-left { padding: 0.22rem; }
-    .topbar-controls-right { padding: 0.22rem 0.55rem; }
+    .topbar-controls-right { padding: 0.22rem 0.55rem; display: flex; align-items: center; gap: 0.6rem; }
     .topbar-toggle {
       display: flex; align-items: center; justify-content: center;
       width: 30px; height: 30px;
       background: none; border: none; cursor: pointer;
       color: var(--fg); border-radius: 5px; transition: background 0.15s;
     }
-    .topbar-toggle:hover { background: rgba(0,0,0,0.06); }
-    .topbar-font-switcher { display: flex; align-items: center; gap: 0.25rem; }
-    .font-opt {
+    .topbar-toggle:hover { background: var(--surface-hover); }
+    .topbar-font-switcher, .topbar-theme-switcher { display: flex; align-items: center; gap: 0.25rem; }
+    .topbar-ctrl-sep { width: 1px; height: 14px; background: var(--border); }
+    .font-opt, .theme-opt {
       background: none; border: none; cursor: pointer;
       padding: 0.2rem 0.1rem; font-size: 0.75rem;
       color: var(--fg-muted); letter-spacing: 0.01em; transition: color 0.15s;
     }
-    .font-opt:hover { color: var(--fg); }
-    .font-opt.active { color: var(--fg); font-weight: 600; }
-    .font-sep { color: #ccc; font-size: 0.75rem; user-select: none; }
+    .font-opt:hover, .theme-opt:hover { color: var(--fg); }
+    .font-opt.active, .theme-opt.active { color: var(--fg); font-weight: 600; }
+    .font-sep { color: var(--sep-color); font-size: 0.75rem; user-select: none; }
 
     .sidebar-backdrop {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.08); z-index: 98;
+      background: var(--overlay-bg); z-index: 98;
     }
     .sidebar {
       position: fixed; top: 0; left: 0; bottom: 0;
@@ -130,7 +174,7 @@ const navItems = [
       transition: transform 0.22s ease;
       padding: 1rem 0 2rem;
     }
-    .shell.sidebar-open .sidebar { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.07); }
+    .shell.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--sidebar-shadow); }
     .shell.no-transition .sidebar,
     .shell.no-transition .main-wrap { transition: none !important; }
     .shell.sidebar-open .sidebar-backdrop { display: block; }
@@ -142,13 +186,13 @@ const navItems = [
       text-decoration: none; padding: 0.42rem 1.25rem;
       transition: background 0.1s;
     }
-    .sidebar-nav a:hover { background: #f4f4f4; color: var(--fg); }
-    .sidebar-nav a.current { font-weight: 600; color: var(--fg); background: #f0f0f0; }
+    .sidebar-nav a:hover { background: var(--surface-hover); color: var(--fg); }
+    .sidebar-nav a.current { font-weight: 600; color: var(--fg); background: var(--surface-active); }
     .sidebar-nav a.sub { padding-left: 2rem; font-size: 0.78rem; }
 
     .main-wrap {
-      flex: 1; margin-top: var(--header-height);
-      transition: margin-left 0.22s ease; min-width: 0;
+      margin-top: var(--header-height);
+      transition: margin-left 0.22s ease;
     }
     .shell.sidebar-open .main-wrap { margin-left: var(--sidebar-width); }
 
@@ -202,7 +246,7 @@ const navItems = [
     .prose ul li { margin-bottom: 0.4rem; }
     .prose code {
       font-family: var(--font-code); font-size: 0.88em;
-      background: #f5f5f5; padding: 0.1em 0.35em; border-radius: 3px;
+      background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px;
     }
 
     @media (max-width: 768px) {
@@ -225,6 +269,12 @@ const navItems = [
       </button>
     </div>
     <div class="topbar-controls topbar-controls-right">
+      <div class="topbar-theme-switcher">
+        <button class="theme-opt" id="theme-btn-dark">Dark</button>
+        <span class="font-sep">|</span>
+        <button class="theme-opt" id="theme-btn-light">Light</button>
+      </div>
+      <div class="topbar-ctrl-sep"></div>
       <div class="topbar-font-switcher">
         <button class="font-opt" id="font-btn-serif" style="font-family:'Lora',serif">Serif</button>
         <span class="font-sep">|</span>
@@ -239,19 +289,17 @@ const navItems = [
     <nav class="sidebar" aria-label="Site navigation">
       <ul class="sidebar-nav">
         {navItems.map(item => (
-          <li>
-            <a href={item.href} class={item.slug === slug ? 'current' : ''}>
-              {item.label}
-            </a>
-          </li>
-        ))}
-        {slug === 'parametric-shapes' && (
           <>
-            <li><a href="#sdf-raymarching" class="sub">SDF ray marching</a></li>
-            <li><a href="#scalar-fields" class="sub">Scalar fields</a></li>
+            <li>
+              <a href={item.href} class={item.slug === slug ? 'current' : ''}>
+                {item.label}
+              </a>
+            </li>
+            {item.slug === slug && item.subLinks && item.subLinks.map(sub => (
+              <li><a href={sub.href} class="sub">{sub.label}</a></li>
+            ))}
           </>
-        )}
-
+        ))}
       </ul>
     </nav>
 
@@ -303,6 +351,18 @@ const navItems = [
     requestAnimationFrame(() => shell.classList.remove('no-transition'));
     toggleBtn.addEventListener('click', () => applyOpen(!shell.classList.contains('sidebar-open')));
     backdrop.addEventListener('click',  () => applyOpen(false));
+
+    const btnDark  = document.getElementById('theme-btn-dark')!;
+    const btnLight = document.getElementById('theme-btn-light')!;
+    function applyTheme(mode: string) {
+      document.documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem('theme-mode', mode);
+      btnDark.classList.toggle('active',  mode === 'dark');
+      btnLight.classList.toggle('active', mode === 'light');
+    }
+    applyTheme(localStorage.getItem('theme-mode') || 'dark');
+    btnDark.addEventListener('click',  () => applyTheme('dark'));
+    btnLight.addEventListener('click', () => applyTheme('light'));
 
     const btnSerif = document.getElementById('font-btn-serif')!;
     const btnSans  = document.getElementById('font-btn-sans')!;
