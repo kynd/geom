@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:prod": "astro build && rm -rf dist/sketches",
     "preview": "astro preview"
   },
   "dependencies": {

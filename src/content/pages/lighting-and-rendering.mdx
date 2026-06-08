@@ -4,10 +4,14 @@ title: Lighting and rendering
 
 export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
+<div class="monologue">
+Testing ways to light and render shapes.
+</div>
+
 <section class="demo-section" id="rim-light">
 <div class="demo-header">
 <h2>Rim light</h2>
-<a href={`${base}/demos/lighting-rendering/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/lighting-rendering/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/lighting-rendering/index.html?embedded`} title="Rim Light Demo" scrolling="no" allow="autoplay"></iframe>
@@ -15,26 +19,47 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <div class="prose">
 <p>
   Rim intensity is {"\\( r = (1 - |\\, n \\cdot (-d) \\,|)^{p} \\)"} — bright at silhouette edges,
-  dark face-on. The SSS term does a secondary march through the shape to measure thickness,
-  then {"\\( e^{-\\,\\text{thickness} \\times \\text{density}} \\)"} lets thin regions glow.
+  dark face-on. The subsurface scattering (SSS) term fires a secondary ray through the shape's
+  interior to measure thickness, then {"\\( e^{-\\,\\text{thickness} \\times \\text{density}} \\)"}
+  lets thin regions glow from within. SSS is only applied to closed solid shapes (SDF shapes and
+  Platonic duals); scalar and moving scalar fields are open surfaces with no enclosed interior, so
+  there is no meaningful thickness to march through.
   The sliders expose rim exponent, face-on fill, SSS strength, and density.
 </p>
 </div>
 </section>
 
-<section class="demo-section" id="side-light">
+<section class="demo-section" id="flash-light">
 <div class="demo-header">
-<h2>Side light</h2>
-<a href={`${base}/demos/side-light/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<h2>Flash light</h2>
+<a href={`${base}/demos/flash-light/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
-<iframe src={`${base}/demos/side-light/index.html?embedded`} title="Side Light Demo" scrolling="no" allow="autoplay"></iframe>
+<iframe src={`${base}/demos/flash-light/index.html?embedded`} title="Flash Light Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
 <p>
-  Two back-lights driven by the audio — left channel from the left, right channel from the right.
-  Because both lights are placed behind the object, the front face stays dark
-  and only the corresponding rim lights up. The shape cycles every five seconds.
+  Two lights orbit the shape at different speeds — one faster, one slower — each driven by a channel of the audio.
+  The faster light keeps a faint floor brightness so the shape stays visible even in silence.
+  The shape cycles every five seconds.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="env-map">
+<div class="demo-header">
+<h2>Env map</h2>
+<a href={`${base}/demos/env-map/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/env-map/index.html?embedded`} title="Env Map Demo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  A precomputed environment map assigns every surface point a color based on which direction its normal faces.
+  Azimuth angle maps to hue; elevation angle maps to luminosity.
+  At each {"\\((H, L)\\)"} cell the chroma is the maximum that fits inside the sRGB gamut — computed in the {"\\(L^*a^*b^*\\)"} perceptual color space.
+  Two orbiting lights sculpt the shape in that color, driven by the audio.
 </p>
 </div>
 </section>

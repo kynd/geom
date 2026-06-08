@@ -7,9 +7,17 @@ interface Props {
   isProse?: boolean;
 }
 
+interface NavItem {
+  label: string;
+  href: string;
+  slug: string;
+  sketch?: boolean;
+  subLinks?: { label: string; href: string }[];
+}
+
 const { title, slug, isProse = false } = Astro.props;
 
-const navItems = [
+const navItems: NavItem[] = [
   { label: 'Geom',               href: `${base}/`,                          slug: '' },
   { label: 'Sound analysis',     href: `${base}/sound-analysis`,            slug: 'sound-analysis',
     subLinks: [
@@ -22,17 +30,24 @@ const navItems = [
   },
   { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,         slug: 'parametric-shapes',
     subLinks: [
-      { label: 'SDF ray marching', href: '#sdf-raymarching' },
-      { label: 'Scalar fields',    href: '#scalar-fields' },
-      { label: 'Platonic duals',   href: '#platonic-duals' },
+      { label: 'SDF ray marching',    href: '#sdf-raymarching' },
+      { label: 'Platonic duals',       href: '#platonic-duals' },
+      { label: 'Scalar fields',        href: '#scalar-fields' },
+      { label: 'Moving scalar fields', href: '#moving-scalar-fields' },
     ]
   },
   { label: 'Lighting and rendering', href: `${base}/lighting-and-rendering`, slug: 'lighting-and-rendering',
     subLinks: [
       { label: 'Rim light',  href: '#rim-light' },
-      { label: 'Side light', href: '#side-light' },
+      { label: 'Flash light', href: '#flash-light' },
+      { label: 'Env map',     href: '#env-map' },
     ]
   },
+  ...(import.meta.env.DEV ? [
+    { label: '[Sketch] Sound Effects',  href: `${base}/sketches/sound-effects`,  slug: 'sketches/sound-effects',  sketch: true },
+    { label: '[Sketch] Scalar Effects', href: `${base}/sketches/scalar-effects`, slug: 'sketches/scalar-effects', sketch: true },
+    { label: '[Sketch] Env Map Sq',     href: `${base}/sketches/env-map-sq`,     slug: 'sketches/env-map-sq',     sketch: true },
+  ] : []),
 ];
 ---
 
@@ -44,10 +59,8 @@ const navItems = [
   <title>{title === 'Geom' ? 'Geom' : `${title} — Geom`}</title>
   <script is:inline>
     (function() {
-      var f = localStorage.getItem('font-mode')  || 'serif';
-      var t = localStorage.getItem('theme-mode') || 'dark';
-      document.documentElement.setAttribute('data-font',  f);
-      document.documentElement.setAttribute('data-theme', t);
+      var f = localStorage.getItem('font-mode') || 'serif';
+      document.documentElement.setAttribute('data-font', f);
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -97,26 +110,14 @@ const navItems = [
       --font-body:       'Sora', sans-serif;
       --font-code:       'Google Sans Code', 'Fira Mono', monospace;
     }
-    html[data-theme="light"] {
-      --bg:              #ffffff;
-      --fg:              #343434;
-      --fg-muted:        #777777;
-      --border:          #e8e8e8;
-      --surface-hover:   rgba(0,0,0,0.04);
-      --surface-active:  rgba(0,0,0,0.06);
-      --topbar-bg:       rgba(255,255,255,0.76);
-      --code-bg:         #f5f5f5;
-      --sidebar-shadow:  4px 0 24px rgba(0,0,0,0.07);
-      --overlay-bg:      rgba(0,0,0,0.08);
-      --sep-color:       #cccccc;
-    }
     html[data-font="serif"] { --font-body: 'Lora', serif; }
 
     html, body {
       background: var(--bg);
-      color: var(--fg);
+      color: #c0c0c0;
       font-family: var(--font-body);
       font-size: 18px;
+      font-weight: 300;
       line-height: 1.7;
       min-height: 100vh;
     }
@@ -151,15 +152,14 @@ const navItems = [
       color: var(--fg); border-radius: 5px; transition: background 0.15s;
     }
     .topbar-toggle:hover { background: var(--surface-hover); }
-    .topbar-font-switcher, .topbar-theme-switcher { display: flex; align-items: center; gap: 0.25rem; }
-    .topbar-ctrl-sep { width: 1px; height: 14px; background: var(--border); }
-    .font-opt, .theme-opt {
+    .topbar-font-switcher { display: flex; align-items: center; gap: 0.25rem; }
+    .font-opt {
       background: none; border: none; cursor: pointer;
       padding: 0.2rem 0.1rem; font-size: 0.75rem;
       color: var(--fg-muted); letter-spacing: 0.01em; transition: color 0.15s;
     }
-    .font-opt:hover, .theme-opt:hover { color: var(--fg); }
-    .font-opt.active, .theme-opt.active { color: var(--fg); font-weight: 600; }
+    .font-opt:hover { color: var(--fg); }
+    .font-opt.active { color: var(--fg); font-weight: 600; }
     .font-sep { color: var(--sep-color); font-size: 0.75rem; user-select: none; }
 
     .sidebar-backdrop {
@@ -189,6 +189,7 @@ const navItems = [
     .sidebar-nav a:hover { background: var(--surface-hover); color: var(--fg); }
     .sidebar-nav a.current { font-weight: 600; color: var(--fg); background: var(--surface-active); }
     .sidebar-nav a.sub { padding-left: 2rem; font-size: 0.78rem; }
+    .sidebar-nav a.sketch { opacity: 0.45; font-size: 0.74rem; }
 
     .main-wrap {
       margin-top: var(--header-height);
@@ -198,15 +199,24 @@ const navItems = [
 
     .main-inner { max-width: 1080px; margin: 0 auto; padding: 3rem 2rem 6rem; }
 
+    h1, h2 { color: var(--fg); }
+
     h1 {
       font-size: 3rem; font-weight: 300;
       letter-spacing: -0.03em; margin-bottom: 3.5rem;
     }
 
+    .monologue {
+      max-width: 640px; margin-bottom: 3.5rem;
+      font-size: 1.22rem; font-weight: 300; line-height: 1.75; font-style: italic;
+      color: var(--fg-muted); letter-spacing: -0.01em;
+    }
+    .monologue p { margin: 0; }
+
     /* Demo sections */
-    .demo-section { margin-bottom: 4rem; }
+    .demo-section { width: 960px; max-width: calc(100% - 1.5rem); margin: 0 0 4rem 1.5rem; }
     .demo-header { display: flex; align-items: baseline; gap: 1.2rem; margin-bottom: 1rem; }
-    .demo-header h2 { font-size: 1.1rem; font-weight: 500; letter-spacing: -0.01em; }
+    .demo-header h2 { font-size: 1.22rem; font-weight: 500; letter-spacing: -0.01em; }
     .demo-header a {
       font-family: var(--font-code); font-size: 0.78rem;
       color: var(--fg-muted); text-decoration: none;
@@ -223,11 +233,13 @@ const navItems = [
       width: 960px; height: 540px; border: none; display: block;
       transform-origin: top left;
     }
+    .demo-embed.sq { width: 540px; height: 540px; }
+    .demo-embed.sq iframe { width: 540px; height: 540px; }
 
     /* Prose */
     .prose {
-      max-width: 640px; margin-top: 2.5rem;
-      font-size: 1rem; line-height: 1.75; color: var(--fg);
+      max-width: 800px; margin-top: 2.5rem;
+      font-size: 1rem; line-height: 1.75;
     }
     .prose p { margin-bottom: 1.1rem; }
     .prose em { font-style: italic; }
@@ -244,6 +256,16 @@ const navItems = [
     }
     .prose ul { list-style: disc; padding-left: 1.4rem; }
     .prose ul li { margin-bottom: 0.4rem; }
+    .prose .shape-desc p { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
+    .prose > details { margin-top: 1rem; }
+    .prose > details > summary {
+      display: inline-block; list-style: none; cursor: pointer;
+      font-size: 0.82rem; color: var(--fg-muted); opacity: 0.6;
+      padding: 0.2rem 0;
+    }
+    .prose > details > summary::-webkit-details-marker { display: none; }
+    .prose > details > summary::marker { display: none; }
+    .prose > details[open] > summary { opacity: 1; margin-bottom: 1rem; }
     .prose code {
       font-family: var(--font-code); font-size: 0.88em;
       background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px;
@@ -269,12 +291,6 @@ const navItems = [
       </button>
     </div>
     <div class="topbar-controls topbar-controls-right">
-      <div class="topbar-theme-switcher">
-        <button class="theme-opt" id="theme-btn-dark">Dark</button>
-        <span class="font-sep">|</span>
-        <button class="theme-opt" id="theme-btn-light">Light</button>
-      </div>
-      <div class="topbar-ctrl-sep"></div>
       <div class="topbar-font-switcher">
         <button class="font-opt" id="font-btn-serif" style="font-family:'Lora',serif">Serif</button>
         <span class="font-sep">|</span>
@@ -291,7 +307,7 @@ const navItems = [
         {navItems.map(item => (
           <>
             <li>
-              <a href={item.href} class={item.slug === slug ? 'current' : ''}>
+              <a href={item.href} class={[item.slug === slug ? 'current' : '', item.sketch ? 'sketch' : ''].filter(Boolean).join(' ') || undefined}>
                 {item.label}
               </a>
             </li>
@@ -329,9 +345,11 @@ const navItems = [
       document.querySelectorAll<HTMLElement>('.demo-embed').forEach(wrap => {
         const iframe = wrap.querySelector<HTMLIFrameElement>('iframe');
         if (!iframe) return;
-        const scale = Math.min(1, wrap.clientWidth / 960);
+        const w = parseInt(wrap.dataset.w ?? '960');
+        const h = parseInt(wrap.dataset.h ?? '540');
+        const scale = Math.min(1, wrap.clientWidth / w);
         iframe.style.transform = scale < 1 ? `scale(${scale})` : '';
-        wrap.style.height      = scale < 1 ? `${Math.round(540 * scale)}px` : '';
+        wrap.style.height      = scale < 1 ? `${Math.round(h * scale)}px` : '';
       });
     }
     window.addEventListener('resize', scaleDemoEmbeds);
@@ -351,18 +369,6 @@ const navItems = [
     requestAnimationFrame(() => shell.classList.remove('no-transition'));
     toggleBtn.addEventListener('click', () => applyOpen(!shell.classList.contains('sidebar-open')));
     backdrop.addEventListener('click',  () => applyOpen(false));
-
-    const btnDark  = document.getElementById('theme-btn-dark')!;
-    const btnLight = document.getElementById('theme-btn-light')!;
-    function applyTheme(mode: string) {
-      document.documentElement.setAttribute('data-theme', mode);
-      localStorage.setItem('theme-mode', mode);
-      btnDark.classList.toggle('active',  mode === 'dark');
-      btnLight.classList.toggle('active', mode === 'light');
-    }
-    applyTheme(localStorage.getItem('theme-mode') || 'dark');
-    btnDark.addEventListener('click',  () => applyTheme('dark'));
-    btnLight.addEventListener('click', () => applyTheme('light'));
 
     const btnSerif = document.getElementById('font-btn-serif')!;
     const btnSans  = document.getElementById('font-btn-sans')!;

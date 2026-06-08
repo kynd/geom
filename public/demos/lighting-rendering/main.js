@@ -3,7 +3,17 @@ import * as THREE from 'three';
 const PLAY_ICON  = '<svg viewBox="0 0 10 12" fill="currentColor" width="14" height="14"><polygon points="1,0 10,6 1,12"/></svg>';
 const PAUSE_ICON = '<svg viewBox="0 0 10 12" fill="currentColor" width="14" height="14"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>';
 
-const SHAPES = [
+const MOVING_SHAPES = [
+  '1. Traveling ripple', '2. Rippling torus', '3. Wave sheet',
+  '4. Pulsing sphere', '5. Oscillating saddle', '6. Gyroid',
+  '7. Schwartz P', '8. Lemniscate surface', '9. Swaying ellipsoid',
+  '10. Tanglecube', '11. Chmutov T₄', '12. Rippled cone',
+  '13. Pulsing Gaussian', '14. Schoen I-WP', '15. Saddle blend',
+  '16. Twisted torus', '17. Bumpy sphere', '18. Wavy hyperboloid',
+  '19. Permuted cubic', '20. Flipping paraboloid',
+];
+
+const SDF_SHAPES = [
   'sphere', 'box', 'round box', 'box frame', 'torus', 'capped torus', 'link',
   'infinite cylinder', 'cone', 'infinite cone', 'hexagonal prism', 'capsule',
   'vertical capsule', 'capped cylinder', 'arb. cylinder', 'rounded cylinder',
@@ -13,7 +23,7 @@ const SHAPES = [
   'ellipsoid', 'triangular prism',
 ];
 
-const SURFACES = [
+const SCALAR_SURFACES = [
   'elliptic paraboloid', 'hyperbolic paraboloid', 'cone', 'sphere', 'torus',
   'hyperboloid', 'monkey saddle', 'wave surface', 'ripple', 'ellipsoid',
 ];
@@ -24,7 +34,8 @@ const PLATONIC_PAIRS = [
   'Dodecahedron / Icosahedron',
 ];
 
-// Smooth full-period cosine oscillation: 0 → 1 → 0 over 5 s, zero velocity at both ends
+const MOVING_CYCLE = 5.0;
+
 function cycleT(elapsed) {
   const p = (elapsed % 5.0) / 5.0;
   return 0.5 - 0.5 * Math.cos(p * Math.PI * 2);
@@ -38,19 +49,27 @@ async function init() {
   const W = canvas.width, H = canvas.height;
 
   const [
-    sdfFuncsSrc, sdfMarcherSrc, scalarMarcherSrc, platonicFuncsSrc, rimLightingSrc,
-    fragSDFTmpl, fragScalarTmpl, fragPlatonicTmpl, vertSrc,
+    sdfFuncsSrc, sdfMarcherSrc, scalarMarcherSrc, movingScalarFuncsSrc,
+    platonicFuncsSrc, rimLightingSrc,
+    fragMovingScalarTmpl, fragSDFTmpl, fragScalarTmpl, fragPlatonicTmpl, vertSrc,
   ] = await Promise.all([
     fetch('../../shaders/sdf-functions.glsl').then(r => r.text()),
     fetch('../../shaders/sdf-marcher.glsl').then(r => r.text()),
     fetch('../../shaders/scalar-marcher.glsl').then(r => r.text()),
+    fetch('../../shaders/moving-scalar-functions.glsl').then(r => r.text()),
     fetch('../../shaders/platonic-functions.glsl').then(r => r.text()),
     fetch('../../shaders/rim-lighting.glsl').then(r => r.text()),
+    fetch('./shaders/fragment-moving-scalar.glsl').then(r => r.text()),
     fetch('./shaders/fragment-sdf.glsl').then(r => r.text()),
     fetch('./shaders/fragment-scalar.glsl').then(r => r.text()),
     fetch('./shaders/fragment-platonic.glsl').then(r => r.text()),
     fetch('./shaders/vertex.glsl').then(r => r.text()),
   ]);
+
+  const fragMovingScalar = fragMovingScalarTmpl
+    .replace('// INCLUDE_RIM_LIGHTING',          rimLightingSrc)
+    .replace('// INCLUDE_SCALAR_MARCHER',        scalarMarcherSrc)
+    .replace('// INCLUDE_MOVING_SCALAR_FUNCTIONS', movingScalarFuncsSrc);
 
   const fragSDF = fragSDFTmpl
     .replace('// INCLUDE_SDF_FUNCTIONS', sdfFuncsSrc)
@@ -58,8 +77,8 @@ async function init() {
     .replace('// INCLUDE_SDF_MARCHER',   sdfMarcherSrc);
 
   const fragScalar = fragScalarTmpl
-    .replace('// INCLUDE_RIM_LIGHTING',    rimLightingSrc)
-    .replace('// INCLUDE_SCALAR_MARCHER',  scalarMarcherSrc);
+    .replace('// INCLUDE_RIM_LIGHTING',   rimLightingSrc)
+    .replace('// INCLUDE_SCALAR_MARCHER', scalarMarcherSrc);
 
   const fragPlatonic = fragPlatonicTmpl
     .replace('// INCLUDE_PLATONIC_FUNCTIONS', platonicFuncsSrc)
@@ -89,6 +108,13 @@ async function init() {
     u_ssaa:       { value: 1 },
   });
 
+  const movingScalarScene = makeScene(fragMovingScalar, {
+    iResolution:    { value: res },
+    iTime:          { value: 0.0 },
+    u_surfaceIndex: { value: 1 },
+    ...lightUniforms(),
+  });
+
   const sdfScene = makeScene(fragSDF, {
     iResolution:  { value: res },
     iTime:        { value: 0.0 },
@@ -111,8 +137,9 @@ async function init() {
     ...lightUniforms(),
   });
 
-  const sources = [sdfScene, scalarScene, platonicScene];
-  let activeSource = 0;
+  // Order matches parametric shapes page: SDF, Platonic, Scalar, Moving scalar (default)
+  const sources = [sdfScene, platonicScene, scalarScene, movingScalarScene];
+  let activeSource = 3;
 
   srcBtns.forEach((btn, i) => {
     btn.addEventListener('click', () => {
@@ -125,8 +152,9 @@ async function init() {
   let startTime = null;
   let pausedAt  = 0;
   let rafId     = null;
-  let lastSdfIdx     = -1;
-  let lastScalarIdx  = -1;
+  let lastMovingIdx    = -1;
+  let lastSdfIdx       = -1;
+  let lastScalarIdx    = -1;
   let lastPlatonicPair = -1;
 
   function updateBtn() {
@@ -135,17 +163,25 @@ async function init() {
   }
 
   function renderAt(elapsed) {
-    // SDF
+    // Moving scalar fields — cycle every MOVING_CYCLE seconds
     {
-      const idx = Math.floor(elapsed % SHAPES.length);
+      const idx = Math.floor((elapsed % (MOVING_SHAPES.length * MOVING_CYCLE)) / MOVING_CYCLE);
+      movingScalarScene.uniforms.iTime.value          = elapsed;
+      movingScalarScene.uniforms.u_surfaceIndex.value = idx + 1;
+      if (idx !== lastMovingIdx) { lastMovingIdx = idx; }
+    }
+
+    // SDF shapes — 1 shape per second
+    {
+      const idx = Math.floor(elapsed % SDF_SHAPES.length);
       sdfScene.uniforms.iTime.value        = elapsed;
       sdfScene.uniforms.u_shapeIndex.value = idx + 1;
       if (idx !== lastSdfIdx) { lastSdfIdx = idx; }
     }
 
-    // Scalar
+    // Static scalar fields — 1 surface per second
     {
-      const idx = Math.floor(elapsed % SURFACES.length);
+      const idx = Math.floor(elapsed % SCALAR_SURFACES.length);
       scalarScene.uniforms.iTime.value          = elapsed;
       scalarScene.uniforms.u_surfaceIndex.value = idx + 1;
       if (idx !== lastScalarIdx) { lastScalarIdx = idx; }
@@ -156,19 +192,21 @@ async function init() {
       const pairPhase   = elapsed % 15.0;
       const pair        = Math.floor(pairPhase / 5.0);
       const pairElapsed = pairPhase % 5.0;
-      platonicScene.uniforms.iTime.value = elapsed;
+      platonicScene.uniforms.iTime.value  = elapsed;
       platonicScene.uniforms.u_pair.value = pair;
       platonicScene.uniforms.u_t.value    = cycleT(pairElapsed);
       if (pair !== lastPlatonicPair) { lastPlatonicPair = pair; }
     }
 
-    // Update label for the active source
+    // Update label for the active source (order: SDF, Platonic, Scalar, Moving)
     if (activeSource === 0) {
-      nameEl.textContent = SHAPES[lastSdfIdx];
+      nameEl.textContent = SDF_SHAPES[lastSdfIdx];
     } else if (activeSource === 1) {
-      nameEl.textContent = SURFACES[lastScalarIdx];
-    } else {
       nameEl.textContent = PLATONIC_PAIRS[lastPlatonicPair];
+    } else if (activeSource === 2) {
+      nameEl.textContent = SCALAR_SURFACES[lastScalarIdx];
+    } else {
+      nameEl.textContent = MOVING_SHAPES[lastMovingIdx];
     }
 
     const { scene } = sources[activeSource];
@@ -227,7 +265,8 @@ async function init() {
     });
   });
 
-  play();
+  updateBtn();
+  renderAt(0);
 }
 
 init().catch(console.error);

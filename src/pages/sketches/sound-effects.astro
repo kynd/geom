@@ -1,0 +1,117 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Sound Effects" slug="sketches/sound-effects">
+
+<section class="demo-section" id="spectral-hedgehog">
+<div class="demo-header">
+<h2>Spectral Hedgehog</h2>
+<a href={`${base}/sketches/sound-effects/01-spectral-hedgehog/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/01-spectral-hedgehog/index.html?embedded`} title="Spectral Hedgehog" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  The azimuthal angle around a sphere surface maps to a FFT bin. The radial distance at each point
+  equals the base radius plus the FFT value at that angle, so the sphere grows spines wherever that
+  frequency is loud — 128 independent spike bands visible simultaneously on one surface. Elevation is
+  tapered so the poles stay smooth.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="bass-fold">
+<div class="demo-header">
+<h2>Bass Fold</h2>
+<a href={`${base}/sketches/sound-effects/02-bass-fold/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/02-bass-fold/index.html?embedded`} title="Bass Fold" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  An iterated function system (Mandelbox-style: box fold + sphere inversion) where the number of fold
+  iterations is driven by bass energy. At silence the geometry is a clean, symmetric blob. As bass
+  rises the IFS folds accumulate, building fractal complexity — until at peak bass the surface is
+  fully fractured and multi-scale.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="per-pixel-orbit">
+<div class="demo-header">
+<h2>Per-Pixel Orbit</h2>
+<a href={`${base}/sketches/sound-effects/03-per-pixel-orbit/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/03-per-pixel-orbit/index.html?embedded`} title="Per-Pixel Orbit" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Each screen pixel computes its own ray origin, displaced from the camera position by an amount
+  proportional to the FFT value at the pixel's angular position on screen. The displacement is
+  perpendicular to the viewing axis. The result is a prismatic multi-exposure effect — each
+  neighbourhood of pixels sees the object from a slightly different vantage point, creating
+  refractive bokeh driven by the audio spectrum.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="temporal-echo">
+<div class="demo-header">
+<h2>Temporal Echo</h2>
+<a href={`${base}/sketches/sound-effects/04-temporal-echo/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/04-temporal-echo/index.html?embedded`} title="Temporal Echo" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  The same scene is rendered four times with <code>iTime</code> shifted by increasing offsets, each echo
+  multiplied by a decreasing weight (1.0, 0.6, 0.35, 0.18). The temporal gap between echoes scales
+  with overall amplitude — loud moments create wide motion smears, quiet passages snap the echoes
+  tight. The shape becomes a time-integrated exposure of itself in motion.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="ray-warp">
+<div class="demo-header">
+<h2>Ray Warp</h2>
+<a href={`${base}/sketches/sound-effects/05-ray-warp/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/05-ray-warp/index.html?embedded`} title="Ray Warp" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Before ray marching begins, the ray direction is perturbed by a smooth vector field based on a
+  radial function of screen position, scaled by the FFT value at the corresponding frequency band.
+  This bends rays non-uniformly — some pixels point past the object, others curve back around. The
+  effect resembles gravitational lensing through a medium whose refractive index is the audio spectrum.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="fft-columns">
+<div class="demo-header">
+<h2>FFT Columns</h2>
+<a href={`${base}/sketches/sound-effects/06-fft-columns/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/sound-effects/06-fft-columns/index.html?embedded`} title="FFT Columns" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  The screen is divided into vertical columns, each mapping to a FFT bin. The camera ray for that
+  column tilts upward by an amount proportional to the bin's value. The scene is a horizontal plane
+  of spheres, and each column independently aims at a different height of the same object, producing
+  a 3D equaliser bar chart rendered in raymarched depth.
+</p>
+</div>
+</section>
+
+</PageLayout>

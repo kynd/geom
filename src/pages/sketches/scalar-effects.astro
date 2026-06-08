@@ -1,0 +1,120 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Scalar Effects" slug="sketches/scalar-effects">
+
+<section class="demo-section" id="pixel-orbit">
+<div class="demo-header">
+<h2>Pixel Orbit</h2>
+<a href={`${base}/sketches/scalar-effects/01-pixel-orbit/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/01-pixel-orbit/index.html?embedded`} title="Pixel Orbit" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Each pixel computes its own camera position on a ring around the target, displaced laterally by the
+  FFT value at the angular frequency matching that pixel's screen angle. At silence all cameras
+  collapse to the same position. On a loud chord with distributed spectral energy, opposite sides of
+  the screen see opposite faces — the shape appears to shatter into a prism of simultaneous perspectives.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="spectral-warp">
+<div class="demo-header">
+<h2>Spectral Warp</h2>
+<a href={`${base}/sketches/scalar-effects/02-spectral-warp/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/02-spectral-warp/index.html?embedded`} title="Spectral Warp" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Before evaluating the SDF, the domain point <code>p</code> is displaced by a vector field that is
+  the sum of eight sinusoidal components — one per FFT band octave. Each component has a spatial
+  frequency proportional to its audio frequency. The warp is divergence-free in some components and
+  compressive in others, so parts of the surface fold inward while others balloon outward
+  simultaneously, with spatial periods matched to the audio spectrum.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="4d-section">
+<div class="demo-header">
+<h2>4D Section</h2>
+<a href={`${base}/sketches/scalar-effects/03-4d-section/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/03-4d-section/index.html?embedded`} title="4D Section" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  A gyroid is defined in four spatial dimensions. The 3D scene evaluates this field at a rotating 4D
+  orientation — the <em>xw</em> rotation plane driven by accumulated bass phase, the <em>yw</em> plane
+  by treble. The 3D cross-section of a 4D surface changes topology as it rotates: handles appear,
+  surfaces pinch off, disconnected sheets merge. The audio controls which topological state is
+  revealed at each moment.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="spectral-lensing">
+<div class="demo-header">
+<h2>Spectral Lensing</h2>
+<a href={`${base}/sketches/scalar-effects/04-spectral-lensing/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/04-spectral-lensing/index.html?embedded`} title="Spectral Lensing" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Before the ray marcher runs, each pixel's ray direction is perturbed by a multi-scale oscillating
+  field. Eight frequency bands each contribute a transverse push whose spatial frequency on screen
+  matches the audio frequency band. Low frequencies create broad, slow-moving lens distortions; high
+  frequencies create fine ripples on the shape's surface. The combined effect resembles gravitational
+  lensing through a medium whose refractive index varies with the music's spectral content.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="temporal-smear">
+<div class="demo-header">
+<h2>Temporal Smear</h2>
+<a href={`${base}/sketches/scalar-effects/05-temporal-smear/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/05-temporal-smear/index.html?embedded`} title="Temporal Smear" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Each pixel composites four time-offset renders of the same scene. The time offset scales with
+  overall amplitude, but is not uniform across the screen — it varies by position, driven by bass on
+  the horizontal axis and treble on the vertical. Different screen regions live at different moments
+  in time, bending the shape through its own animated history.
+</p>
+</div>
+</section>
+
+<section class="demo-section" id="ifs-fold">
+<div class="demo-header">
+<h2>IFS Fold</h2>
+<a href={`${base}/sketches/scalar-effects/06-ifs-fold/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/sketches/scalar-effects/06-ifs-fold/index.html?embedded`} title="IFS Fold" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Iterated octahedron and box folds are applied to the domain before SDF evaluation. Each fold
+  reflects space across a plane, creating recursive self-similarity at decreasing scales. Amplitude
+  drives the number of fold iterations — at silence the shape is clean; at peak loudness six folds
+  accumulate and the surface becomes a fractal tangle. Midrange controls the fold scale, setting the
+  size ratio between recursive copies.
+</p>
+</div>
+</section>
+
+</PageLayout>

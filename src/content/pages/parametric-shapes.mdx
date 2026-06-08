@@ -4,10 +4,14 @@ title: Parametric shapes
 
 export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
+<div class="monologue">
+So, which geometric shapes make up our vocabulary? Let's start with the obvious…
+</div>
+
 <section class="demo-section" id="sdf-raymarching">
 <div class="demo-header">
 <h2>SDF ray marching</h2>
-<a href={`${base}/demos/01-sdf-raymarching/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/01-sdf-raymarching/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/01-sdf-raymarching/index.html?embedded`} title="SDF Ray Marching Demo" scrolling="no" allow="autoplay"></iframe>
@@ -47,10 +51,41 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 </div>
 </section>
 
+<div class="monologue">
+Or Platonic solids…
+</div>
+
+<section class="demo-section" id="platonic-duals">
+<div class="demo-header">
+<h2>Platonic duals</h2>
+<a href={`${base}/demos/platonic-duals/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/platonic-duals/index.html?embedded`} title="Platonic Duals Demo" scrolling="no"></iframe>
+</div>
+<div class="prose">
+<p>
+  The five Platonic solids are the only convex polyhedra where every face is the same regular polygon
+  and every vertex joins the same number of faces. Each has a dual, formed by placing a new vertex at
+  the centre of every face and connecting adjacent face-centres with new edges.
+</p>
+<p>
+  The swap is exact. The cube has 6 faces and 8 vertices; its dual, the octahedron, has 6 vertices and
+  8 faces. Both share 12 edges. The tetrahedron is its own dual — its four face-centres form a second
+  tetrahedron pointing the opposite way. The dodecahedron and icosahedron are duals of each other,
+  exchanging 12 and 20 throughout.
+</p>
+</div>
+</section>
+
+<div class="monologue">
+Or we can leave behind piecewise constructions for geometry born function-first, defined entirely by continuous, differentiable equations…
+</div>
+
 <section class="demo-section" id="scalar-fields">
 <div class="demo-header">
 <h2>Scalar fields</h2>
-<a href={`${base}/demos/scalar-fields/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/scalar-fields/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/scalar-fields/index.html?embedded`} title="Scalar Fields Demo" scrolling="no" allow="autoplay"></iframe>
@@ -83,25 +118,229 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 </div>
 </section>
 
-<section class="demo-section" id="platonic-duals">
+<section class="demo-section" id="moving-scalar-fields">
 <div class="demo-header">
-<h2>Platonic duals</h2>
-<a href={`${base}/demos/platonic-duals/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<h2>Moving scalar fields</h2>
+<a href={`${base}/demos/moving-scalar-fields/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
-<iframe src={`${base}/demos/platonic-duals/index.html?embedded`} title="Platonic Duals Demo" scrolling="no"></iframe>
+<iframe src={`${base}/demos/moving-scalar-fields/index.html?embedded`} title="Moving Scalar Fields Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
 <p>
-  The five Platonic solids are the only convex polyhedra where every face is the same regular polygon
-  and every vertex joins the same number of faces. Each has a dual, formed by placing a new vertex at
-  the centre of every face and connecting adjacent face-centres with new edges.
+  Each surface below has one or more parameters that change continuously with time — a radius that breathes,
+  a phase that advances, a threshold that slides. The shape is still the zero set of a function {"\\("}F(x,y,z,t) = 0{"\\)"},
+  but now {"\\("}t{"\\)"} is part of the equation, not just the camera rotation.
+  The marcher re-evaluates the full field every frame.
 </p>
 <p>
-  The swap is exact. The cube has 6 faces and 8 vertices; its dual, the octahedron, has 6 vertices and
-  8 faces. Both share 12 edges. The tetrahedron is its own dual — its four face-centres form a second
-  tetrahedron pointing the opposite way. The dodecahedron and icosahedron are duals of each other,
-  exchanging 12 and 20 throughout.
+  The surfaces can be grouped loosely by what moves. <em>Amplitude</em> shapes — sphere, saddle, ellipsoid —
+  scale or stretch a fixed geometry. <em>Phase</em> shapes — ripple, wave sheet, rippled cone, bumpy sphere —
+  push a pattern around the surface without changing its envelope.
+  <em>Threshold</em> shapes — Schwartz P, Schoen I-WP, tanglecube — hold the function fixed and slide the
+  level value, revealing different members of the same family of isosurfaces.
+  <em>Topology-changing</em> shapes — gyroid, Chmutov, permuted cubic — can gain or lose handles and sheets
+  as a parameter passes through a critical value.
 </p>
+
+
+<details>
+<summary>Shape index</summary>
+
+<div class="shape-desc">
+<strong>1. Traveling ripple.</strong>
+
+{"\\("}y = e^&#123;-r&#125; \cos(5r - 2t){"\\)"}, {"\\("}r = \sqrt&#123;x^2+z^2&#125;{"\\)"}.
+A damped standing wave whose phase {"\\("}2t{"\\)"} advances with time, so the crests
+travel outward from the origin. The exponential envelope {"\\("}e^&#123;-r&#125;{"\\)"} kills the oscillation
+at large radius, keeping the shape compact.
 </div>
+
+<div class="shape-desc">
+<strong>2. Rippling torus.</strong>
+
+{"\\("}(\sqrt&#123;x^2+z^2&#125; - R(t))^2 + y^2 = r_t(\theta,t)^2{"\\)"}.
+The major radius {"\\("}R{"\\)"} breathes with two beating frequencies. The tube radius {"\\("}r_t{"\\)"} varies
+around the ring: two azimuthal waves — one with three lobes, one with seven — travel in opposite
+directions, creating a surface that writhes and shifts without any single repeating pattern.
+</div>
+
+<div class="shape-desc">
+<strong>3. Wave sheet.</strong>
+
+{"\\("}y = \sin(2x + t)\cos(2z + 0.7t){"\\)"}.
+A product of two traveling sinusoids, one in {"\\("}x{"\\)"} and one in {"\\("}z{"\\)"}, each with its own phase velocity.
+Their product creates a grid of crests that drift diagonally across the plane.
+Where one factor is near zero the surface flattens into a node line; where both peak
+the surface rises to a local maximum.
+</div>
+
+<div class="shape-desc">
+<strong>4. Pulsing sphere.</strong>
+
+{"\\("}|p| = r_0 + A(t)\,P_2(\cos\theta){"\\)"}.
+Rather than inflating uniformly, the radius varies with the second Legendre polynomial {"\\("}P_2{"\\)"},
+which is positive at the poles and negative at the equator.
+The surface alternates between a prolate (tall) and oblate (flat) ellipsoid,
+with {"\\("}A(t){"\\)"} driven by two incommensurate frequencies so the oscillation never simply repeats.
+</div>
+
+<div class="shape-desc">
+<strong>5. Oscillating saddle.</strong>
+
+{"\\("}y = A(t)(x^2 - z^2){"\\)"},
+{"\\("}A(t) = 0.70 + 0.30\sin(0.75t){"\\)"}.
+A hyperbolic paraboloid — the standard architectural saddle — whose curvature amplitude
+breathes. When {"\\("}A{"\\)"} is large the surface curves sharply; when it nears zero the sheet
+flattens to the {"\\("}xz{"\\)"}-plane before curving back the other way.
+</div>
+
+<div class="shape-desc">
+<strong>6. Gyroid.</strong>
+
+{"\\("}\\cos(kx)\\sin(ky) + \\cos(ky)\\sin(kz) + \\cos(kz)\\sin(kx) = 0{"\\)"},
+{"\\("}k(t) = 1.45 + 0.42\sin(0.5t){"\\)"}.
+A triply periodic minimal surface: its mean curvature is zero everywhere, like a soap film.
+Scaling {"\\("}k{"\\)"} stretches the repeating cell — a larger {"\\("}k{"\\)"} packs the tunnels closer together,
+a smaller {"\\("}k{"\\)"} opens them up. The gyroid has no straight lines and no mirror planes.
+</div>
+
+<div class="shape-desc">
+<strong>7. Schwartz P.</strong>
+
+{"\\("}\\cos 2x + \\cos 2y + \\cos 2z = c(t){"\\)"},
+{"\\("}c(t) = 0.88\sin(0.55t){"\\)"}.
+Another triply periodic minimal surface at {"\\("}c = 0{"\\)"}.
+Moving the threshold {"\\("}c{"\\)"} away from zero breaks the equal area balance between the two
+labyrinthine regions the surface divides space into — one inflates as the other shrinks.
+At {"\\("}c = \pm 3{"\\)"} the surface degenerates to three sets of parallel planes.
+</div>
+
+<div class="shape-desc">
+<strong>8. Lemniscate surface.</strong>
+
+{"\\("}(x^2+y^2+z^2)^2 = a(t)^2(x^2 - z^2){"\\)"}.
+The 3D analogue of the figure-eight lemniscate of Bernoulli.
+The right side {"\\("}a^2(x^2-z^2){"\\)"} is positive in the {"\\("}x{"\\)"}-dominant quadrants and negative in the
+{"\\("}z{"\\)"}-dominant ones, so the surface has two lobes along {"\\("}x{"\\)"} and a pinch at the origin.
+As {"\\("}a{"\\)"} oscillates the lobes expand and contract.
+</div>
+
+<div class="shape-desc">
+<strong>9. Swaying ellipsoid.</strong>
+
+{"\\("}x'^2/a^2 + y'^2/b^2 + z'^2/c^2 = 1{"\\)"}, with {"\\("}(x', y'){"\\)"} rotated by {"\\("}\phi(t){"\\)"}.
+The ellipsoid is elongated along its {"\\("}y{"\\)"}-axis. That long axis slowly tilts back and forth by
+rotating the coordinate frame before computing the surface — so the shape sways as a whole
+while the three semi-axes continue to breathe. The tilt and the breathing run at incommensurate
+rates, so the motion never locks into a periodic cycle.
+</div>
+
+<div class="shape-desc">
+<strong>10. Tanglecube.</strong>
+
+{"\\("}x^4 - 5x^2 + y^4 - 5y^2 + z^4 - 5z^2 + c(t) = 0{"\\)"}.
+A degree-4 algebraic surface named for the tangle of its topology.
+The function {"\\("}u^4 - 5u^2{"\\)"} has two valleys (minima) at {"\\("}u = \pm\sqrt&#123;5/2&#125; \approx \pm 1.58{"\\)"} separated by
+a local maximum at the origin. Sliding {"\\("}c{"\\)"} controls which of the eight octant-centred lobes
+are present and whether they are connected.
+</div>
+
+<div class="shape-desc">
+<strong>11. Chmutov T₄ surface.</strong>
+
+{"\\("}T_4(sx) + T_4(sy) + T_4(sz) = 0{"\\)"},
+{"\\("}T_4(u) = 8u^4 - 8u^2 + 1{"\\)"} (the 4th Chebyshev polynomial), {"\\("}s(t){"\\)"} oscillates.
+This degree-4 surface has exactly 12 ordinary double points — one at the midpoint of each
+edge of a cube — which is the maximum for a degree-4 surface (the Kummer-type bound).
+Scaling {"\\("}s{"\\)"} morphs it between an angular multi-lobed form and a smoother rounder one.
+</div>
+
+<div class="shape-desc">
+<strong>12. Rippled cone.</strong>
+
+{"\\("}x^2 + z^2 = (y + A\sin(4y - t))^2{"\\)"}.
+A cone {"\\("}x^2+z^2 = y^2{"\\)"} with the axial coordinate deformed by a sinusoidal ripple
+whose phase {"\\("}t{"\\)"} advances upward. This compresses and expands alternating bands of the cone,
+creating travelling pinch-points that climb the axis.
+</div>
+
+<div class="shape-desc">
+<strong>13. Pulsing Gaussian.</strong>
+
+{"\\("}y = A(t)\,e^&#123;-r^2/\sigma(t)^2&#125;{"\\)"}, {"\\("}r = \sqrt&#123;x^2+z^2&#125;{"\\)"}.
+A radially symmetric bump whose height {"\\("}A{"\\)"} and width {"\\("}\\sigma{"\\)"} oscillate at different rates.
+When {"\\("}\\sigma{"\\)"} is small the bump is a sharp spike; when large it is a broad shallow mound.
+Because {"\\("}A{"\\)"} and {"\\("}\\sigma{"\\)"} beat against each other, the bump never simply repeats.
+</div>
+
+<div class="shape-desc">
+<strong>14. Schoen I-WP surface.</strong>
+
+{"\\("}\\cos 2x\,\\cos 2y + \\cos 2y\,\\cos 2z + \\cos 2z\,\\cos 2x = c(t){"\\)"}.
+Like the Schwartz P, this is a triply periodic surface — but from a different symmetry family.
+The I-WP surface divides space into two regions with different connectivities (one is
+simply connected, the other is multiply connected). Sliding {"\\("}c{"\\)"} morphs between
+the balanced minimal surface and thickened or thinned versions of its two labyrinths.
+</div>
+
+<div class="shape-desc">
+<strong>15. Saddle blend.</strong>
+
+{"\\("}y = x^2 - z^2 + A(t)\,xz{"\\)"}.
+The term {"\\("}x^2-z^2{"\\)"} is a saddle with principal curvatures along {"\\("}x{"\\)"} and {"\\("}z{"\\)"}.
+Adding {"\\("}A\,xz{"\\)"} rotates the curvature axes in the {"\\("}xz{"\\)"}-plane — when {"\\("}A = \pm 2{"\\)"}
+the axes have rotated {"\\("}45°{"\\)"}. As {"\\("}A{"\\)"} oscillates the saddle continuously spins its principal directions.
+</div>
+
+<div class="shape-desc">
+<strong>16. Twisted torus.</strong>
+
+Tube radius {"\\("}r(\theta, t) = r_0 + \varepsilon\sin(4\theta - t){"\\)"}.
+A standard torus has uniform tube radius. Here the tube is pinched and bulged
+four times as you go around the ring ({"\\("}n = 4{"\\)"} in the sinusoid), and the pattern
+rotates with time. The resulting surface has four bulges chasing each other in a circle.
+</div>
+
+<div class="shape-desc">
+<strong>17. Bumpy sphere.</strong>
+
+{"\\("}|p| = 1 + A\sin(3\lambda - t)\sin(2\varphi){"\\)"}, where {"\\("}\\lambda{"\\)"} is longitude and {"\\("}\\varphi{"\\)"} is latitude.
+A sphere with a spherical-harmonic-like bump pattern that rotates about the polar axis.
+The {"\\("}\\sin 2\\varphi{"\\)"} factor makes the bumps zero at the poles and maximum at mid-latitudes;
+the {"\\("}\\sin 3\\lambda{"\\)"} gives three bumps per latitude circle.
+</div>
+
+<div class="shape-desc">
+<strong>18. Wavy hyperboloid.</strong>
+
+{"\\("}x^2(1 + A\sin(2.8y - t)) + z^2 - y^2 = 0.40{"\\)"}.
+A one-sheet hyperboloid {"\\("}x^2+z^2-y^2 = c{"\\)"} has circular cross-sections. Here the {"\\("}x^2{"\\)"}
+coefficient is modulated by a sinusoid that travels along {"\\("}y{"\\)"}, squeezing the cross-section
+alternately into an ellipse in {"\\("}x{"\\)"} and a circle, producing a surface that looks like a
+hyperboloid with standing waves pressed into it.
+</div>
+
+<div class="shape-desc">
+<strong>19. Permuted cubic.</strong>
+
+{"\\("}x^2 y + y^2 z + z^2 x = A(t){"\\)"}.
+A cyclic cubic: the monomials {"\\("}x^2 y, y^2 z, z^2 x{"\\)"} are related by the cyclic permutation
+{"\\("}(x, y, z) \to (y, z, x){"\\)"}. This gives the surface a 3-fold rotational symmetry about {"\\("}(1,1,1){"\\)"}.
+As {"\\("}A{"\\)"} oscillates the surface swells and tightens around the symmetry axis.
+</div>
+
+<div class="shape-desc">
+<strong>20. Flipping paraboloid.</strong>
+
+{"\\("}y = \sin(t)\,x^2 + \cos(t + \varphi)\,z^2{"\\)"}.
+As {"\\("}t{"\\)"} advances, {"\\("}a = \sin(t){"\\)"} and {"\\("}b = \cos(t+\varphi){"\\)"} independently sweep through positive
+and negative values. The surface cycles through four qualitatively different states: elliptic
+paraboloid (bowl), hyperbolic paraboloid (saddle), inverted bowl, and saddle again — passing through
+a degenerate parabolic cylinder each time one coefficient crosses zero.
+</div>
+
+</details>
+</div>
+
 </section>

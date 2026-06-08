@@ -21,6 +21,10 @@ export const stems = [
   { label: 'master', base: '250621_a1_mix1_master_88.2k24' },
 ].map(s => ({ ...s, ...soundMeta[s.base] }));
 
+<div class="monologue">
+Let's start by building basic sound analysis methods for whatever comes next. To make the visuals react to different parts of the audio, we split the track into multiple stems.
+</div>
+
 <div class="page-note">
   The audio used throughout this site is compressed to MP3 and trimmed for demo purposes.
   All audio is by <strong>Yaporigami (Yu Miyashita)</strong>, licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>.
@@ -29,7 +33,7 @@ export const stems = [
 <section class="demo-section" id="amplitude-and-spectrum">
 <div class="demo-header">
 <h2>Amplitude and spectrum</h2>
-<a href={`${base}/demos/sound-analysis/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/sound-analysis/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/sound-analysis/index.html?embedded`} title="Sound Analysis Demo" scrolling="no" allow="autoplay"></iframe>
@@ -93,10 +97,14 @@ export const stems = [
 </div>
 </section>
 
+<div class="monologue">
+Now testing the data using a few visualization techniques.
+</div>
+
 <section class="demo-section" id="wave">
 <div class="demo-header">
 <h2>Wave</h2>
-<a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/sound-wave/index.html?embedded`} title="Sound Wave Demo" scrolling="no" allow="autoplay"></iframe>
@@ -113,7 +121,7 @@ export const stems = [
 <section class="demo-section" id="warp">
 <div class="demo-header">
 <h2>Warp</h2>
-<a href={`${base}/demos/warp/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/warp/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/warp/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
@@ -132,7 +140,7 @@ export const stems = [
 <section class="demo-section" id="ridge">
 <div class="demo-header">
 <h2>Ridge</h2>
-<a href={`${base}/demos/ridge/index.html`} target="_blank" rel="noopener">open full screen ↗</a>
+<a href={`${base}/demos/ridge/index.html`} target="_blank" rel="noopener">open full size ↗</a>
 </div>
 <div class="demo-embed">
 <iframe src={`${base}/demos/ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
@@ -152,7 +160,7 @@ export const stems = [
 
 <style>{`
   .page-note {
-    margin-bottom: 2.5rem; padding: 0.9rem 1.1rem;
+    max-width: 800px; margin-bottom: 2.5rem; padding: 0.9rem 1.1rem;
     border-left: 3px solid var(--border);
     font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted);
   }

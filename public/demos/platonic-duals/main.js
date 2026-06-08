@@ -63,11 +63,8 @@ async function init() {
     playBtn.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
   }
 
-  function frame(ms) {
-    rafId = requestAnimationFrame(frame);
-    const elapsed = pausedAt + (ms - startTime) * 0.001;
+  function renderAtTime(elapsed) {
     const t = cycleT(elapsed);
-
     renderer.clear();
     scenes.forEach(s => {
       s.uniforms.iTime.value = elapsed;
@@ -77,6 +74,11 @@ async function init() {
       renderer.setScissorTest(true);
       renderer.render(s.scene, s.cam);
     });
+  }
+
+  function frame(ms) {
+    rafId = requestAnimationFrame(frame);
+    renderAtTime(pausedAt + (ms - startTime) * 0.001);
   }
 
   function play() {
@@ -107,7 +109,8 @@ async function init() {
     aaBtn.textContent = on ? 'Antialias ON' : 'Antialias OFF';
   });
 
-  play();
+  updateBtn();
+  renderAtTime(0);
 }
 
 init();
