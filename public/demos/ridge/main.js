@@ -74,7 +74,7 @@ async function init() {
     iTime:       { value: 0.0 },
     u_history:   { value: histTexture },
     u_amp:       { value: 0.0 },
-    u_ssaa:      { value: 1 },
+    u_ssaa:      { value: 0 },
   };
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));

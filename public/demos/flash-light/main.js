@@ -139,7 +139,7 @@ async function init() {
     iTime:        { value: 0.0 },
     u_ampL:       { value: 0.0 },
     u_ampR:       { value: 0.0 },
-    u_ssaa:       { value: 1 },
+    u_ssaa:       { value: 0 },
   });
 
   const sdfScene = makeScene(fragSDF, {

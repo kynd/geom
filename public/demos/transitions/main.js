@@ -30,7 +30,7 @@ async function init() {
   const uniforms = {
     iResolution: { value: new THREE.Vector2(W, H) },
     iTime:       { value: 0.0 },
-    u_ssaa:      { value: 1 },
+    u_ssaa:      { value: 0 },
     u_tStart:    { value: 1.0 },
     u_tEnd:      { value: 3.0 },
     u_waveSpeed: { value: 5.0 },

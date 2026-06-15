@@ -248,7 +248,7 @@ async function init() {
     iResolution: { value: new THREE.Vector2(W, H) },
     iTime:       { value: 3.5 },
     u_mode:      { value: 0 },
-    u_ssaa:      { value: 1 },
+    u_ssaa:      { value: 0 },
     u_fftTex:    { value: fftTex },
     u_specTex:   { value: specTex },
     u_waveTex:   { value: wavTex },

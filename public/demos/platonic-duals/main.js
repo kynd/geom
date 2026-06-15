@@ -41,7 +41,7 @@ async function init() {
       iTime:       { value: 0.0 },
       u_vpx:       { value: pair * vpW },
       u_t:         { value: 0.0 },
-      u_ssaa:      { value: 1 },
+      u_ssaa:      { value: 0 },
     };
 
     const mat  = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });

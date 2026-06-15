@@ -63,7 +63,7 @@ async function init() {
     u_fft:       { value: fftBuf  },
     u_fft_R:     { value: fftBufR },
     u_amp:       { value: 0.0 },
-    u_ssaa:      { value: 1 },
+    u_ssaa:      { value: 0 },
   };
   const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });
   scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));

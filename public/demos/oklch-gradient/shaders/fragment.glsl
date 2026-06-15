@@ -1,7 +1,6 @@
 precision highp float;
 
 uniform vec2 iResolution;
-uniform int  u_ssaa;
 
 const float PI = 3.14159265359;
 
@@ -45,16 +44,7 @@ vec3 oklchGradient(vec2 coord) {
 }
 
 void main() {
-  vec3 col;
-  if (u_ssaa == 1) {
-    col  = oklchGradient(gl_FragCoord.xy + vec2(-0.25, -0.25));
-    col += oklchGradient(gl_FragCoord.xy + vec2( 0.25, -0.25));
-    col += oklchGradient(gl_FragCoord.xy + vec2(-0.25,  0.25));
-    col += oklchGradient(gl_FragCoord.xy + vec2( 0.25,  0.25));
-    col *= 0.25;
-  } else {
-    col = oklchGradient(gl_FragCoord.xy);
-  }
+  vec3 col = oklchGradient(gl_FragCoord.xy);
   col = pow(max(col, 0.0), vec3(0.4545));
   gl_FragColor = vec4(col, 1.0);
 }

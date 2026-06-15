@@ -105,7 +105,7 @@ async function init() {
     u_base:       { value: 0.0 },
     u_sssDensity: { value: 2.5 },
     u_sssStr:     { value: 0.3 },
-    u_ssaa:       { value: 1 },
+    u_ssaa:       { value: 0 },
   });
 
   const movingScalarScene = makeScene(fragMovingScalar, {

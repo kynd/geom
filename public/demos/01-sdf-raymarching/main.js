@@ -67,7 +67,7 @@ async function init() {
     iResolution:  { value: new THREE.Vector2(W, H) },
     iTime:        { value: 0.0 },
     u_shapeIndex: { value: 1 },
-    u_ssaa:       { value: 1 },
+    u_ssaa:       { value: 0 },
   };
 
   const material = new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc });

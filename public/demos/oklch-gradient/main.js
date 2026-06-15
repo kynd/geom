@@ -18,7 +18,6 @@ async function init() {
 
   const uniforms = {
     iResolution: { value: new THREE.Vector2(W, H) },
-    u_ssaa:      { value: 1 },
   };
 
   scene.add(new THREE.Mesh(
@@ -26,16 +25,7 @@ async function init() {
     new THREE.ShaderMaterial({ uniforms, vertexShader: vertSrc, fragmentShader: fragSrc })
   ));
 
-  function render() { renderer.render(scene, cam); }
-  render();
-
-  const aaBtn = document.getElementById('aa-btn');
-  aaBtn.addEventListener('click', () => {
-    const on = aaBtn.classList.toggle('active');
-    uniforms.u_ssaa.value = on ? 1 : 0;
-    aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
-    render();
-  });
+  renderer.render(scene, cam);
 }
 
 init();

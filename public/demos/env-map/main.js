@@ -144,7 +144,7 @@ async function init() {
     iTime:        { value: 0.0 },
     u_ampL:       { value: 0.0 },
     u_ampR:       { value: 0.0 },
-    u_ssaa:       { value: 1 },
+    u_ssaa:       { value: 0 },
     u_envMap:     { value: envMapTexture },
     u_sssDensity: { value: 2.5 },
     u_sssStr:     { value: 0.3 },
