@@ -15,16 +15,17 @@ const FPS = 60;
 let frames = [], startFrame = 0, currentFrame = 0;
 let isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      const ampL = v[0], ampR = v[1];
-      const fftL = v.slice(2, 130), fftR = v.slice(130, 258);
-      return { ampL, ampR, fftL, fftR, amp: (ampL + ampR) * 0.5, fft: fftL };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
+function melDB(v) { return Math.max(0, Math.min(1, (20 * Math.log10(Math.max(v, 1e-5)) + 80) / 80)); }
 
 function findStartFrame(data, threshold = 0.0001) {
   for (let i = 0; i < data.length; i++) if (data[i].amp > threshold) return i;
@@ -76,8 +77,7 @@ async function init() {
     currentFrame = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
     if (frames.length > 0) {
       const f = frames[Math.min(currentFrame, frames.length - 1)];
-      fftBuf.set(f.fftL);
-      fftBufR.set(f.fftR);
+      for (let _b = 0; _b < 128; _b++) { fftBuf[_b] = melDB(f.fftL[_b]); fftBufR[_b] = melDB(f.fftR[_b]); }
       uniforms.u_amp.value = f.amp;
     }
     renderer.render(scene, cam);
@@ -105,10 +105,16 @@ async function init() {
     if (audio) { audio.pause(); audio.src = ''; audio = null; }
     frames = []; currentFrame = 0; fftBuf.fill(0);
 
-    const basePath = `../../sound/${fileObj.base}`;
-    frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));
+    const basePath = `../../sound/highlights/${fileObj.base}`;
+    frames     = parseBinary(await fetch(`${basePath}.bin`).then(r => r.arrayBuffer()));
     startFrame = findStartFrame(frames);
     currentFrame = startFrame;
+
+    const f0 = frames[startFrame];
+    for (let _b = 0; _b < 128; _b++) { fftBuf[_b] = melDB(f0.fftL[_b]); fftBufR[_b] = melDB(f0.fftR[_b]); }
+    uniforms.u_amp.value  = f0.amp;
+    uniforms.iTime.value  = 0;
+    renderer.render(scene, cam);
 
     audio = new Audio(`${basePath}.mp3`);
     audio.addEventListener('loadedmetadata', () => {

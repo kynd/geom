@@ -56,13 +56,15 @@ function cycleT(t) {
 let frames = [], startFrame = 0;
 let isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      return { ampL: v[0], ampR: v[1] };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
 
 function findStartFrame(data, threshold = 0.0001) {
@@ -236,10 +238,13 @@ async function init() {
     if (play) {
       startTs = performance.now();
       audio.play().catch(() => {});
+      if (!rafId) rafId = requestAnimationFrame(loop);
     } else {
       if (startTs !== null) pausedAt += (performance.now() - startTs) * 0.001;
       startTs = null;
       audio.pause();
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
   }
 
@@ -251,8 +256,8 @@ async function init() {
     isPlaying = false;
     frames = [];
 
-    const basePath = `../../sound/${fileObj.base}`;
-    frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));
+    const basePath = `../../sound/highlights/${fileObj.base}`;
+    frames     = parseBinary(await fetch(`${basePath}.bin`).then(r => r.arrayBuffer()));
     startFrame = findStartFrame(frames);
 
     audio = new Audio(`${basePath}.mp3`);
@@ -283,8 +288,17 @@ async function init() {
     loadSound(SOUND_FILES.find(f => f.value === selectEl.value) || SOUND_FILES[0]);
   });
 
-  // Render loop always runs so lights rotate and shape is visible before audio plays
-  rafId = requestAnimationFrame(loop);
+  document.getElementById('bloom-strength').addEventListener('input', e => {
+    bloomPass.strength = parseFloat(e.target.value);
+    document.getElementById('bloom-strength-val').textContent = bloomPass.strength.toFixed(2);
+  });
+  document.getElementById('bloom-threshold').addEventListener('input', e => {
+    bloomPass.threshold = parseFloat(e.target.value);
+    document.getElementById('bloom-threshold-val').textContent = bloomPass.threshold.toFixed(2);
+  });
+
+  renderPass.scene = sources[activeSource].scene;
+  composer.render(); // draw first frame; rAF starts only on play
   loadSound(SOUND_FILES[0]);
 }
 

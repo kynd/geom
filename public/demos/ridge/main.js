@@ -18,16 +18,17 @@ const HISTORY_FRAMES = 300; // 5 seconds
 let frames = [], startFrame = 0, currentFrame = 0;
 let isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      const ampL = v[0], ampR = v[1];
-      const fftL = v.slice(2, 130), fftR = v.slice(130, 258);
-      return { ampL, ampR, fftL, fftR, amp: (ampL + ampR) * 0.5, fft: fftL };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
+function melDB(v) { return Math.max(0, Math.min(1, (20 * Math.log10(Math.max(v, 1e-5)) + 80) / 80)); }
 
 function findStartFrame(data, threshold = 0.0001) {
   for (let i = 0; i < data.length; i++) if (data[i].amp > threshold) return i;
@@ -90,8 +91,8 @@ async function init() {
       uniforms.u_amp.value = f.amp;
       histData.copyWithin(NUM_BANDS * 4, 0, NUM_BANDS * (HISTORY_FRAMES - 1) * 4);
       for (let b = 0; b < NUM_BANDS; b++) {
-        histData[b * 4]     = Math.round(f.fftL[b] * 255);
-        histData[b * 4 + 1] = Math.round(f.fftR[b] * 255);
+        histData[b * 4]     = Math.round(melDB(f.fftL[b]) * 255);
+        histData[b * 4 + 1] = Math.round(melDB(f.fftR[b]) * 255);
         histData[b * 4 + 3] = 255;
       }
       histTexture.needsUpdate = true;
@@ -123,10 +124,21 @@ async function init() {
     histData.fill(0);
     histTexture.needsUpdate = true;
 
-    const basePath = `../../sound/${fileObj.base}`;
-    frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));
+    const basePath = `../../sound/highlights/${fileObj.base}`;
+    frames     = parseBinary(await fetch(`${basePath}.bin`).then(r => r.arrayBuffer()));
     startFrame = findStartFrame(frames);
     currentFrame = startFrame;
+
+    const f0 = frames[startFrame];
+    uniforms.u_amp.value = f0.amp;
+    for (let b = 0; b < NUM_BANDS; b++) {
+      histData[b * 4]     = Math.round(melDB(f0.fftL[b]) * 255);
+      histData[b * 4 + 1] = Math.round(melDB(f0.fftR[b]) * 255);
+      histData[b * 4 + 3] = 255;
+    }
+    histTexture.needsUpdate = true;
+    uniforms.iTime.value  = 0;
+    renderer.render(scene, cam);
 
     audio = new Audio(`${basePath}.mp3`);
     audio.addEventListener('loadedmetadata', () => {

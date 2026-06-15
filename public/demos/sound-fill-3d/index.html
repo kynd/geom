@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sound fill 3D</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    #controls {
+      position: absolute; top: 28px; right: 32px;
+      display: flex; align-items: center; gap: 10px;
+      pointer-events: all;
+    }
+
+    .pill {
+      height: 48px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s;
+    }
+    .pill.active {
+      background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38);
+      color: rgba(255,255,255,0.90);
+    }
+    .pill:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    .pill-select {
+      padding: 0 36px 0 16px;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      color: rgba(255,255,255,0.80);
+      background-color: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .pill-select:focus { outline: none; }
+    .pill-select option { background: #111; color: #fff; }
+
+    .pill-btn { padding: 0 14px; display: flex; align-items: center; justify-content: center; }
+    #play-btn {
+      width: 48px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
+      color: #fff;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.26); }
+
+    .slider-label {
+      font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 300;
+      letter-spacing: 0.05em; text-transform: lowercase;
+      color: rgba(255,255,255,0.35); white-space: nowrap;
+    }
+    .d3-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 80px; height: 2px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 1px; outline: none; cursor: pointer;
+      vertical-align: middle;
+    }
+    .d3-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    .d3-slider::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+
+    #d3-src-btns {
+      position: absolute; bottom: 52px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 8px;
+      pointer-events: all;
+    }
+    .d3-src-btn {
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      letter-spacing: 0.06em; color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 20px; padding: 5px 18px; cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .d3-src-btn.active {
+      color: rgba(255,255,255,0.90);
+      background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.38);
+    }
+    .d3-src-btn:hover:not(.active) { color: rgba(255,255,255,0.60); background: rgba(255,255,255,0.10); }
+
+    #shape-label {
+      position: absolute; left: 56px; bottom: 96px;
+      font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 300;
+      color: rgba(255,255,255,0.55); letter-spacing: 0.08em; text-transform: lowercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="controls">
+        <select id="track-select" class="pill pill-select" aria-label="Audio track"></select>
+        <select id="mode-select"  class="pill pill-select" aria-label="Fill mode"></select>
+        <span class="slider-label">scale</span>
+        <input id="env-scale-slider" class="d3-slider" type="range" min="0.2" max="5" step="0.05" value="1" aria-label="Environment scale" />
+        <button id="lights-btn" class="pill pill-btn" aria-label="Lights off">Lights</button>
+        <button id="bloom-btn"  class="pill pill-btn active" aria-label="Bloom on">Bloom</button>
+        <span class="slider-label">bloom</span>
+        <input id="bloom-slider" class="d3-slider" type="range" min="0" max="2.5" step="0.05" value="0.3" aria-label="Bloom strength" />
+        <button id="aa-btn"   class="pill pill-btn active" aria-label="Antialiasing on">Antialias</button>
+        <button id="play-btn" class="pill" aria-label="Play"></button>
+      </div>
+      <div id="d3-src-btns">
+        <button class="d3-src-btn"        data-src="0">SDF shapes</button>
+        <button class="d3-src-btn"        data-src="1">Platonic duals</button>
+        <button class="d3-src-btn"        data-src="2">Scalar fields</button>
+        <button class="d3-src-btn active" data-src="3">Moving scalar</button>
+      </div>
+      <div id="shape-label"></div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960;  canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

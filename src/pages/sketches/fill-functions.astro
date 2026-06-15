@@ -1,0 +1,317 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Fill functions" slug="sketches/fill-functions">
+  <div class="monologue">
+    Mapping the plane to color using mathematical functions — no texture samples, no noise.
+    Each approach assigns hue, lightness, and chroma directly from coordinates.
+  </div>
+
+  <section class="demo-section" id="oklch-gradient">
+    <div class="demo-header">
+      <h2>OKLCH gradient</h2>
+      <a href={`${base}/sketches/fill-functions/01-oklch-gradient/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/01-oklch-gradient/index.html?embedded`} title="OKLCH Gradient" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The horizontal axis is hue, running 0° to 360° across the full circle.
+        The vertical axis is lightness — black at the bottom, white at the top.
+        At each cell the chroma is the maximum that keeps the color inside the sRGB gamut,
+        found with a 24-step binary search in OKLCH.
+        The result is the most saturated displayable color at every (hue, lightness) pair.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="fill-explorer">
+    <div class="demo-header">
+      <h2>Fill explorer</h2>
+      <a href={`${base}/sketches/fill-functions/02-fill-explorer/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/02-fill-explorer/index.html?embedded`} title="Fill Explorer" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Ten fill functions selectable from the dropdown. All color through OKLCH — a perceptually
+        uniform cylindrical color space — so hue, chroma, and lightness are assigned independently
+        and perceptual contrast stays consistent across modes.
+      </p>
+      <details>
+        <summary>Function index</summary>
+
+        <div class="shape-desc">
+          <strong>1. Domain coloring.</strong>
+          <p>Every pixel corresponds to a point {"\\(z = x + iy\\)"} in the complex plane.
+          The argument of {"\\(f(z)\\)"} drives hue; the magnitude, expressed through level curves {"\\(\\lfloor\\log_2|f(z)|\\rfloor\\)"}, drives lightness — concentric bands that tighten near zeros and poles.
+          A Blaschke product {"\\(f(z) = \\prod_k \\frac{z - a_k}{1 - \\bar{a}_k z}\\)"} preserves the unit disk and places poles symmetrically outside it; two counter-rotating groups of zeros produce quasi-periodic patterns as they orbit.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>2. Biomorphs.</strong>
+          <p>Iterating {"\\(z_{n+1} = \\sin(z_n) + c\\)"} a few times doesn't converge to a fractal but amplifies the complex sine's exponential growth along the imaginary axis.
+          Since {"\\(\\sin(x + iy) = \\sin(x)\\cosh(y) + i\\cos(x)\\sinh(y)\\)"}, small imaginary parts expand rapidly, pulling colour streamers vertically while compressing them horizontally.
+          The result was nicknamed "biomorphs" for its resemblance to microscopic organisms.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>3. Newton basins.</strong>
+          <p>Five Newton steps toward the roots of {"\\(z^5 - 1 = 0\\)"} sort the plane into basins of attraction — one per root.
+          Stopping early rather than running to convergence keeps the basin boundaries soft: the fractal structure at the edges appears as smooth gradients rather than hard cuts.
+          Hue encodes which root attracts; lightness encodes how quickly the point converges.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>4. {"\\(L^p\\)"} norm.</strong>
+          <p>The unit "circle" under {"\\(\\|\\mathbf{x}\\|_p = (|x|^p + |y|^p)^{1/p}\\)"} is a rounded square at {"\\(p = 1\\)"}, a true circle at {"\\(p = 2\\)"}, and approaches a square at {"\\(p \\to \\infty\\)"}.
+          Letting {"\\(p\\)"} vary smoothly across space — using {"\\(p(x,y) = 2 + \\sin(x)\\sin(y)\\)"} — produces a field where the metric itself deforms: round in some regions, spiky in others.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>5. Quasiperiodic interference.</strong>
+          <p>Summing {"\\(N\\)"} cosine waves at evenly-spaced angles {"\\(I(\\mathbf{x}) = \\sum_{k=0}^{N-1} \\cos(\\mathbf{k}_k \\cdot \\mathbf{x} + \\phi_k)\\)"} gives a pattern that is almost periodic but not quite.
+          With {"\\(N = 7\\)"} the wave vectors form a heptagonal lattice, producing seven-fold symmetry with no repetition period.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>6. Chladni patterns.</strong>
+          <p>The eigenfunctions of the Laplacian on a square plate are {"\\(f(x,y) = a\\sin(n\\pi x)\\sin(m\\pi y) + b\\sin(m\\pi x)\\sin(n\\pi y)\\)"}.
+          Their zero sets are the nodal lines where sand collects on a vibrating plate, first observed by Ernst Chladni in the 1780s.
+          Linear combinations of two modes (n, m) and (m, n) produce the family of star-like and rotated patterns.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>7. Log spirals.</strong>
+          <p>The map {"\\(w = \\ln z = \\ln|z| + i\\arg(z)\\)"} unwraps the plane: circles around the origin become horizontal lines; radial rays become vertical lines.
+          Applying a periodic function to {"\\(w\\)"} — for instance {"\\(\\sin(\\operatorname{Re}(w) \\cdot a + \\operatorname{Im}(w) \\cdot b)\\)"} — produces logarithmically-spaced spirals whose spatial frequency accelerates toward the origin.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>8. Lyapunov spaces.</strong>
+          <p>For each pixel {"\\((x, y)\\)"}, alternate the growth rate of the logistic map between {"\\(x\\)"} and {"\\(y\\)"} following a fixed letter sequence (AABAB).
+          The Lyapunov exponent {"\\(\\lambda = \\frac{1}{N}\\sum \\ln|f'(x_n)|\\)"} is positive in chaotic regions and negative in stable ones.
+          The boundary where {"\\(\\lambda = 0\\)"} traces intricate, self-referential curves.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>9. Jacobi elliptic approximation.</strong>
+          <p>Jacobi's elliptic functions {"\\(\\operatorname{sn}(u|m)\\)"} and {"\\(\\operatorname{cn}(u|m)\\)"} generalise {"\\(\\sin\\)"} and {"\\(\\cos\\)"} to doubly-periodic functions on a torus.
+          The nested formula {"\\(\\sin(x + \\alpha\\sin(y)) \\cdot \\cos(y + \\beta\\cos(x))\\)"} approximates the stretching and compression of elliptic coordinate lines, producing a lattice where the weave alternately tightens and loosens.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>10. Fresnel phase.</strong>
+          <p>The 2D Fresnel integrand {"\\(e^{i\\pi(x^2+y^2)k}\\)"} is the phase accumulated walking outward from a point source — the same function that describes diffraction behind a square aperture.
+          Its argument is just {"\\(\\pi k(x^2 + y^2) \\bmod 2\\pi\\)"}: concentric phase rings that tighten quadratically. Varying {"\\(k\\)"} with time makes them breathe inward or outward.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>11. Bipolar coordinates.</strong>
+          <p>Two focal points at {"\\(\\pm 1\\)"} on the real axis define a coordinate system where one family of curves is circles passing through both foci, and the other is circles enclosing just one.
+          The conformal map {"\\(\\sigma + i\\tau = \\ln\\frac{z+1}{z-1}\\)"} converts Cartesian {"\\((x,y)\\)"} to these coordinates.
+          Colouring by {"\\(\\{\\sigma\\}\\)"} and {"\\(\\{\\tau\\}\\)"} reveals how the grid compresses near the foci.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>12. Poincaré disk.</strong>
+          <p>The hyperbolic plane fits inside the unit disk under the Poincaré model, where geodesics are arcs of circles meeting the boundary at right angles.
+          A Möbius transformation {"\\(f(z) = \\frac{az+b}{\\bar{b}z+\\bar{a}}\\)"} is a rigid motion of this geometry.
+          Colouring by hyperbolic distance to a grid of points tiles the disk with congruent shapes that appear to shrink toward the boundary — identical in hyperbolic measure but exponentially smaller in Euclidean pixels.</p>
+        </div>
+
+      </details>
+    </div>
+  </section>
+
+  <section class="demo-section" id="sound-fill">
+    <div class="demo-header">
+      <h2>Sound fill</h2>
+      <a href={`${base}/sketches/fill-functions/03-sound-fill/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="prose">
+      <p>
+        The same OKLCH color pipeline applied to audio data rather than fixed coordinates.
+        Every mode reads the FFT magnitude spectrum, a scrolling 256-frame spectrogram history,
+        the raw waveform, and per-frame bass / mid / treble envelopes — all passed as GPU textures.
+        Press play to start audio, then select a track or visual mode from the dropdowns.
+      </p>
+      <details>
+        <summary>Mode index</summary>
+
+        <div class="shape-desc">
+          <strong>0. Spectrogram.</strong>
+          <p>The frequency axis runs left to right and time scrolls downward, accumulating 256 frames of history.
+          Hue maps across the full {"\\(0^\\circ\\)"} to {"\\(360^\\circ\\)"} wheel as frequency rises from bass to treble;
+          lightness and chroma scale with amplitude, so silence is black and loud bins reach maximum gamut chroma.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>1. Phase portrait.</strong>
+          <p>The waveform is plotted against a delayed copy: {"\\(x = w(t)\\)"}, {"\\(y = w(t + \\tau)\\)"} where {"\\(\\tau \\approx 40\\)"} samples.
+          A Gaussian density kernel accumulates over 32 trajectory points, so regions the signal visits often appear brighter.
+          Sustained tones trace ellipses; percussive transients create short jagged bursts that fade immediately.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>2. Wave · anisotropic.</strong>
+          <p>Twelve cosine plane waves at equal angular intervals, with the {"\\(x\\)"}-axis compressed by {"\\(0.4\\times\\)"} before computing dot products.
+          The compression concentrates fringes horizontally and stretches them vertically — the same mechanism as a diffraction grating.
+          Hue is assigned by {"\\(H = x \\cdot 0.8 + I\\pi\\)"}, so a left-to-right color sweep is modulated by the interference value at each pixel.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>3. Crystal · drift.</strong>
+          <p>Seven heptagonal waves each receive an independent phase offset {"\\(\\phi_k(t) = (k+1) \\cdot 0.73 \\cdot t\\)"} rather than a shared time term.
+          Because the drift rates are incommensurable, the pattern never exactly repeats — it samples an orbit on a seven-torus.
+          The interference sum is passed through {"\\(\\frac{1}{2} + \\frac{1}{2}\\cos(I \\cdot 3\\pi)\\)"}, sharpening gradients into fine bands.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>4. Radial spectrum.</strong>
+          <p>All 128 FFT bins are rendered as concentric glowing rings at radius {"\\(r_k = 0.05 + f_k \\cdot 0.95\\)"}, with a narrow Gaussian falloff ({"\\(\\sigma = 0.004\\)"}) and brightness proportional to amplitude.
+          Hue rotates slowly with radius and time; there is no angular dependence, so the pattern is fully rotationally symmetric.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>10. Radial spectrum · hue from amplitude.</strong>
+          <p>Same ring geometry as mode 4 but hue encodes amplitude rather than radius.
+          Each bin's contribution is weighted by {"\\(\\mathrm{amp} \\cdot g(r)\\)"}, so quiet bins contribute nothing to the colour average at a pixel.
+          The mapping is {"\\(H = \\mathrm{mix}(4.5, 0.8, \\mathrm{amp})\\)"} — cool blue at silence, warm orange at peak — shifted slowly with time.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>11. Radial spectrum · hue + L from amplitude.</strong>
+          <p>Ring positions weighted by proximity only (not amplitude), so all 128 rings are structurally visible.
+          At each pixel, the weighted-average amplitude sets both hue ({"\\(H = \\mathrm{mix}(4.5, 0.8, \\bar{a})\\)"}) and lightness ({"\\(L = 0.05 + 0.78\\bar{a}\\)"}).
+          Quiet bins are dark and unsaturated; loud bins are bright and warm.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>5. Waveform ring.</strong>
+          <p>The 512-sample audio waveform is mapped to a polar curve {"\\(r(\\theta) = 0.55 + w(\\theta / 2\\pi) \\cdot 0.3\\)"}, tracing a closed ring whose radius deforms with the signal.
+          A Gaussian glow around the curve makes it visible; the width is proportional to the local amplitude, so transients produce thick arcs while silence gives a thin hairline circle.
+          Hue rotates slowly around the ring.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>6. Cosine product.</strong>
+          <p>{"\\(I(x, y) = \\cos(x \\cdot f_x) \\cdot \\cos(y \\cdot f_y)\\)"} where {"\\(f_x = \\pi(2 + 7 \\cdot \\text{bass})\\)"} and {"\\(f_y = \\pi(2 + 7 \\cdot \\text{treble})\\)"}.
+          This is a 2D standing-wave pattern in which bass and treble independently control the spatial frequency of horizontal and vertical ripples.
+          Equal bass and treble give a square grid; unequal energies stretch or compress one axis, producing elongated rectangles.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>7. Polar harmonics.</strong>
+          <p>Twelve FFT bins are each converted to an angular harmonic {"\\(A_k \\cos(\\theta (k+2) + \\phi_k(t))\\)"} summed over {"\\(k = 0 \\ldots 11\\)"}.
+          The term {"\\(k+2\\)"} gives the number of petals per bin — two wide petals for the lowest bin, fourteen narrow ones for the highest.
+          Bass activates the slow, large-petal terms; treble activates the fine angular detail.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>8. Phase modulation.</strong>
+          <p>Concentric cosine rings {"\\(\\cos(r \\cdot f)\\)"} are phase-shifted at each angle by the live waveform: {"\\(\\cos(r \\cdot f + w(\\theta / 2\\pi) \\cdot A \\cdot \\pi)\\)"}.
+          Where the waveform is near zero the rings are undistorted; where it is large the rings bend radially outward or inward, tracing the audio signal as a topographic deformation of the circular pattern.
+          Bass and treble jointly control the spatial frequency {"\\(f\\)"}; amplitude controls the modulation depth {"\\(A\\)"}.</p>
+        </div>
+
+        <div class="shape-desc">
+          <strong>9. Circular spectrogram.</strong>
+          <p>The polar counterpart of mode 0: angle encodes frequency ({"\\(\\theta = 2\\pi f\\)"}) and radius encodes time (edge = current frame, centre = oldest frame).
+          New audio energy appears as a bright ring at the circumference and contracts inward as frames age.
+          Hue follows the angle, so the color wheel and the frequency wheel coincide exactly.</p>
+        </div>
+
+      </details>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/03-sound-fill/index.html?embedded`} title="Sound fill" scrolling="no"></iframe>
+    </div>
+  </section>
+
+  <section class="demo-section" id="multitrack">
+    <div class="demo-header">
+      <h2>Multitrack visualizer</h2>
+      <a href={`${base}/sketches/fill-functions/04-multitrack/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="prose">
+      <p>
+        All 8 stem tracks analyzed simultaneously while the master plays.
+        Each horizontal strip shows one track: the left section is the FFT magnitude spectrum (bars),
+        the right section is the live waveform.
+        Use the progress bar to seek anywhere in the track.
+      </p>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/04-multitrack/index.html?embedded`} title="Multitrack visualizer" scrolling="no"></iframe>
+    </div>
+  </section>
+
+  <section class="demo-section" id="fill-harmonic">
+    <div class="demo-header">
+      <h2>Fill · Harmonic synthesis</h2>
+      <a href={`${base}/sketches/fill-functions/06-fill-harmonic/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="prose">
+      <p>
+        The same ten visual modes as Sound fill, but the waveform texture is synthesized each frame
+        from the pre-computed Mel spectrum rather than captured live.
+        All 128 Mel bins drive harmonically-related sine oscillators at frequencies
+        {"\\(1f, 2f, \\ldots, 128f\\)"}. Each oscillator's phase drifts at a rate proportional to
+        {"\\(\\sqrt{k+1}\\)"}, so low harmonics evolve slowly while high ones rotate faster without
+        racing out of control. The superposition of all 128 components gives a rich, music-coupled
+        waveform for modes that read it directly (Phase portrait, Waveform ring, Phase modulation).
+      </p>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/06-fill-harmonic/index.html?embedded`} title="Fill · Harmonic synthesis" scrolling="no"></iframe>
+    </div>
+  </section>
+
+  <section class="demo-section" id="fill-envelope">
+    <div class="demo-header">
+      <h2>Fill · Envelope × carrier</h2>
+      <a href={`${base}/sketches/fill-functions/07-fill-envelope/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="prose">
+      <p>
+        Waveform synthesis by spectral envelope modulation.
+        At each sample position {"\\(u \\in [0,1]\\)"} the envelope is the Mel magnitude at the corresponding
+        bin {"\\(\\mathrm{env}(u) = \\mathrm{mel}(\\lfloor 127u \\rfloor)\\)"}, multiplied by a carrier
+        whose frequency tracks the midrange energy and whose phase is rotated by bass —
+        so kick hits modulate the carrier's alignment.
+        Dense, full-spectrum audio fills the waveform uniformly;
+        sparse content (solo kick) concentrates energy in a narrow region.
+      </p>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/07-fill-envelope/index.html?embedded`} title="Fill · Envelope × carrier" scrolling="no"></iframe>
+    </div>
+  </section>
+
+  <section class="demo-section" id="fill-bandsplit">
+    <div class="demo-header">
+      <h2>Fill · Band-split oscillators</h2>
+      <a href={`${base}/sketches/fill-functions/08-fill-bandsplit/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="prose">
+      <p>
+        Three oscillators, each driven by a different frequency band, summed into one waveform:
+        bass {"\\((\\mathrm{Mel\\ bins}\\ 0\\text{–}12)\\)"} at {"\\(1\\times\\)"} spatial frequency,
+        midrange {"\\((12\\text{–}80)\\)"} at {"\\(7\\times\\)"}, treble {"\\((80\\text{–}127)\\)"} at {"\\(23\\times\\)"}.
+        Each component's phase drifts at its own rate so the composite shape evolves even without transients.
+        Bass-dominant tracks produce slow, wide undulations; treble-heavy content adds tight ripple on top.
+        Switching tracks changes which layer dominates, making the waveform character directly legible
+        in each visual mode.
+      </p>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/fill-functions/08-fill-bandsplit/index.html?embedded`} title="Fill · Band-split oscillators" scrolling="no"></iframe>
+    </div>
+  </section>
+
+</PageLayout>

@@ -15,15 +15,15 @@ const FPS = 60;
 let frames = [], startFrame = 0, currentFrame = 0;
 let isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      const ampL = v[0], ampR = v[1];
-      const fftL = v.slice(2, 130), fftR = v.slice(130, 258);
-      return { ampL, ampR, fftL, fftR, amp: (ampL + ampR) * 0.5, fft: fftL };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
 
 function findStartFrame(data, threshold = 0.0001) {
@@ -113,10 +113,21 @@ async function init() {
     if (audio) { audio.pause(); audio.src = ''; audio = null; }
     frames = []; currentFrame = 0; ampHistData.fill(0); ampHistTex.needsUpdate = true;
 
-    const basePath = `../../sound/${fileObj.base}`;
-    frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));
+    const basePath = `../../sound/highlights/${fileObj.base}`;
+    frames     = parseBinary(await fetch(`${basePath}.bin`).then(r => r.arrayBuffer()));
     startFrame = findStartFrame(frames);
     currentFrame = startFrame;
+
+    const halfHist = AMP_HIST >> 1;
+    for (let i = 0; i < AMP_HIST; i++) {
+      const fi = Math.max(0, Math.min(frames.length - 1, startFrame + i - halfHist));
+      ampHistData[i * 4]     = Math.round(frames[fi].amp * 255);
+      ampHistData[i * 4 + 3] = 255;
+    }
+    ampHistTex.needsUpdate = true;
+    uniforms.u_amp.value  = frames[startFrame].amp;
+    uniforms.iTime.value  = 0;
+    renderer.render(scene, cam);
 
     audio = new Audio(`${basePath}.mp3`);
     audio.addEventListener('loadedmetadata', () => {

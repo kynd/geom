@@ -1,0 +1,31 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Transitions" slug="transitions">
+  <div class="monologue">
+    This page is to explore ideas for transitions.
+  </div>
+
+  <section class="demo-section">
+    <div class="demo-header">
+      <h2>Dimensional expansion</h2>
+      <a href={`${base}/demos/transitions/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/transitions/index.html?embedded`} title="Dimensional expansion" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The core idea: expanding outward from a concentrated form reads as a transition from 2D to 3D.
+        A flat strip gains depth as it widens — as if a surface is unfolding into the third dimension.
+      </p>
+      <p>
+        The surface itself is built by spatial Fourier synthesis. Multiple sine waves propagate outward
+        from different source points, and their interference defines the height field. Each wave adds a
+        harmonic — the shape gets richer as more components arrive.
+      </p>
+    </div>
+  </section>
+</PageLayout>

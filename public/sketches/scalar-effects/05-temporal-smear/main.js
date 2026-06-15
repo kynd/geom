@@ -14,14 +14,17 @@ const SOUND_FILES = [
 const FPS = 60;
 let frames = [], startFrame = 0, isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      return { amp: (v[0] + v[1]) * 0.5, fftL: v.slice(2, 130) };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
+function melDB(v) { return Math.max(0, Math.min(1, (20 * Math.log10(Math.max(v, 1e-5)) + 80) / 80)); }
 
 function findStartFrame(data) {
   for (let i = 0; i < data.length; i++) if (data[i].amp > 0.0001) return i;
@@ -71,7 +74,7 @@ async function init() {
     if (isPlaying && audio && frames.length > 0) {
       const idx = Math.min(Math.floor(audio.currentTime * FPS), frames.length - 1);
       const f = frames[idx];
-      fftBuf.set(f.fftL);
+      for (let _b = 0; _b < 128; _b++) fftBuf[_b] = melDB(f.fftL[_b]);
       uniforms.u_amp.value = f.amp;
     } else if (!isPlaying) {
       uniforms.u_amp.value *= 0.92; // decay FFT on pause
@@ -84,11 +87,11 @@ async function init() {
     if (audio) { audio.src = ''; audio = null; }
     frames = []; fftBuf.fill(0); uniforms.u_amp.value = 0;
 
-    const base = `../../../sound/${fileObj.base}`;
+    const base = `../../../sound/highlights/${fileObj.base}`;
     try {
-      const resp = await fetch(`${base}.txt`);
+      const resp = await fetch(`${base}.bin`);
       if (!resp.ok) throw new Error(resp.status);
-      frames = parseData(await resp.text());
+      frames = parseBinary(await resp.arrayBuffer());
       startFrame = findStartFrame(frames);
     } catch {
       return; // no audio data; shape still animates

@@ -54,9 +54,11 @@ Let's start by building basic sound analysis methods for whatever comes next. To
   where the musical content is densest.
   The script processes left and right channels separately and writes one row of numbers per frame at 60 fps:
   L and R RMS amplitude followed by 128 Mel band magnitudes for each channel.
+  The output is stored as raw little-endian 32-bit floats — 258 values per frame, 1032 bytes per frame —
+  which the browser can load directly into a typed array without any parsing overhead.
 </p>
 <p>
-  The browser loads that text file and advances through it in lockstep with the audio,
+  The browser fetches that binary file and advances through it in lockstep with the audio,
   without doing any signal processing at runtime.
   This matters for video export: every frame's visual state comes from a specific row in the data file,
   so rendering the same frame twice always produces the same result —
@@ -67,6 +69,12 @@ Let's start by building basic sound analysis methods for whatever comes next. To
   It scans the data file for the first frame where amplitude exceeds a small threshold,
   then cues both the audio and the display to that point.
 </p>
+<div class="page-note">
+  <strong>Linear vs. log scaling.</strong>
+  The Mel band values are stored as linear amplitude — each number is proportional to energy in that frequency band.
+  Perceptually though, loudness is logarithmic: a band at 1 % of peak energy is audible, not negligible.
+  Before display, the browser maps each value to decibels: {"\\( v_\\text{dB} = 20 \\log_{10}(\\max(v, 10^{-5})) \\)"}, then rescales {"\\([-80,\\, 0]\\)"} dB to {"\\([0, 1]\\)"}. The floor at {"\\(-80\\)"} dB is below any content that matters; the ceiling at {"\\(0\\)"} dB is the global peak of each stem (since the data is normalised to its own maximum). The result is a spectrum that fills the display range without clipping.
+</div>
 </div>
 </section>
 
@@ -81,8 +89,8 @@ Let's start by building basic sound analysis methods for whatever comes next. To
         <span class="spec-label">{s.label}</span>
         <span class="spec-range">{formatHz(s.freqMin)} – {formatHz(s.freqMax)}</span>
       </div>
-      <img src={`${base}/sound/${s.base}_L.png`} class="spec-img" data-ch="L" alt={`${s.label} L`} loading="lazy" />
-      <img src={`${base}/sound/${s.base}_R.png`} class="spec-img" data-ch="R" alt={`${s.label} R`} loading="lazy" />
+      <img src={`${base}/sound/full/${s.base}_L.png`} class="spec-img" data-ch="L" alt={`${s.label} L`} loading="lazy" />
+      <img src={`${base}/sound/full/${s.base}_R.png`} class="spec-img" data-ch="R" alt={`${s.label} R`} loading="lazy" />
     </div>
   ))}
 </div>

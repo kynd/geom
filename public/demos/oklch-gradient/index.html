@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OKLCH gradient</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    #controls {
+      position: absolute; top: 28px; right: 32px;
+      display: flex; align-items: center; gap: 10px;
+      pointer-events: all;
+    }
+    #aa-btn {
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s;
+    }
+    #aa-btn.active {
+      background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38);
+      color: rgba(255,255,255,0.90);
+    }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    #axis-labels {
+      position: absolute; inset: 0;
+      font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 300;
+      color: rgba(255,255,255,0.40); letter-spacing: 0.06em;
+    }
+    #label-h0   { position: absolute; bottom: 22px; left: 56px; }
+    #label-h90  { position: absolute; bottom: 22px; left: calc(25% - 12px); }
+    #label-h180 { position: absolute; bottom: 22px; left: calc(50% - 12px); }
+    #label-h270 { position: absolute; bottom: 22px; left: calc(75% - 12px); }
+    #label-h360 { position: absolute; bottom: 22px; right: 56px; }
+    #label-l0   { position: absolute; left: 56px; bottom: 44px; }
+    #label-l50  { position: absolute; left: 56px; top: 50%; transform: translateY(-50%); }
+    #label-l100 { position: absolute; left: 56px; top: 44px; }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="controls">
+        <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias</button>
+      </div>
+      <div id="axis-labels">
+        <span id="label-h0">0°</span>
+        <span id="label-h90">90°</span>
+        <span id="label-h180">180°</span>
+        <span id="label-h270">270°</span>
+        <span id="label-h360">360°</span>
+        <span id="label-l0">L 0</span>
+        <span id="label-l50">L 0.5</span>
+        <span id="label-l100">L 1</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960;  canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

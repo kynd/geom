@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transitions</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    #controls {
+      position: absolute; top: 28px; right: 32px;
+      display: flex; align-items: center; gap: 10px;
+      pointer-events: all;
+    }
+
+    .pill {
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s; flex-shrink: 0;
+    }
+    .pill.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    .pill:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    #bloom-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 14px; height: 48px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      flex-shrink: 0;
+    }
+    .bloom-label {
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.55); white-space: nowrap; user-select: none;
+    }
+    #bloom-range {
+      -webkit-appearance: none; width: 80px; height: 2px;
+      background: rgba(255,255,255,0.25); border-radius: 1px; outline: none; cursor: pointer;
+    }
+    #bloom-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px;
+      border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer;
+    }
+    #bloom-range::-moz-range-thumb {
+      width: 12px; height: 12px; border: none;
+      border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer;
+    }
+
+    #play-btn {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; flex-shrink: 0;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.26); }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="controls">
+        <button id="color-btn" class="pill" aria-label="Color mode off">Color</button>
+        <button id="aa-btn"    class="pill active" aria-label="Antialiasing on">Antialias</button>
+        <div id="bloom-wrap">
+          <span class="bloom-label">Bloom</span>
+          <input id="bloom-range" type="range" min="0" max="2" step="0.05" value="0.8" aria-label="Bloom strength" />
+        </div>
+        <button id="play-btn" aria-label="Pause"></button>
+      </div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960; canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 For each stem, find the densest 60-second window in the full analysis data,
-then emit a trimmed .txt and trimmed .mp3 to public/sound/.
+then emit a trimmed .bin and trimmed .mp3 to public/sound/highlights/.
 Also regenerates the L/R spectrogram PNGs.
+
+Binary format: raw little-endian Float32, n_frames × 258 values per frame.
 """
 import os, subprocess, numpy as np
 from PIL import Image
@@ -13,7 +15,7 @@ WINDOW_FRAMES = FPS * WINDOW_SECS
 NUM_BANDS    = 128
 
 ORIG_DIR = os.path.join(os.path.dirname(__file__), 'original')
-OUT_DIR  = os.path.join(os.path.dirname(__file__), '..', 'public', 'sound')
+OUT_DIR  = os.path.join(os.path.dirname(__file__), '..', 'public', 'sound', 'highlights')
 
 STEMS = [
     ('arp',    '250621_a1_mix1_arp'),
@@ -74,13 +76,11 @@ for label, base in STEMS:
 
     trimmed = rows[start_f:end_f]
 
-    # ── trimmed .txt ──────────────────────────────────────────────────────────
-    out_txt = os.path.join(OUT_DIR, f'{base}.txt')
-    with open(out_txt, 'w') as fout:
-        fout.writelines(header)
-        for row in trimmed:
-            fout.write(' '.join(f'{v:.6f}' for v in row) + '\n')
-    print(f'   txt    : {out_txt}  ({len(trimmed)} frames)')
+    # ── trimmed .bin ──────────────────────────────────────────────────────────
+    out_bin = os.path.join(OUT_DIR, f'{base}.bin')
+    np.array(trimmed, dtype='<f4').tofile(out_bin)
+    bin_kb = os.path.getsize(out_bin) // 1024
+    print(f'   bin    : {out_bin}  ({len(trimmed)} frames, {bin_kb} KB)')
 
     # ── trimmed MP3 ──────────────────────────────────────────────────────────
     out_mp3 = os.path.join(OUT_DIR, f'{base}.mp3')

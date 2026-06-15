@@ -33,25 +33,21 @@ function formatHz(hz) {
   return hz >= 1000 ? `${(hz / 1000).toFixed(1)} kHz` : `${Math.round(hz)} Hz`;
 }
 
-function parseData(text) {
-  const lines = text.split('\n');
-  for (const l of lines) {
-    const m = l.match(/^#\s*freq_min=([\d.]+)\s+freq_max=([\d.]+)/);
-    if (m) { freqMin = parseFloat(m[1]); freqMax = parseFloat(m[2]); }
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
   }
-  return lines
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      const ampL = v[0], ampR = v[1];
-      const fftL = v.slice(2, 130), fftR = v.slice(130, 258);
-      return { ampL, ampR, fftL, fftR, amp: (ampL + ampR) * 0.5, fft: fftL };
-    });
+  return frames;
 }
+function melDB(v) { return Math.max(0, Math.min(1, (20 * Math.log10(Math.max(v, 1e-5)) + 80) / 80)); }
 
 function findStartFrame(data, threshold = 0.0001) {
   for (let i = 0; i < data.length; i++) {
-    if (data[i].amp > threshold) return i;
+    if (data[i].ampL > threshold) return i;
   }
   return 0;
 }
@@ -177,9 +173,9 @@ function draw() {
     const slotW = FFT_PW / NUM_BINS;
     const barW  = slotW * 0.72;
     for (let i = 0; i < NUM_BINS; i++) {
-      const val = fftData[i];
+      const val = melDB(fftData[i]);
       const bh  = val * FFT_H;
-      ctx.fillStyle = `rgba(${r},${g},${b},${(0.2 + 0.8 * val).toFixed(3)})`;
+      ctx.fillStyle = `rgba(${r},${g},${b},1)`;
       ctx.fillRect(panelX + i * slotW, FFT_BTM - bh, barW, bh);
     }
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -256,11 +252,9 @@ async function loadSound(fileObj) {
   ctx.textAlign = 'center';
   ctx.fillText('loading…', W / 2, H / 2);
 
-  const basePath = `../../sound/${fileObj.base}`;
+  const basePath = `../../sound/highlights/${fileObj.base}`;
 
-  const res  = await fetch(`${basePath}.txt`);
-  const text = await res.text();
-  frames       = parseData(text);
+  frames = parseBinary(await (await fetch(`${basePath}.bin`)).arrayBuffer());
   startFrame   = findStartFrame(frames);
   currentFrame = startFrame;
   draw();

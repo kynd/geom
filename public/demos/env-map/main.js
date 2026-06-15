@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { buildEnvMapTexture } from '../../js/lab-envmap.js';
+import { buildEnvMapTexture } from '../../js/oklch-envmap.js';
 
 const SHAPES = [
   'sphere', 'box', 'round box', 'box frame', 'torus', 'capped torus', 'link',
@@ -57,13 +57,15 @@ function cycleT(t) {
 let frames = [], startFrame = 0;
 let isPlaying = false, audio = null;
 
-function parseData(text) {
-  return text.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const v = l.trim().split(/\s+/).map(Number);
-      return { ampL: v[0], ampR: v[1] };
-    });
+function parseBinary(buffer) {
+  const f32 = new Float32Array(buffer);
+  const N = 258, n = (f32.length / N) | 0;
+  const frames = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * N;
+    frames[i] = { amp: (f32[o] + f32[o + 1]) * 0.5, ampL: f32[o], ampR: f32[o + 1], fftL: f32.subarray(o + 2, o + 130), fftR: f32.subarray(o + 130, o + 258) };
+  }
+  return frames;
 }
 
 function findStartFrame(data, threshold = 0.0001) {
@@ -82,7 +84,7 @@ async function init() {
   const srcBtns  = Array.from(document.querySelectorAll('.src-btn'));
   const W = canvas.width, H = canvas.height;
 
-  // Build LAB env map on the CPU, then upload to GPU as a texture
+  // Build OKLCH env map on the CPU, then upload to GPU as a texture
   const envMapTexture = buildEnvMapTexture(THREE, 256, 128);
 
   const [
@@ -259,8 +261,8 @@ async function init() {
     isPlaying = false;
     frames = [];
 
-    const basePath = `../../sound/${fileObj.base}`;
-    frames     = parseData(await fetch(`${basePath}.txt`).then(r => r.text()));
+    const basePath = `../../sound/highlights/${fileObj.base}`;
+    frames     = parseBinary(await fetch(`${basePath}.bin`).then(r => r.arrayBuffer()));
     startFrame = findStartFrame(frames);
 
     audio = new Audio(`${basePath}.mp3`);
@@ -289,6 +291,15 @@ async function init() {
 
   selectEl.addEventListener('change', () => {
     loadSound(SOUND_FILES.find(f => f.value === selectEl.value) || SOUND_FILES[0]);
+  });
+
+  document.getElementById('bloom-strength').addEventListener('input', e => {
+    bloomPass.strength = parseFloat(e.target.value);
+    document.getElementById('bloom-strength-val').textContent = bloomPass.strength.toFixed(2);
+  });
+  document.getElementById('bloom-threshold').addEventListener('input', e => {
+    bloomPass.threshold = parseFloat(e.target.value);
+    document.getElementById('bloom-threshold-val').textContent = bloomPass.threshold.toFixed(2);
   });
 
   // Render loop always runs so shape is visible before audio plays

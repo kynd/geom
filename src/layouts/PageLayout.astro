@@ -43,10 +43,18 @@ const navItems: NavItem[] = [
       { label: 'Env map',     href: '#env-map' },
     ]
   },
+  { label: 'Sound-reactive environment', href: `${base}/sound-reactive-environment`, slug: 'sound-reactive-environment' },
+  { label: 'Multitrack visualization',  href: `${base}/multitrack-visualization`,  slug: 'multitrack-visualization' },
+  { label: 'Transitions',              href: `${base}/transitions`,               slug: 'transitions' },
   ...(import.meta.env.DEV ? [
-    { label: '[Sketch] Sound Effects',  href: `${base}/sketches/sound-effects`,  slug: 'sketches/sound-effects',  sketch: true },
-    { label: '[Sketch] Scalar Effects', href: `${base}/sketches/scalar-effects`, slug: 'sketches/scalar-effects', sketch: true },
-    { label: '[Sketch] Env Map Sq',     href: `${base}/sketches/env-map-sq`,     slug: 'sketches/env-map-sq',     sketch: true },
+    { label: '[Sketch] Fill functions', href: `${base}/sketches/fill-functions`, slug: 'sketches/fill-functions', sketch: true,
+      subLinks: [
+        { label: 'OKLCH gradient',   href: '#oklch-gradient' },
+        { label: 'Fill explorer',    href: '#fill-explorer' },
+        { label: 'Sound fill',       href: '#sound-fill' },
+        { label: 'Multitrack',       href: '#multitrack' },
+      ]
+    },
   ] : []),
 ];
 ---
@@ -245,7 +253,7 @@ const navItems: NavItem[] = [
     .prose em { font-style: italic; }
     .prose a {
       color: var(--fg); text-decoration: underline;
-      text-decoration-color: var(--border); text-underline-offset: 3px;
+      text-decoration-color: var(--fg-muted); text-underline-offset: 3px;
       transition: text-decoration-color 0.15s;
     }
     .prose a:hover { text-decoration-color: var(--fg); }
@@ -256,6 +264,8 @@ const navItems: NavItem[] = [
     }
     .prose ul { list-style: disc; padding-left: 1.4rem; }
     .prose ul li { margin-bottom: 0.4rem; }
+    .prose ol { list-style: decimal; padding-left: 1.4rem; }
+    .prose ol li { margin-bottom: 0.4rem; }
     .prose .shape-desc p { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
     .prose > details { margin-top: 1rem; }
     .prose > details > summary {

@@ -1,0 +1,28 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Multitrack visualization" slug="multitrack-visualization">
+  <div class="monologue">
+    Placeholder — How can we use and mix all the separate stems of the sound?
+  </div>
+
+  <section class="demo-section">
+    <div class="demo-header">
+      <h2>Multitrack visualizer</h2>
+      <a href={`${base}/demos/multitrack/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/multitrack/index.html?embedded`} title="Multitrack visualizer" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        All 8 stem tracks analyzed simultaneously while the master plays.
+        Each horizontal strip shows one track: the left section is the FFT magnitude spectrum (bars),
+        the right section is the live waveform.
+        Use the progress bar to seek anywhere in the track.
+      </p>
+    </div>
+  </section>
+</PageLayout>
