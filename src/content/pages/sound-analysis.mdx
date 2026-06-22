@@ -25,6 +25,8 @@ export const stems = [
 Let's start by building basic sound analysis methods for whatever comes next. To make the visuals react to different parts of the audio, we split the track into multiple stems.
 </div>
 
+<p style="margin-bottom: 2rem">See <a href="https://www.kynd.info/writing/sound-visualization/" target="_blank" rel="noopener">Sound visualization</a>.</p>
+
 <div class="page-note">
   The audio used throughout this site is compressed to MP3 and trimmed for demo purposes.
   All audio is by <strong>Yaporigami (Yu Miyashita)</strong>, licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>.
@@ -47,10 +49,10 @@ Let's start by building basic sound analysis methods for whatever comes next. To
 </p>
 <p>
   A Python script analyses each sound file offline before the browser touches it.
-  It computes a full-file STFT at 2048-point resolution, then builds a global energy profile across all frequencies.
+  It computes a full-file <a href="https://en.wikipedia.org/wiki/Short-time_Fourier_transform" target="_blank" rel="noopener">STFT</a> at 2048-point resolution, then builds a global energy profile across all frequencies.
   Spectral roll-off at 5 % and 85 % of cumulative energy marks where the track actually lives — ignoring sub-bass rumble
   below the content and empty headroom above it.
-  A Mel-scale filterbank then maps 128 bands logarithmically across that active range, concentrating resolution
+  A <a href="https://en.wikipedia.org/wiki/Mel_scale" target="_blank" rel="noopener">Mel-scale</a> filterbank then maps 128 bands logarithmically across that active range, concentrating resolution
   where the musical content is densest.
   The script processes left and right channels separately and writes one row of numbers per frame at 60 fps:
   L and R RMS amplitude followed by 128 Mel band magnitudes for each channel.
@@ -72,7 +74,7 @@ Let's start by building basic sound analysis methods for whatever comes next. To
 <div class="page-note">
   <strong>Linear vs. log scaling.</strong>
   The Mel band values are stored as linear amplitude — each number is proportional to energy in that frequency band.
-  Perceptually though, loudness is logarithmic: a band at 1 % of peak energy is audible, not negligible.
+  <a href="https://www.kynd.info/writing/physical-values-and-human-perception/" target="_blank" rel="noopener">Human perception is not linear</a> — loudness is logarithmic: a band at 1 % of peak energy is audible, not negligible.
   Before display, the browser maps each value to decibels: {"\\( v_\\text{dB} = 20 \\log_{10}(\\max(v, 10^{-5})) \\)"}, then rescales {"\\([-80,\\, 0]\\)"} dB to {"\\([0, 1]\\)"}. The floor at {"\\(-80\\)"} dB is below any content that matters; the ceiling at {"\\(0\\)"} dB is the global peak of each stem (since the data is normalised to its own maximum). The result is a spectrum that fills the display range without clipping.
 </div>
 </div>

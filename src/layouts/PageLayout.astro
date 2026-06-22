@@ -19,6 +19,7 @@ const { title, slug, isProse = false } = Astro.props;
 
 const navItems: NavItem[] = [
   { label: 'Geom',               href: `${base}/`,                          slug: '' },
+  { label: 'Naming policies',   href: `${base}/naming-policies`,           slug: 'naming-policies' },
   { label: 'Sound analysis',     href: `${base}/sound-analysis`,            slug: 'sound-analysis',
     subLinks: [
       { label: 'Amplitude and spectrum', href: '#amplitude-and-spectrum' },
@@ -59,8 +60,8 @@ const navItems: NavItem[] = [
       { label: 'Shape composer',    href: '#composer' },
       { label: 'SDF blend',         href: '#sdf-blend' },
       { label: 'Prominence',        href: '#prominence' },
-      { label: 'Stem radar',        href: '#stem-radar' },
-      { label: 'Shape interpolation', href: '#stem-shapes' },
+      { label: 'Track prominence radar chart', href: '#stem-radar' },
+      { label: 'Scalar field interpolation', href: '#stem-shapes' },
     ]
   },
   { label: 'Transitions',              href: `${base}/transitions`,               slug: 'transitions' },
@@ -75,6 +76,7 @@ const navItems: NavItem[] = [
     },
     { label: '[Sketch] Sound to shape', href: `${base}/sketches/sound-to-shape`, slug: 'sketches/sound-to-shape', sketch: true },
     { label: '[Sketch] Naming reference', href: `${base}/sketches/naming`, slug: 'sketches/naming', sketch: true },
+    { label: '[Sketch] Link suggestions', href: `${base}/sketches/link-suggestions`, slug: 'sketches/link-suggestions', sketch: true },
   ] : []),
 ];
 ---
@@ -274,11 +276,11 @@ const navItems: NavItem[] = [
     .prose p { margin-bottom: 1.1rem; }
     .prose em { font-style: italic; }
     .prose a {
-      color: var(--fg); text-decoration: underline;
-      text-decoration-color: var(--fg-muted); text-underline-offset: 3px;
+      color: #6ebeff; text-decoration: underline;
+      text-decoration-color: rgba(110,190,255,0.40); text-underline-offset: 3px;
       transition: text-decoration-color 0.15s;
     }
-    .prose a:hover { text-decoration-color: var(--fg); }
+    .prose a:hover { text-decoration-color: #6ebeff; }
     .prose .math-block { margin: 1.4rem 0; text-align: left; overflow-x: auto; }
     .prose .math-block .katex-display { text-align: left; }
     .prose .math-block .katex-display > .katex { text-align: left; }

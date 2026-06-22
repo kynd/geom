@@ -15,9 +15,9 @@ const TRACKS = [
 ];
 
 const MODE_NAMES = [
-  'Wave · anisotropic',
-  'Phase portrait',
-  'Crystal · drift',
+  'Anisotropic wave',
+  'Normal phase portrait',
+  'Drifting caustic',
   'Spectrogram',
 ];
 

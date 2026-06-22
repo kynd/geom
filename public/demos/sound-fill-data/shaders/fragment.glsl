@@ -84,7 +84,7 @@ vec3 mode0(vec2 nUV) {
   return oklch(L, C, H);
 }
 
-// ── Mode 1 — Wave · anisotropic ───────────────────────────────────────────────
+// ── Mode 1 — Anisotropic wave ─────────────────────────────────────────────────
 // 12 plane waves; x compressed 0.4×. Pixel x-position sweeps hue left-to-right.
 vec3 mode1(vec2 uv) {
   vec2  uvS = vec2(uv.x * 0.4, uv.y);
@@ -102,7 +102,7 @@ vec3 mode1(vec2 uv) {
   return oklch(L, maxChroma(L, H) * 0.9, H);
 }
 
-// ── Mode 2 — Phase portrait ───────────────────────────────────────────────────
+// ── Mode 2 — Normal phase portrait ───────────────────────────────────────────
 // Four lag values (±0.07, ±0.18) spread trajectory across all orientations.
 vec3 mode2(vec2 uv) {
   float density = 0.0;
@@ -133,7 +133,7 @@ vec3 mode2(vec2 uv) {
   return oklch(L, maxChroma(L, H) * density * 0.9, H);
 }
 
-// ── Mode 3 — Crystal · drift ──────────────────────────────────────────────────
+// ── Mode 3 — Drifting caustic ─────────────────────────────────────────────────
 // 7 waves each drifting at a different rate; cos(I·3π) sharpens into bands.
 vec3 mode3(vec2 uv) {
   float I = 0.0, H = 0.0;

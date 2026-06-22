@@ -42,14 +42,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <summary>Mode index</summary>
 
         <div class="shape-desc">
-          <strong>0. Wave · anisotropic.</strong>
+          <strong>Anisotropic wave</strong>
           <p>Twelve cosine plane waves at equal angular intervals, with the {"\\(x\\)"}-axis compressed by {"\\(0.4\\times\\)"} before computing dot products.
           The compression concentrates fringes horizontally and stretches them vertically — the same mechanism as a diffraction grating producing elongated spectra.
           Hue is assigned by {"\\(H = x \\cdot 0.8 + I\\pi\\)"}, so a left-to-right color sweep is modulated by the interference value at each pixel.</p>
         </div>
 
         <div class="shape-desc">
-          <strong>1. Phase portrait.</strong>
+          <strong>Normal phase portrait</strong>
           <p>32 waveform samples are plotted as {"\\((w(t),\\, w(t + \\tau))\\)"} where {"\\(\\tau\\)"} cycles through four lag values {"\\(\\pm 0.07\\)"} and {"\\(\\pm 0.18\\)"}.
           A Gaussian density kernel accumulates over all points, so regions the signal visits often are brighter.
           Sustained tones trace closed ellipses; percussive transients produce short jagged bursts.
@@ -57,36 +57,36 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </div>
 
         <div class="shape-desc">
-          <strong>2. Crystal · drift.</strong>
+          <strong>Drifting caustic</strong>
           <p>Seven heptagonal waves each receive an independent phase offset {"\\(\\phi_k(t) = (k+1) \\cdot 0.73 \\cdot t\\)"} rather than a shared time term.
           Because the drift rates are incommensurable, the pattern never exactly repeats — it samples an orbit on a seven-torus.
           The interference sum is passed through {"\\(\\frac{1}{2} + \\frac{1}{2}\\cos(I \\cdot 3\\pi)\\)"}, re-introducing three bands of high-contrast structure within the slowly morphing field.</p>
         </div>
 
         <div class="shape-desc">
-          <strong>3. Spectrogram.</strong>
+          <strong>Spectrogram</strong>
           <p>The 256 FFT bins are arranged left to right (bass to treble); 256 frames of history scroll upward at 60 fps, covering roughly 4 seconds.
           Hue maps from warm red at the bass end to cool cyan at the treble end.
           Amplitude sets both lightness and chroma, so silence is black and a full-amplitude bin reaches maximum gamut chroma.</p>
         </div>
 
         <div class="shape-desc">
-          <strong>4. Circular spectrogram.</strong>
-          <p>The spectrogram is mirrored left and right about the centre meridian.
-          Latitude encodes frequency — bass at the top and bottom, treble near the vertical middle — and the top and bottom halves carry the L and R channels respectively.
-          Distance from the centre meridian encodes time: the centre column holds the current frame, and history fans out toward the left and right edges.
+          <strong>Bilateral spectrogram</strong>
+          <p>The spectrogram is mirrored left and right about the centre column.
+          Vertical position encodes frequency — bass at the top and bottom, treble near the vertical middle — and the top and bottom halves carry the L and R channels respectively.
+          Distance from the centre column encodes time: the centre holds the current frame, and history fans out toward the left and right edges.
           Hue rotates through a full cycle every ten seconds.</p>
         </div>
 
         <div class="shape-desc">
-          <strong>5. Radial spectrum · hue.</strong>
-          <p>128 FFT bins appear as vertical meridian bands, mirrored symmetrically left and right.
-          Bass concentrates at the centre meridian; treble fans out to the left and right edges.
+          <strong>Spectral hue</strong>
+          <p>128 FFT bins appear as vertical frequency bands, mirrored symmetrically left and right.
+          Bass concentrates at the centre; treble fans out to the left and right edges.
           Each band's hue encodes its amplitude — cool blue when quiet, warm orange when loud.</p>
         </div>
 
         <div class="shape-desc">
-          <strong>6. Radial spectrum · hue + L.</strong>
+          <strong>Spectral hue-lightness</strong>
           <p>Like mode 5, but lightness also tracks amplitude — quiet bands are dim and cool-tinted, loud bands are bright and warm.
           Frequencies that surge in the mix glow visibly against the darker surrounding bands.</p>
         </div>

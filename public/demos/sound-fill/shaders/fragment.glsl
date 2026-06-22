@@ -90,7 +90,7 @@ vec3 mode0(vec2 nUV) {
   return oklch(L, C, H);
 }
 
-// ── Mode 1 — Wave · anisotropic ───────────────────────────────────────────────
+// ── Mode 1 — Anisotropic wave ─────────────────────────────────────────────────
 // 12 plane waves; x compressed 0.4×. Pixel x-position sweeps hue left-to-right.
 vec3 mode1(vec2 uv) {
   vec2  uvS = vec2(uv.x * 0.4, uv.y);
@@ -108,7 +108,7 @@ vec3 mode1(vec2 uv) {
   return oklch(L, maxChroma(L, H) * 0.9, H);
 }
 
-// ── Mode 2 — Phase portrait ───────────────────────────────────────────────────
+// ── Mode 2 — Normal phase portrait ───────────────────────────────────────────
 // Four lag values (±0.07, ±0.18) spread trajectory across all orientations.
 vec3 mode2(vec2 uv) {
   float density = 0.0;
@@ -139,7 +139,7 @@ vec3 mode2(vec2 uv) {
   return oklch(L, maxChroma(L, H) * density * 0.9, H);
 }
 
-// ── Mode 3 — Crystal · drift ──────────────────────────────────────────────────
+// ── Mode 3 — Drifting caustic ─────────────────────────────────────────────────
 // 7 waves each drifting at a different rate; cos(I·3π) sharpens into bands.
 vec3 mode3(vec2 uv) {
   float I = 0.0, H = 0.0;
@@ -160,9 +160,9 @@ vec3 mode3(vec2 uv) {
   return oklch(L, maxChroma(L, H) * 0.9 * I2, H);
 }
 
-// ── Mode 4 — Circular spectrogram · hemispheres ──────────────────────────────
-// Latitude encodes frequency/L-R; longitude from centre encodes time.
-// Centre meridian = newest frame; left/right edges = oldest history.
+// ── Mode 4 — Bilateral spectrogram ───────────────────────────────────────────
+// Mirrored left/right. Vertical position encodes frequency/L-R; horizontal
+// distance from centre encodes time — centre = newest, edges = oldest history.
 vec3 mode4(vec2 nUV) {
   float theta = nUV.y * 2.0 * PI;
   float r     = abs(nUV.x - 0.5) * 2.0;   // 0=centre(newest), 1=edges(oldest)
@@ -177,8 +177,8 @@ vec3 mode4(vec2 nUV) {
   return oklch(L, C, H);
 }
 
-// ── Mode 5 — Radial spectrum · hue · hemispheres ─────────────────────────────
-// 128 FFT bins as meridian bands mirrored left/right. Bass at centre, treble at edges.
+// ── Mode 5 — Spectral hue ─────────────────────────────────────────────────────
+// 128 FFT bins as vertical frequency bands mirrored left/right. Bass at centre, treble at edges.
 vec3 mode5(vec2 nUV) {
   float rLon = abs(nUV.x - 0.5) * 2.0;   // 0=centre(bass), 1=edges(treble)
   float gSum = 0.0, hAcc = 0.0;
@@ -198,8 +198,8 @@ vec3 mode5(vec2 nUV) {
   return oklch(L, C, H);
 }
 
-// ── Mode 6 — Radial spectrum · hue + L · hemispheres ─────────────────────────
-// 128 FFT bins as meridian bands mirrored left/right; hue and lightness encode amplitude.
+// ── Mode 6 — Spectral hue-lightness ──────────────────────────────────────────
+// 128 FFT bins as vertical frequency bands mirrored left/right; hue and lightness encode amplitude.
 vec3 mode6(vec2 nUV) {
   float rLon = abs(nUV.x - 0.5) * 2.0;
   float gSum = 0.0, hAcc = 0.0, ampAcc = 0.0;

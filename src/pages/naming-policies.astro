@@ -1,0 +1,168 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout title="Naming policies" slug="naming-policies">
+
+<style>
+  .ref-block {
+    max-width: 900px;
+    margin: 0 0 3.5rem 1.5rem;
+  }
+  .ref-block h2 {
+    font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--fg);
+    margin-bottom: 0.4rem;
+  }
+  .ref-block .section-note {
+    font-size: 0.82rem; color: var(--fg-muted); margin-bottom: 1rem;
+  }
+
+  .vocab-group { margin-top: 1.8rem; }
+  .vocab-heading {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: -0.005em;
+    color: var(--fg); margin-bottom: 0.3rem;
+  }
+  .vocab-grid {
+    display: grid;
+    grid-template-columns: 14ch 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+  .vocab-grid .vt,
+  .vocab-grid .vd {
+    font-size: 0.82rem; line-height: 1.55;
+    padding: 0.32rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .vocab-grid .vt {
+    font-family: var(--font-code);
+    color: var(--fg);
+    padding-right: 1rem;
+  }
+  .vocab-grid .vd { color: var(--fg-muted); }
+  .vocab-grid .vd em { font-style: italic; color: var(--fg); }
+  .vocab-grid-prohibited .vt { color: var(--fg-muted); opacity: 0.55; }
+  .vt-bad { text-decoration: line-through; text-decoration-color: currentColor; }
+
+  .policy-list {
+    list-style: decimal; padding-left: 1.4rem;
+    margin-top: 0.8rem;
+  }
+  .policy-list li {
+    font-size: 0.82rem; line-height: 1.65; color: var(--fg-muted);
+    margin-bottom: 0.55rem;
+  }
+  .policy-list li strong { color: var(--fg); font-weight: 600; }
+</style>
+
+<div class="monologue">
+  While not essential, naming things carefully helps with structuring and tracking thoughts.
+</div>
+
+<div class="ref-block">
+  <h2>Naming policies</h2>
+  <ol class="policy-list">
+    <li><strong>Clear.</strong> The name should be self-explanatory without needing to see the thing. Avoid abbreviations and acronyms unless they are established mathematical notation.</li>
+    <li><strong>Mathematically true.</strong> The name should reflect what is actually happening in the formula — the underlying surface type, the operation, the parameter that varies. Don't describe the visual impression if a more precise term exists.</li>
+    <li><strong>No metaphor or poetic language.</strong> Names describe geometry and motion, not mood or feeling. "Oscillating" not "breathing". "Vertical compression" not "squash" if a more precise term fits.</li>
+    <li><strong>Distinct.</strong> No two names in the same category should be confusable or interchangeable. If two names could plausibly describe the same thing, at least one needs revision.</li>
+    <li><strong>Consistent patterns within families.</strong> If several items share the same base formula or the same motion type, that relationship must be visible in the name. Don't vary the word for the same concept across entries.</li>
+    <li><strong>[Modifier · base] structure for animated surfaces.</strong> Every animated surface name follows exactly <em>[present-participle motion] [mathematical shape noun]</em> — e.g., "Oscillating paraboloid", "Pulsing sphere". Word order is fixed; no exceptions without a documented reason (e.g., the surface is a recognised mathematical proper noun).</li>
+    <li><strong>Prefer established mathematical terminology for base shapes.</strong> If the mathematical literature has a name for the surface or structure (paraboloid, hyperboloid, gyroid, lemniscate), use it. Don't substitute an informal synonym ("bowl", "donut", "figure-eight") when a precise term exists.</li>
+    <li><strong>No root reuse across different phenomena.</strong> The same root word must not appear in names for conceptually unrelated things. If "ripple" names the static radially-decaying cosine surface, the same root cannot be used to describe animation on a torus or an outward-traveling wave.</li>
+  </ol>
+</div>
+
+<!-- ── Vocabularies ───────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Vocabularies</h2>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Base shape nouns</h3>
+    <p class="section-note">The mathematical name of the underlying surface. Used as the final noun in an animated surface name.</p>
+    <div class="vocab-grid">
+      <span class="vt">paraboloid</span>
+      <span class="vd">Quadratic surface opening in one direction; includes elliptic and hyperbolic variants</span>
+      <span class="vt">hyperboloid</span>
+      <span class="vd">One-sheet ruled quadratic surface; x² + z² − y² = c</span>
+      <span class="vt">ellipsoid</span>
+      <span class="vd">Triaxially scaled sphere; all quadratic terms positive</span>
+      <span class="vt">sphere</span>
+      <span class="vd">Zero set of x² + y² + z² = r²</span>
+      <span class="vt">torus</span>
+      <span class="vd">Surface of revolution of a circle; defined by major and tube radii</span>
+      <span class="vt">cone</span>
+      <span class="vd">Ruled quadratic surface with a vertex; x² + z² = y²</span>
+      <span class="vt">saddle</span>
+      <span class="vd">Hyperbolic paraboloid or higher-degree saddle-type surface</span>
+      <span class="vt">Gaussian</span>
+      <span class="vd">Surface whose equation contains e^(−r²/σ²); bell-curve profile</span>
+      <span class="vt">cubic</span>
+      <span class="vd">Algebraic surface of degree 3</span>
+      <span class="vt">quartic</span>
+      <span class="vd">Algebraic surface of degree 4</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Proper mathematical names</h3>
+    <p class="section-note">Recognised names from the literature. Use as-is; do not paraphrase or translate.</p>
+    <div class="vocab-grid">
+      <span class="vt">gyroid</span>
+      <span class="vd">Triply periodic minimal surface; cos(x)sin(y) + cos(y)sin(z) + cos(z)sin(x) = 0</span>
+      <span class="vt">Schwartz P</span>
+      <span class="vd">Triply periodic minimal surface; cos(2x) + cos(2y) + cos(2z) = c</span>
+      <span class="vt">Schoen I-WP</span>
+      <span class="vd">Triply periodic surface; cos(2x)cos(2y) + cos(2y)cos(2z) + cos(2z)cos(2x) = c</span>
+      <span class="vt">lemniscate</span>
+      <span class="vd">Figure-eight curve of revolution; (x²+y²+z²)² = a²(x²−z²)</span>
+      <span class="vt">Chmutov T₄</span>
+      <span class="vd">Degree-4 surface from Chebyshev polynomials T₄; T₄(x)+T₄(y)+T₄(z) = 0</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Animation participles</h3>
+    <p class="section-note">Present-participle words describing what the time parameter is doing. Used as the leading modifier in an animated surface name.</p>
+    <div class="vocab-grid">
+      <span class="vt">oscillating</span>
+      <span class="vd">A scalar parameter alternates sign periodically; e.g., amplitude goes positive → negative → positive</span>
+      <span class="vt">pulsing</span>
+      <span class="vd">A magnitude varies periodically while staying positive; e.g., radius or height swells and contracts</span>
+      <span class="vt">traveling</span>
+      <span class="vd">A spatial feature (wave front, peak) translates through space; the surface moves, not just deforms</span>
+      <span class="vt">rotating</span>
+      <span class="vd">Angular position increases monotonically; the surface or a feature spins</span>
+      <span class="vt">drifting</span>
+      <span class="vd">A parameter shifts slowly and continuously without periodicity; no return to origin</span>
+      <span class="vt">tilting</span>
+      <span class="vd">The orientation angle of the surface varies; a rotation that reverses rather than spins continuously</span>
+      <span class="vt">alternating</span>
+      <span class="vd">The surface transitions between two discrete configurations; a binary oscillation</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Spatial qualifiers</h3>
+    <p class="section-note">Adjectives or adverbs that specify the geometry of a feature — used when the base noun alone is ambiguous.</p>
+    <div class="vocab-grid">
+      <span class="vt">radial</span>
+      <span class="vd">Depends only on r = √(x²+z²); rotationally symmetric about the vertical axis</span>
+      <span class="vt">axial</span>
+      <span class="vd">Varies along the primary (vertical) axis; independent of angle</span>
+      <span class="vt">angular</span>
+      <span class="vd">Depends on azimuthal angle θ; periodic in θ</span>
+      <span class="vt">transverse</span>
+      <span class="vd">Perpendicular to the primary axis or wave direction</span>
+      <span class="vt">sinusoidal</span>
+      <span class="vd">Profile follows a sin or cos function; use when the wave shape itself is the defining feature</span>
+      <span class="vt">triply periodic</span>
+      <span class="vd">Repeating in all three spatial directions; reserved for minimal surfaces and their relatives</span>
+    </div>
+  </div>
+
+</div>
+
+</PageLayout>

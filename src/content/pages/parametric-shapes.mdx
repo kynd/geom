@@ -18,7 +18,7 @@ So, which geometric shapes make up our vocabulary? Let's start with the obvious�
 </div>
 <div class="prose">
 <p>
-  Each shape above is defined by a signed distance function — one of the 3D SDFs collected by{' '}
+  Each shape above is defined by a <a href="https://www.kynd.info/writing/signed-distance-functions/" target="_blank" rel="noopener">signed distance function</a> — one of the 3D SDFs collected by{' '}
   <a href="https://iquilezles.org/articles/distfunctions/" target="_blank" rel="noopener">Inigo Quilez</a>.
   The GPU evaluates millions of these functions per frame to produce the image.
 </p>
@@ -79,7 +79,7 @@ Or Platonic solids…
 </section>
 
 <div class="monologue">
-Or we can leave behind piecewise constructions for geometry born function-first, defined entirely by continuous, differentiable equations…
+Or we can leave behind piecewise constructions for geometry born function-first, defined entirely by continuous, differentiable equations, which feels more true to our <a href={`${base}/#rules-tentative`}>rules</a>.
 </div>
 
 <section class="demo-section" id="scalar-fields">
@@ -148,7 +148,7 @@ Or we can leave behind piecewise constructions for geometry born function-first,
 <summary>Shape index</summary>
 
 <div class="shape-desc">
-<strong>1. Traveling ripple.</strong>
+<strong>Traveling ripple</strong>
 
 {"\\("}y = e^&#123;-r&#125; \cos(5r - 2t){"\\)"}, {"\\("}r = \sqrt&#123;x^2+z^2&#125;{"\\)"}.
 A damped standing wave whose phase {"\\("}2t{"\\)"} advances with time, so the crests
@@ -157,7 +157,7 @@ at large radius, keeping the shape compact.
 </div>
 
 <div class="shape-desc">
-<strong>2. Rippling torus.</strong>
+<strong>Rippling torus</strong>
 
 {"\\("}(\sqrt&#123;x^2+z^2&#125; - R(t))^2 + y^2 = r_t(\theta,t)^2{"\\)"}.
 The major radius {"\\("}R{"\\)"} breathes with two beating frequencies. The tube radius {"\\("}r_t{"\\)"} varies
@@ -166,7 +166,7 @@ directions, creating a surface that writhes and shifts without any single repeat
 </div>
 
 <div class="shape-desc">
-<strong>3. Wave sheet.</strong>
+<strong>Wave sheet</strong>
 
 {"\\("}y = \sin(2x + t)\cos(2z + 0.7t){"\\)"}.
 A product of two traveling sinusoids, one in {"\\("}x{"\\)"} and one in {"\\("}z{"\\)"}, each with its own phase velocity.
@@ -176,7 +176,7 @@ the surface rises to a local maximum.
 </div>
 
 <div class="shape-desc">
-<strong>4. Pulsing sphere.</strong>
+<strong>Pulsing sphere</strong>
 
 {"\\("}|p| = r_0 + A(t)\,P_2(\cos\theta){"\\)"}.
 Rather than inflating uniformly, the radius varies with the second Legendre polynomial {"\\("}P_2{"\\)"},
@@ -186,7 +186,7 @@ with {"\\("}A(t){"\\)"} driven by two incommensurate frequencies so the oscillat
 </div>
 
 <div class="shape-desc">
-<strong>5. Oscillating saddle.</strong>
+<strong>Oscillating saddle</strong>
 
 {"\\("}y = A(t)(x^2 - z^2){"\\)"},
 {"\\("}A(t) = 0.70 + 0.30\sin(0.75t){"\\)"}.
@@ -196,7 +196,7 @@ flattens to the {"\\("}xz{"\\)"}-plane before curving back the other way.
 </div>
 
 <div class="shape-desc">
-<strong>6. Gyroid.</strong>
+<strong>Gyroid</strong>
 
 {"\\("}\\cos(kx)\\sin(ky) + \\cos(ky)\\sin(kz) + \\cos(kz)\\sin(kx) = 0{"\\)"},
 {"\\("}k(t) = 1.45 + 0.42\sin(0.5t){"\\)"}.
@@ -206,7 +206,7 @@ a smaller {"\\("}k{"\\)"} opens them up. The gyroid has no straight lines and no
 </div>
 
 <div class="shape-desc">
-<strong>7. Schwartz P.</strong>
+<strong>Schwartz P</strong>
 
 {"\\("}\\cos 2x + \\cos 2y + \\cos 2z = c(t){"\\)"},
 {"\\("}c(t) = 0.88\sin(0.55t){"\\)"}.
@@ -217,7 +217,7 @@ At {"\\("}c = \pm 3{"\\)"} the surface degenerates to three sets of parallel pla
 </div>
 
 <div class="shape-desc">
-<strong>8. Lemniscate surface.</strong>
+<strong>Lemniscate surface</strong>
 
 {"\\("}(x^2+y^2+z^2)^2 = a(t)^2(x^2 - z^2){"\\)"}.
 The 3D analogue of the figure-eight lemniscate of Bernoulli.
@@ -227,7 +227,7 @@ As {"\\("}a{"\\)"} oscillates the lobes expand and contract.
 </div>
 
 <div class="shape-desc">
-<strong>9. Swaying ellipsoid.</strong>
+<strong>Swaying ellipsoid</strong>
 
 {"\\("}x'^2/a^2 + y'^2/b^2 + z'^2/c^2 = 1{"\\)"}, with {"\\("}(x', y'){"\\)"} rotated by {"\\("}\phi(t){"\\)"}.
 The ellipsoid is elongated along its {"\\("}y{"\\)"}-axis. That long axis slowly tilts back and forth by
@@ -237,7 +237,7 @@ rates, so the motion never locks into a periodic cycle.
 </div>
 
 <div class="shape-desc">
-<strong>10. Tanglecube.</strong>
+<strong>Tanglecube</strong>
 
 {"\\("}x^4 - 5x^2 + y^4 - 5y^2 + z^4 - 5z^2 + c(t) = 0{"\\)"}.
 A degree-4 algebraic surface named for the tangle of its topology.
@@ -247,7 +247,7 @@ are present and whether they are connected.
 </div>
 
 <div class="shape-desc">
-<strong>11. Chmutov T₄ surface.</strong>
+<strong>Chmutov T₄ surface</strong>
 
 {"\\("}T_4(sx) + T_4(sy) + T_4(sz) = 0{"\\)"},
 {"\\("}T_4(u) = 8u^4 - 8u^2 + 1{"\\)"} (the 4th Chebyshev polynomial), {"\\("}s(t){"\\)"} oscillates.
@@ -257,7 +257,7 @@ Scaling {"\\("}s{"\\)"} morphs it between an angular multi-lobed form and a smoo
 </div>
 
 <div class="shape-desc">
-<strong>12. Rippled cone.</strong>
+<strong>Rippled cone</strong>
 
 {"\\("}x^2 + z^2 = (y + A\sin(4y - t))^2{"\\)"}.
 A cone {"\\("}x^2+z^2 = y^2{"\\)"} with the axial coordinate deformed by a sinusoidal ripple
@@ -266,7 +266,7 @@ creating travelling pinch-points that climb the axis.
 </div>
 
 <div class="shape-desc">
-<strong>13. Pulsing Gaussian.</strong>
+<strong>Pulsing Gaussian</strong>
 
 {"\\("}y = A(t)\,e^&#123;-r^2/\sigma(t)^2&#125;{"\\)"}, {"\\("}r = \sqrt&#123;x^2+z^2&#125;{"\\)"}.
 A radially symmetric bump whose height {"\\("}A{"\\)"} and width {"\\("}\\sigma{"\\)"} oscillate at different rates.
@@ -275,7 +275,7 @@ Because {"\\("}A{"\\)"} and {"\\("}\\sigma{"\\)"} beat against each other, the b
 </div>
 
 <div class="shape-desc">
-<strong>14. Schoen I-WP surface.</strong>
+<strong>Schoen I-WP surface</strong>
 
 {"\\("}\\cos 2x\,\\cos 2y + \\cos 2y\,\\cos 2z + \\cos 2z\,\\cos 2x = c(t){"\\)"}.
 Like the Schwartz P, this is a triply periodic surface — but from a different symmetry family.
@@ -285,7 +285,7 @@ the balanced minimal surface and thickened or thinned versions of its two labyri
 </div>
 
 <div class="shape-desc">
-<strong>15. Saddle blend.</strong>
+<strong>Saddle blend</strong>
 
 {"\\("}y = x^2 - z^2 + A(t)\,xz{"\\)"}.
 The term {"\\("}x^2-z^2{"\\)"} is a saddle with principal curvatures along {"\\("}x{"\\)"} and {"\\("}z{"\\)"}.
@@ -294,7 +294,7 @@ the axes have rotated {"\\("}45°{"\\)"}. As {"\\("}A{"\\)"} oscillates the sadd
 </div>
 
 <div class="shape-desc">
-<strong>16. Twisted torus.</strong>
+<strong>Twisted torus</strong>
 
 Tube radius {"\\("}r(\theta, t) = r_0 + \varepsilon\sin(4\theta - t){"\\)"}.
 A standard torus has uniform tube radius. Here the tube is pinched and bulged
@@ -303,7 +303,7 @@ rotates with time. The resulting surface has four bulges chasing each other in a
 </div>
 
 <div class="shape-desc">
-<strong>17. Bumpy sphere.</strong>
+<strong>Bumpy sphere</strong>
 
 {"\\("}|p| = 1 + A\sin(3\lambda - t)\sin(2\varphi){"\\)"}, where {"\\("}\\lambda{"\\)"} is longitude and {"\\("}\\varphi{"\\)"} is latitude.
 A sphere with a spherical-harmonic-like bump pattern that rotates about the polar axis.
@@ -312,7 +312,7 @@ the {"\\("}\\sin 3\\lambda{"\\)"} gives three bumps per latitude circle.
 </div>
 
 <div class="shape-desc">
-<strong>18. Wavy hyperboloid.</strong>
+<strong>Wavy hyperboloid</strong>
 
 {"\\("}x^2(1 + A\sin(2.8y - t)) + z^2 - y^2 = 0.40{"\\)"}.
 A one-sheet hyperboloid {"\\("}x^2+z^2-y^2 = c{"\\)"} has circular cross-sections. Here the {"\\("}x^2{"\\)"}
@@ -322,7 +322,7 @@ hyperboloid with standing waves pressed into it.
 </div>
 
 <div class="shape-desc">
-<strong>19. Permuted cubic.</strong>
+<strong>Permuted cubic</strong>
 
 {"\\("}x^2 y + y^2 z + z^2 x = A(t){"\\)"}.
 A cyclic cubic: the monomials {"\\("}x^2 y, y^2 z, z^2 x{"\\)"} are related by the cyclic permutation
@@ -331,7 +331,7 @@ As {"\\("}A{"\\)"} oscillates the surface swells and tightens around the symmetr
 </div>
 
 <div class="shape-desc">
-<strong>20. Flipping paraboloid.</strong>
+<strong>Flipping paraboloid</strong>
 
 {"\\("}y = \sin(t)\,x^2 + \cos(t + \varphi)\,z^2{"\\)"}.
 As {"\\("}t{"\\)"} advances, {"\\("}a = \sin(t){"\\)"} and {"\\("}b = \cos(t+\varphi){"\\)"} independently sweep through positive
@@ -343,4 +343,27 @@ a degenerate parabolic cylinder each time one coefficient crosses zero.
 </details>
 </div>
 
+</section>
+
+<section class="demo-section" id="scalar-blend">
+<div class="demo-header">
+<h2>Scalar field blend</h2>
+<a href={`${base}/demos/scalar-blend/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+</div>
+<div class="demo-embed">
+<iframe src={`${base}/demos/scalar-blend/index.html?embedded`} title="Scalar field blend" scrolling="no" allow="autoplay"></iframe>
+</div>
+<div class="prose">
+<p>
+  Pick any two surfaces from the full catalogue — static or moving — and drag the slider between them.
+  At every point in space the shader evaluates both field functions and linearly interpolates the result:
+  {"\\(F_{\\text{blend}}(p) = (1-t)\\,F_A(p) + t\\,F_B(p)\\)"}. The zero set of this blended field
+  is a new surface that continuously deforms from one to the other as {"\\(t\\)"} goes from 0 to 1.
+</p>
+<p>
+  Because the field values are interpolated rather than the surfaces themselves, the topology can change
+  mid-blend — handles can appear or disappear, sheets can split or merge — wherever the level sets of
+  {"\\(F_A\\)"} and {"\\(F_B\\)"} happen to intersect.
+</p>
+</div>
 </section>

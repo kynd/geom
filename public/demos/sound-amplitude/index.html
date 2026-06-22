@@ -39,8 +39,6 @@
     .ctrl-select { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; padding: 0 28px 0 10px; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; height: 36px; }
     .ctrl-select:hover { border-color: rgba(255,255,255,0.40); }
     .ctrl-select option, .ctrl-select optgroup { background: #111; color: #fff; }
-    #sound-select { font-family: 'Google Sans Code', monospace; font-size: 12px; height: 48px; padding: 0 32px 0 12px; border-radius: 4px; }
-
     .param-row { display: flex; align-items: center; gap: 10px; }
     .param-label { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 300; color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase; width: 52px; text-align: right; }
     .param-val { font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.38); width: 32px; }
@@ -48,20 +46,15 @@
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; }
     input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; border: none; }
 
-    #param-panel {
-      position: absolute; top: 88px; right: 32px;
-      display: flex; flex-direction: column; gap: 10px;
-      pointer-events: all;
-    }
+    #bottom-left { position: absolute; left: 32px; bottom: 56px; display: flex; flex-direction: column; gap: 16px; pointer-events: all; }
+    #param-panel { display: flex; flex-direction: column; gap: 10px; }
     .param-set { display: none; flex-direction: column; gap: 8px; }
     .param-set.active { display: flex; }
 
     #bloom-controls { position: absolute; bottom: 32px; right: 32px; display: flex; flex-direction: column; gap: 10px; pointer-events: all; }
     .bloom-heading { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase; text-align: right; margin-bottom: 2px; }
 
-    #label { position: absolute; left: 56px; bottom: 56px; pointer-events: none; }
-    #label .label-name { font-family: 'Sora', sans-serif; font-size: 12px; color: #fff; }
-    #label .label-fn   { font-family: 'Google Sans Code', monospace; font-size: 12px; color: rgba(255,255,255,0.50); margin-top: 2px; }
+    #bottom-controls { display: flex; flex-direction: column; gap: 8px; }
   </style>
 </head>
 <body>
@@ -70,35 +63,6 @@
     <div id="overlay">
 
       <div id="ctrl-bar">
-        <select id="category-select" class="ctrl-select">
-          <option value="sdf">SDF shapes</option>
-          <option value="platonic" selected>Platonic</option>
-          <option value="scalar">Scalar fields</option>
-          <option value="moving">Moving scalar</option>
-        </select>
-        <select id="shape-select" class="ctrl-select"></select>
-        <div class="ctrl-sep"></div>
-        <select id="deform-select" class="ctrl-select">
-          <option value="1">Inflate</option>
-          <option value="2">Squash</option>
-          <option value="3" selected>Spikes</option>
-        </select>
-        <div class="ctrl-sep"></div>
-        <select id="lighting-select" class="ctrl-select">
-          <option value="0">Rim</option>
-          <option value="1">Flash</option>
-          <option value="2">Env</option>
-          <optgroup label="Fill">
-            <option value="3">Wave · anisotropic</option>
-            <option value="4">Phase portrait</option>
-            <option value="5">Crystal · drift</option>
-            <option value="6">Spectrogram</option>
-            <option value="7">Bilateral spectrogram</option>
-            <option value="8">Spectral bands · hue</option>
-            <option value="9">Spectral bands · hue + L</option>
-          </optgroup>
-        </select>
-        <div class="ctrl-sep"></div>
         <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias</button>
         <button id="play-btn" aria-label="Play"></button>
         <select id="sound-select" class="ctrl-select">
@@ -113,35 +77,65 @@
         </select>
       </div>
 
-      <div id="param-panel">
-        <!-- 1: Inflate -->
-        <div class="param-set" data-mode="1">
-          <div class="param-row">
-            <span class="param-label">Intensity</span>
-            <input type="range" id="p1-inflate" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="0.38">
-            <span class="param-val" id="p1-inflate-val">0.38</span>
+      <div id="bottom-left">
+        <div id="param-panel">
+          <!-- 1: Radial expansion -->
+          <div class="param-set" data-mode="1">
+            <div class="param-row">
+              <span class="param-label">Intensity</span>
+              <input type="range" id="p1-inflate" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="0.38">
+              <span class="param-val" id="p1-inflate-val">0.38</span>
+            </div>
+          </div>
+          <!-- 2: Axial compression -->
+          <div class="param-set" data-mode="2">
+            <div class="param-row">
+              <span class="param-label">Width</span>
+              <input type="range" id="p1-squash" data-uniform="u_deformP1" min="0" max="4" step="0.02" value="0.38">
+              <span class="param-val" id="p1-squash-val">0.38</span>
+            </div>
+            <div class="param-row">
+              <span class="param-label">Height</span>
+              <input type="range" id="p2-squash" data-uniform="u_deformP2" min="0" max="4" step="0.02" value="0.55">
+              <span class="param-val" id="p2-squash-val">0.55</span>
+            </div>
+          </div>
+          <!-- 3: Normal extrusion -->
+          <div class="param-set active" data-mode="3">
+            <div class="param-row">
+              <span class="param-label">Intensity</span>
+              <input type="range" id="p1-spikes" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="0.55">
+              <span class="param-val" id="p1-spikes-val">0.55</span>
+            </div>
           </div>
         </div>
-        <!-- 2: Squash -->
-        <div class="param-set" data-mode="2">
-          <div class="param-row">
-            <span class="param-label">Width</span>
-            <input type="range" id="p1-squash" data-uniform="u_deformP1" min="0" max="4" step="0.02" value="0.38">
-            <span class="param-val" id="p1-squash-val">0.38</span>
-          </div>
-          <div class="param-row">
-            <span class="param-label">Height</span>
-            <input type="range" id="p2-squash" data-uniform="u_deformP2" min="0" max="4" step="0.02" value="0.55">
-            <span class="param-val" id="p2-squash-val">0.55</span>
-          </div>
-        </div>
-        <!-- 3: Spikes -->
-        <div class="param-set active" data-mode="3">
-          <div class="param-row">
-            <span class="param-label">Intensity</span>
-            <input type="range" id="p1-spikes" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="0.55">
-            <span class="param-val" id="p1-spikes-val">0.55</span>
-          </div>
+        <div id="bottom-controls">
+          <select id="category-select" class="ctrl-select">
+            <option value="sdf">SDF shapes</option>
+            <option value="platonic" selected>Platonic</option>
+            <option value="scalar">Scalar fields</option>
+            <option value="moving">Moving scalar</option>
+          </select>
+          <select id="shape-select" class="ctrl-select"></select>
+          <select id="deform-select" class="ctrl-select">
+            <option value="1">Radial expansion</option>
+            <option value="2">Axial compression</option>
+            <option value="3" selected>Normal extrusion</option>
+          </select>
+          <select id="lighting-select" class="ctrl-select">
+            <option value="0">Rim lighting</option>
+            <option value="1">Amplitude flash</option>
+            <option value="2">Environment map</option>
+            <optgroup label="Fill">
+              <option value="3">Anisotropic wave</option>
+              <option value="4">Normal phase portrait</option>
+              <option value="5">Drifting caustic</option>
+              <option value="6">Spectrogram</option>
+              <option value="7">Bilateral spectrogram</option>
+              <option value="8">Spectral hue</option>
+              <option value="9">Spectral hue-lightness</option>
+            </optgroup>
+          </select>
         </div>
       </div>
 
@@ -159,10 +153,6 @@
         </div>
       </div>
 
-      <div id="label">
-        <div class="label-name">Amplitude</div>
-        <div class="label-fn">inflate · squash · spikes</div>
-      </div>
 
     </div>
   </div>

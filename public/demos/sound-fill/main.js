@@ -15,13 +15,13 @@ const TRACKS = [
 ];
 
 const MODE_NAMES = [
-  'Wave · anisotropic',
-  'Phase portrait',
-  'Crystal · drift',
+  'Anisotropic wave',
+  'Normal phase portrait',
+  'Drifting caustic',
   'Spectrogram',
-  'Circular spectrogram',
-  'Radial spectrum · hue',
-  'Radial spectrum · hue + L',
+  'Bilateral spectrogram',
+  'Spectral hue',
+  'Spectral hue-lightness',
 ];
 
 const MODE_DESCS = [
@@ -29,9 +29,9 @@ const MODE_DESCS = [
   'Waveform plotted against four delayed copies. Density reveals where the phase-space trajectory lingers.',
   '7 waves each drifting at a different rate. Nested cosine re-maps the sum into sharp bands.',
   'Frequency on x, time scrolling upward. Bass maps to warm red, treble to cool cyan.',
-  'Spectrogram mirrored left and right. Latitude encodes frequency; distance from the centre meridian encodes time — centre = now, edges = history. L channel top, R channel bottom.',
-  '128 FFT bins as vertical meridian bands, mirrored left/right. Bass at the centre, treble at the left and right edges. Hue encodes amplitude — cool for quiet, warm for loud.',
-  'Like radial spectrum · hue, with lightness also tracking amplitude. Quiet bands are dim and cool, loud bands are bright and warm.',
+  'Spectrogram mirrored left and right. Vertical position encodes frequency; distance from the centre meridian encodes time — centre = now, edges = history. L channel top, R channel bottom.',
+  '128 FFT bins as vertical frequency bands, mirrored left/right. Bass at the centre, treble at the left and right edges. Hue encodes amplitude — cool for quiet, warm for loud.',
+  'Like spectral bands · hue, with lightness also tracking amplitude. Quiet bands are dim and cool, loud bands are bright and warm.',
 ];
 
 const CYCLE_INTERVAL = 9000;

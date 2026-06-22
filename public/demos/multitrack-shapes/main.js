@@ -20,30 +20,30 @@ const PLATONIC_PAIRS = [
 ];
 const SCALAR_SURFACES = [
   'Elliptic paraboloid','Hyperbolic paraboloid','Cone','Sphere','Torus',
-  'Hyperboloid','Monkey saddle','Wave surface','Ripple','Ellipsoid',
+  'Hyperboloid','Monkey saddle','Sinusoidal surface','Radial damped cosine','Ellipsoid',
 ];
 const MOVING_SHAPES = [
-  'Traveling ripple','Rippling torus','Wave sheet','Pulsing sphere',
-  'Oscillating saddle','Gyroid','Schwartz P','Lemniscate surface',
-  'Swaying ellipsoid','Tanglecube','Chmutov T₄','Rippled cone',
-  'Pulsing Gaussian','Schoen I-WP','Saddle blend','Twisted torus',
-  'Bumpy sphere','Wavy hyperboloid','Permuted cubic','Flipping paraboloid',
+  'Traveling radial damped cosine','Pulsing torus','Traveling sinusoidal surface','Oscillating spheroid',
+  'Pulsing saddle','Pulsing gyroid','Oscillating Schwartz P','Pulsing lemniscate',
+  'Tilting ellipsoid','Pulsing tanglecube','Pulsing Chmutov T₄','Traveling sinusoidal cone',
+  'Pulsing Gaussian','Oscillating Schoen I-WP','Tilting saddle','Rotating torus',
+  'Rotating harmonic sphere','Traveling hyperboloid','Pulsing cyclic cubic','Rotating paraboloid',
 ];
 const FORM_MODES = [
-  'Radial spectrum','Band interference','Spectrogram drum','Frequency tube',
-  'Temporal shell','Harmonic rings','Spectrogram cone','Frequency terrain',
-  'Spectral helix','Box ribbon',
+  'Spectral fan','Interference rings','Spectrogram cylinder','Spectral tube',
+  'Waveform sphere','Harmonic rings','Spectrogram cone','Spectral terrain',
+  'Spectral helix','Spectral ribbon',
 ];
 const EFFECTS = {
-  amplitude: [{v:1,l:'Inflate'},{v:2,l:'Squash'},{v:3,l:'Spikes'}],
-  history:   [{v:4,l:'Ripple'},{v:5,l:'Rings'},{v:6,l:'Twist'}],
-  frequency: [{v:7,l:'EQ'},{v:8,l:'Contour'},{v:9,l:'Shear'}],
+  amplitude: [{v:1,l:'Radial expansion'},{v:2,l:'Axial compression'},{v:3,l:'Normal extrusion'}],
+  history:   [{v:4,l:'Radial displacement'},{v:5,l:'Banded displacement'},{v:6,l:'Axial rotation'}],
+  frequency: [{v:7,l:'Spectral displacement'},{v:8,l:'Spectral contours'},{v:9,l:'Spectral shear'}],
 };
 const LIGHTING_OPTIONS = [
-  {v:0,l:'Rim'},{v:1,l:'Flash'},{v:2,l:'Env'},
-  {v:3,l:'Wave · anisotropic'},{v:4,l:'Phase portrait'},{v:5,l:'Crystal · drift'},
+  {v:0,l:'Rim lighting'},{v:1,l:'Amplitude flash'},{v:2,l:'Environment map'},
+  {v:3,l:'Anisotropic wave'},{v:4,l:'Normal phase portrait'},{v:5,l:'Drifting caustic'},
   {v:6,l:'Spectrogram'},{v:7,l:'Bilateral spectrogram'},
-  {v:8,l:'Spectral bands · hue'},{v:9,l:'Spectral bands · hue + L'},
+  {v:8,l:'Spectral hue'},{v:9,l:'Spectral hue-lightness'},
 ];
 const TRACKS = [
   {value:'arp',   label:'arp',    bin:'250621_a1_mix1_arp.bin'},

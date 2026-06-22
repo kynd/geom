@@ -19,16 +19,16 @@ const SDF_SHAPES = [
 ];
 
 const EFFECTS = [
-  {v:1,l:'Inflate'},{v:2,l:'Squash'},{v:3,l:'Spikes'},
-  {v:4,l:'Ripple'},{v:5,l:'Rings'},{v:6,l:'Twist'},
-  {v:7,l:'EQ'},{v:8,l:'Contour'},{v:9,l:'Shear'},
+  {v:1,l:'Radial expansion'},{v:2,l:'Axial compression'},{v:3,l:'Normal extrusion'},
+  {v:4,l:'Radial displacement'},{v:5,l:'Banded displacement'},{v:6,l:'Axial rotation'},
+  {v:7,l:'Spectral displacement'},{v:8,l:'Spectral contours'},{v:9,l:'Spectral shear'},
 ];
 
 const LIGHTING_OPTIONS = [
-  {v:0,l:'Rim'},{v:1,l:'Flash'},{v:2,l:'Env'},
-  {v:3,l:'Wave · anisotropic'},{v:4,l:'Phase portrait'},{v:5,l:'Crystal · drift'},
+  {v:0,l:'Rim lighting'},{v:1,l:'Amplitude flash'},{v:2,l:'Environment map'},
+  {v:3,l:'Anisotropic wave'},{v:4,l:'Normal phase portrait'},{v:5,l:'Drifting caustic'},
   {v:6,l:'Spectrogram'},{v:7,l:'Bilateral spectrogram'},
-  {v:8,l:'Spectral bands · hue'},{v:9,l:'Spectral bands · hue + L'},
+  {v:8,l:'Spectral hue'},{v:9,l:'Spectral hue-lightness'},
 ];
 
 const TRACKS = [

@@ -21,17 +21,17 @@ const PLATONIC_PAIRS = [
 
 const SCALAR_SURFACES = [
   'Elliptic paraboloid', 'Hyperbolic paraboloid', 'Cone', 'Sphere', 'Torus',
-  'Hyperboloid', 'Monkey saddle', 'Wave surface', 'Ripple', 'Ellipsoid',
+  'Hyperboloid', 'Monkey saddle', 'Sinusoidal surface', 'Radial damped cosine', 'Ellipsoid',
 ];
 
 const MOVING_SHAPES = [
-  'Traveling ripple', 'Rippling torus', 'Wave sheet',
-  'Pulsing sphere', 'Oscillating saddle', 'Gyroid',
-  'Schwartz P', 'Lemniscate surface', 'Swaying ellipsoid',
-  'Tanglecube', 'Chmutov T₄', 'Rippled cone',
-  'Pulsing Gaussian', 'Schoen I-WP', 'Saddle blend',
-  'Twisted torus', 'Bumpy sphere', 'Wavy hyperboloid',
-  'Permuted cubic', 'Flipping paraboloid',
+  'Traveling radial damped cosine', 'Pulsing torus', 'Traveling sinusoidal surface',
+  'Oscillating spheroid', 'Pulsing saddle', 'Pulsing gyroid',
+  'Oscillating Schwartz P', 'Pulsing lemniscate', 'Tilting ellipsoid',
+  'Pulsing tanglecube', 'Pulsing Chmutov T₄', 'Traveling sinusoidal cone',
+  'Pulsing Gaussian', 'Oscillating Schoen I-WP', 'Tilting saddle',
+  'Rotating torus', 'Rotating harmonic sphere', 'Traveling hyperboloid',
+  'Pulsing cyclic cubic', 'Rotating paraboloid',
 ];
 
 const SOUND_FILES = [
@@ -284,7 +284,7 @@ async function init() {
     });
   }
   populateShapes('moving');
-  shapeSel.value = '11';  // Rippled cone
+  shapeSel.value = '11';  // Traveling sinusoidal cone
 
   let frames = [], audio = null, isPlaying = false;
   const globalStart = performance.now();

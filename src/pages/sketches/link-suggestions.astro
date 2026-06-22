@@ -1,0 +1,295 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout title="[Sketch] Link suggestions" slug="sketches/link-suggestions">
+
+<style>
+  .ls-intro {
+    font-size: 0.82rem; color: var(--fg-muted); max-width: 700px;
+    margin-bottom: 2.5rem; line-height: 1.65;
+  }
+
+  .ls-page {
+    margin-bottom: 3rem;
+  }
+  .ls-page-heading {
+    font-size: 0.95rem; font-weight: 600; color: var(--fg);
+    margin-bottom: 0.2rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .ls-page-path {
+    font-family: var(--font-code); font-size: 0.72rem;
+    color: var(--fg-muted); margin-bottom: 1rem;
+  }
+
+  .ls-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .ls-table th {
+    text-align: left;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--fg-muted); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.3rem 1rem 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ls-table td {
+    vertical-align: top;
+    padding: 0.45rem 1rem 0.45rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg-muted);
+    line-height: 1.5;
+  }
+  .ls-table td:first-child {
+    font-family: var(--font-code); font-size: 0.78rem;
+    color: var(--fg); white-space: nowrap;
+  }
+  .ls-table a {
+    color: var(--fg); text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .ls-table .note {
+    font-size: 0.72rem; color: var(--fg-muted); margin-top: 0.15rem;
+  }
+  .ls-already {
+    opacity: 0.45;
+  }
+  .ls-already td:first-child::before {
+    content: '✓ ';
+    color: var(--fg-muted);
+  }
+  .tag-strong { color: var(--fg); font-weight: 500; }
+  .tag-maybe  { color: var(--fg-muted); font-style: italic; }
+</style>
+
+<p class="ls-intro">
+  Suggested inline links from geom written content to kynd.info writing pages.
+  Rows marked ✓ are already linked. All others are new suggestions.
+  "Phrase" is the literal text in the source; "Link text" is the proposed anchor text (may differ slightly).
+</p>
+
+<!-- ── Geom (index) ─────────────────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Geom</div>
+  <div class="ls-page-path">src/content/pages/index.md</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr class="ls-already">
+        <td>Sketching with Math and Quasi Physics</td>
+        <td>Sketching with Math and Quasi Physics</td>
+        <td><a href="https://www.kynd.info/writing/sketching-with-math-and-quasi-physics" target="_blank" rel="noopener">Sketching with Math and Quasi Physics</a></td>
+      </tr>
+      <tr class="ls-already">
+        <td>Bézier curves</td>
+        <td>Bézier curves</td>
+        <td><a href="https://www.kynd.info/writing/be/" target="_blank" rel="noopener">Bézier and Spline</a></td>
+      </tr>
+      <tr class="ls-already">
+        <td>Fourier transform</td>
+        <td>Fourier transform</td>
+        <td><a href="https://www.kynd.info/writing/fourier-series/" target="_blank" rel="noopener">Fourier Series</a></td>
+      </tr>
+      <tr class="ls-already">
+        <td>random and noise functions</td>
+        <td>random and noise functions</td>
+        <td><a href="https://www.kynd.info/writing/taming-randomness/" target="_blank" rel="noopener">Taming Randomness</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Parametric Shapes ────────────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Parametric Shapes</div>
+  <div class="ls-page-path">src/content/pages/parametric-shapes.mdx</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>signed distance function</td>
+        <td>signed distance function</td>
+        <td><a href="https://www.kynd.info/writing/signed-distance-functions" target="_blank" rel="noopener">Signed distance functions</a></td>
+      </tr>
+      <tr>
+        <td>ray marching <span class="note">("fragment shader uses ray marching")</span></td>
+        <td>ray marching</td>
+        <td><a href="https://www.kynd.info/writing/ray-marching" target="_blank" rel="noopener">Ray Marching</a></td>
+      </tr>
+      <tr>
+        <td>implicit representation</td>
+        <td>implicit representation</td>
+        <td><a href="https://www.kynd.info/writing/signed-distance-functions" target="_blank" rel="noopener">Signed distance functions</a></td>
+      </tr>
+      <tr>
+        <td><em class="tag-maybe">Add sentence after quadric-surfaces paragraph</em><span class="note"> — "For quadric surfaces — paraboloids, the cone, and the saddle — and their relationship to conic sections, see [Bowls and Pringles]."</span></td>
+        <td>Bowls and Pringles</td>
+        <td><a href="https://www.kynd.info/writing/bowls-and-pringles" target="_blank" rel="noopener">Bowls and Pringles</a></td>
+      </tr>
+      <tr>
+        <td>fragment shader</td>
+        <td>fragment shader</td>
+        <td><a href="https://thebookofshaders.com/" target="_blank" rel="noopener">The Book of Shaders</a></td>
+      </tr>
+      <tr>
+        <td>linearly interpolates the result <span class="note">(scalar blend section)</span></td>
+        <td>linearly interpolates</td>
+        <td><a href="https://www.kynd.info/writing/about-interpolation" target="_blank" rel="noopener">About Interpolation</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Lighting and Rendering ───────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Lighting and Rendering</div>
+  <div class="ls-page-path">src/content/pages/lighting-and-rendering.mdx</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>subsurface scattering (SSS)</td>
+        <td>subsurface scattering</td>
+        <td><a href="https://en.wikipedia.org/wiki/Subsurface_scattering" target="_blank" rel="noopener">Subsurface scattering (Wikipedia)</a></td>
+      </tr>
+      <tr>
+        <td>OKLCH perceptual color space</td>
+        <td>OKLCH perceptual color space</td>
+        <td><a href="https://www.kynd.info/writing/various-color-models" target="_blank" rel="noopener">Various Color Models</a></td>
+      </tr>
+      <tr>
+        <td>sRGB gamut</td>
+        <td>sRGB gamut</td>
+        <td><a href="https://www.kynd.info/writing/various-color-models" target="_blank" rel="noopener">Various Color Models</a></td>
+      </tr>
+      <tr>
+        <td>environment map</td>
+        <td>environment map</td>
+        <td><a href="https://www.kynd.info/writing/somewhat-more-physically-based-rendering/" target="_blank" rel="noopener">(Somewhat more) Physically based rendering</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Sound Analysis ───────────────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Sound Analysis</div>
+  <div class="ls-page-path">src/content/pages/sound-analysis.mdx</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>sine wave <span class="note">("Each frequency band drives a sine wave")</span></td>
+        <td>sine wave</td>
+        <td><a href="https://www.kynd.info/writing/sine-waves-and-additive-synthesis" target="_blank" rel="noopener">Sine waves and Additive Synthesis</a></td>
+      </tr>
+      <tr>
+        <td>STFT <span class="note">("full-file STFT at 2048-point resolution")</span></td>
+        <td>STFT</td>
+        <td><a href="https://en.wikipedia.org/wiki/Short-time_Fourier_transform" target="_blank" rel="noopener">Short-time Fourier transform (Wikipedia)</a></td>
+      </tr>
+      <tr>
+        <td>Mel-scale filterbank / Mel-spaced bands</td>
+        <td>Mel-scale filterbank</td>
+        <td><a href="https://en.wikipedia.org/wiki/Mel_scale" target="_blank" rel="noopener">Mel scale (Wikipedia)</a></td>
+      </tr>
+      <tr>
+        <td>Perceptually though, loudness is logarithmic <span class="note">(in the Linear vs. log scaling note)</span></td>
+        <td>human perception is not linear</td>
+        <td><a href="https://www.kynd.info/writing/physical-values-and-human-perception/" target="_blank" rel="noopener">Physical values and human perception</a></td>
+      </tr>
+      <tr>
+        <td><em class="tag-maybe">Add link at top of page</em></td>
+        <td>Sound visualization</td>
+        <td><a href="https://www.kynd.info/writing/sound-visualization/" target="_blank" rel="noopener">Sound visualization</a></td>
+      </tr>
+      <tr>
+        <td>spectrograms</td>
+        <td>spectrograms</td>
+        <td><a href="https://www.kynd.info/writing/sound-visualization" target="_blank" rel="noopener">Sound visualization</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Multitrack Visualization ─────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Multitrack Visualization</div>
+  <div class="ls-page-path">src/pages/multitrack-visualization.astro</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>softmax <span class="note">("softmax-normalised with temperature β = 5")</span></td>
+        <td>softmax</td>
+        <td><a href="https://www.kynd.info/writing/other-key-layers/#linear-and-softmax" target="_blank" rel="noopener">Other Key Layers</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Sound-Reactive Shapes ────────────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Sound-Reactive Shapes</div>
+  <div class="ls-page-path">src/pages/sound-reactive-shapes.astro</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Gaussian blur <span class="note">("Soften applies a Gaussian blur")</span></td>
+        <td>Gaussian blur</td>
+        <td><a href="https://www.kynd.info/writing/convolution" target="_blank" rel="noopener">Convolution</a></td>
+      </tr>
+      <tr>
+        <td>Catmull-Rom spline</td>
+        <td>spline</td>
+        <td><a href="https://www.kynd.info/writing/be/" target="_blank" rel="noopener">Bézier and Spline</a></td>
+      </tr>
+      <tr>
+        <td>surface normal <span class="note">("normals are finite-differenced on the displaced geometry")</span></td>
+        <td>surface normal</td>
+        <td><a href="https://www.kynd.info/writing/illuminating-objects" target="_blank" rel="noopener">Illuminating objects</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Sound-Reactive Environment ───────────────────────────────────── -->
+<div class="ls-page">
+  <div class="ls-page-heading">Sound-Reactive Environment</div>
+  <div class="ls-page-path">src/pages/sound-reactive-environment.astro</div>
+  <table class="ls-table">
+    <thead>
+      <tr><th>Phrase in text</th><th>Link text</th><th>Target page</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>OKLCH <span class="note">(OKLCH color model, sRGB gamut — appears in env map and fill mode descriptions)</span></td>
+        <td>OKLCH</td>
+        <td><a href="https://www.kynd.info/writing/various-color-models" target="_blank" rel="noopener">Various Color Models</a></td>
+      </tr>
+      <tr>
+        <td>sRGB gamut</td>
+        <td>sRGB gamut</td>
+        <td><a href="https://www.kynd.info/writing/various-color-models" target="_blank" rel="noopener">Various Color Models</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</PageLayout>

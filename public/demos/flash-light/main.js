@@ -25,13 +25,13 @@ const PLATONIC_PAIRS = [
 ];
 
 const MOVING_SHAPES = [
-  '1. Traveling ripple', '2. Rippling torus', '3. Wave sheet',
-  '4. Pulsing sphere', '5. Oscillating saddle', '6. Gyroid',
-  '7. Schwartz P', '8. Lemniscate surface', '9. Swaying ellipsoid',
-  '10. Tanglecube', '11. Chmutov T₄', '12. Rippled cone',
-  '13. Pulsing Gaussian', '14. Schoen I-WP', '15. Saddle blend',
-  '16. Twisted torus', '17. Bumpy sphere', '18. Wavy hyperboloid',
-  '19. Permuted cubic', '20. Flipping paraboloid',
+  '1. Traveling radial damped cosine', '2. Pulsing torus', '3. Traveling sinusoidal surface',
+  '4. Oscillating spheroid', '5. Pulsing saddle', '6. Pulsing gyroid',
+  '7. Oscillating Schwartz P', '8. Pulsing lemniscate', '9. Tilting ellipsoid',
+  '10. Pulsing tanglecube', '11. Pulsing Chmutov T₄', '12. Traveling sinusoidal cone',
+  '13. Pulsing Gaussian', '14. Oscillating Schoen I-WP', '15. Tilting saddle',
+  '16. Rotating torus', '17. Rotating harmonic sphere', '18. Traveling hyperboloid',
+  '19. Pulsing cyclic cubic', '20. Rotating paraboloid',
 ];
 
 const SOUND_FILES = [

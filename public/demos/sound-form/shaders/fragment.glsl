@@ -112,9 +112,9 @@ vec3 fillLight(vec3 nor, vec3 rd, float thickness) {
   return lit;
 }
 
-// ── Mode 1: Radial spectrum ───────────────────────────────────────────────────
+// ── Mode 1: Spectral fan ─────────────────────────────────────────────────────
 // Shorter cylinder; gentle X-axis swing periodically reveals the top/bottom caps.
-float spectrumSDF(vec3 p) {
+float spectralFanSDF(vec3 p) {
   float tilt = sin(iTime * 0.35) * 0.22;
   float ct = cos(tilt), st = sin(tilt);
   vec3  q  = vec3(p.x, ct * p.y - st * p.z, st * p.y + ct * p.z);
@@ -126,8 +126,8 @@ float spectrumSDF(vec3 p) {
   return max(dCyl, dH);
 }
 
-// ── Mode 2: Band interference ─────────────────────────────────────────────────
-float bandInterferenceSDF(vec3 p) {
+// ── Mode 2: Interference rings ───────────────────────────────────────────────
+float interferenceRingsSDF(vec3 p) {
   float field = 0.0;
   float lip   = 0.01;
   for (int i = 0; i < 8; i++) {
@@ -146,10 +146,10 @@ float bandInterferenceSDF(vec3 p) {
   return (thresh - field) / lip;
 }
 
-// ── Mode 3: Spectrogram drum (horizontal) ─────────────────────────────────────
+// ── Mode 3: Spectrogram cylinder (horizontal) ────────────────────────────────
 // Horizontal cylinder along X; X = frequency, azimuth in YZ plane = time.
 // Rotates around its own long axis so different time slices sweep past.
-float spectrogramDrumSDF(vec3 p) {
+float spectrogramCylinderSDF(vec3 p) {
   float a  = iTime * 0.14;
   float ca = cos(a), sa = sin(a);
   vec3  q  = vec3(p.x, ca * p.y - sa * p.z, sa * p.y + ca * p.z);
@@ -164,9 +164,9 @@ float spectrogramDrumSDF(vec3 p) {
   return max(dCyl, dH);
 }
 
-// ── Mode 4: Frequency tube (dual L / R) ───────────────────────────────────────
+// ── Mode 4: Spectral tube (dual L / R) ───────────────────────────────────────
 // Two vertical tubes side by side: left = L-channel FFT, right = R-channel FFT.
-float frequencyTubeSDF(vec3 p) {
+float spectralTubeSDF(vec3 p) {
   float freq = clamp((p.y + 1.0) * 0.5, 0.01, 0.99);
   float rL   = 0.08 + 0.52 * sampleFFT(freq) * u_intensity;
   float rR   = 0.08 + 0.52 * sampleFFTR(freq) * u_intensity;
@@ -176,9 +176,9 @@ float frequencyTubeSDF(vec3 p) {
   return max(min(dL, dR), dH);
 }
 
-// ── Mode 5: Temporal shell (dual L / R) ───────────────────────────────────────
+// ── Mode 5: Waveform sphere (dual L / R) ─────────────────────────────────────
 // Two vertical shells: left = L-channel amplitude history, right = R-channel.
-float temporalShellSDF(vec3 p) {
+float waveformSphereSDF(vec3 p) {
   float v   = clamp((p.y + 1.0) * 0.5, 0.01, 0.99);
   float rL  = 0.08 + 0.62 * sampleHist(v) * u_intensity;
   float rR  = 0.08 + 0.62 * sampleHistR(v) * u_intensity;
@@ -225,9 +225,9 @@ float spectrogramConeSDF(vec3 p) {
   return max(dCyl, dH);
 }
 
-// ── Mode 8: Frequency terrain ─────────────────────────────────────────────────
+// ── Mode 8: Spectral terrain ─────────────────────────────────────────────────
 // Height map tilted 35° toward camera: X = frequency, Y = time, Z = amplitude.
-float frequencyTerrainSDF(vec3 p) {
+float spectralTerrainSDF(vec3 p) {
   float cx = 0.8192, sx = 0.5736;
   vec3  q  = vec3(p.x, cx * p.y - sx * p.z, sx * p.y + cx * p.z);
   float freq = clamp(q.x * 0.33 + 0.5, 0.01, 0.99);
@@ -256,10 +256,10 @@ float spectralHelixSDF(vec3 p) {
   return d;
 }
 
-// ── Mode 10: Box ribbon ───────────────────────────────────────────────────────
+// ── Mode 10: Spectral ribbon ─────────────────────────────────────────────────
 // Horizontally elongated box; shell thickness = spectral change vs 48 frames ago.
 // Slow swing within ±15° so long axis stays readable.
-float spectralBoxRibbonSDF(vec3 p) {
+float spectralRibbonSDF(vec3 p) {
   float sw = sin(iTime * 0.20) * 0.26;
   float cs = cos(sw), ss = sin(sw);
   vec3  p2 = vec3(cs * p.x + ss * p.z, p.y, -ss * p.x + cs * p.z);
@@ -279,16 +279,16 @@ float sceneSDF(vec3 p) {
   float a  = iTime * 0.22;
   float ca = cos(a), sa = sin(a);
   vec3  rp = vec3(ca * p.x + sa * p.z, p.y, -sa * p.x + ca * p.z);
-  if (u_mode == 1)  return spectrumSDF(rp);
-  if (u_mode == 2)  return bandInterferenceSDF(rp);
-  if (u_mode == 3)  return spectrogramDrumSDF(p);
-  if (u_mode == 4)  return frequencyTubeSDF(p);
-  if (u_mode == 5)  return temporalShellSDF(p);
+  if (u_mode == 1)  return spectralFanSDF(rp);
+  if (u_mode == 2)  return interferenceRingsSDF(rp);
+  if (u_mode == 3)  return spectrogramCylinderSDF(p);
+  if (u_mode == 4)  return spectralTubeSDF(p);
+  if (u_mode == 5)  return waveformSphereSDF(p);
   if (u_mode == 6)  return harmonicRingsSDF(p);
   if (u_mode == 7)  return spectrogramConeSDF(p);
-  if (u_mode == 8)  return frequencyTerrainSDF(p);
+  if (u_mode == 8)  return spectralTerrainSDF(p);
   if (u_mode == 9)  return spectralHelixSDF(p);
-  return spectralBoxRibbonSDF(p);
+  return spectralRibbonSDF(p);
 }
 
 vec3 calcNormal(vec3 pos) {
