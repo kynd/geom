@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shape interpolation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js" } }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    /* ── Standard buttons ───────────────────────────────────────────────────── */
+    #play-btn {
+      position: absolute; top: 32px; right: 32px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; pointer-events: all; z-index: 10;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.26); }
+    #aa-btn {
+      position: absolute; top: 32px; right: 96px;
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s; pointer-events: all; z-index: 10;
+    }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    /* ── Settings panel ─────────────────────────────────────────────────────── */
+    #settings-wrap {
+      position: absolute; top: 32px; left: 32px;
+      pointer-events: all; z-index: 10;
+    }
+    #settings-btn {
+      display: flex; align-items: center; gap: 7px;
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.40); transition: all 0.15s;
+    }
+    #settings-btn:hover, #settings-btn.open {
+      background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.70);
+      border-color: rgba(255,255,255,0.26);
+    }
+    #settings-panel {
+      display: none; margin-top: 8px;
+      background: rgba(12,12,12,0.92); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; padding: 10px 0; min-width: 280px;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    #settings-panel.open { display: block; }
+    .stem-row {
+      display: flex; align-items: center;
+      padding: 5px 14px; gap: 12px;
+    }
+    .stem-row:hover { background: rgba(255,255,255,0.04); }
+    .stem-name {
+      font-family: 'Google Sans Code', monospace; font-size: 11px;
+      color: rgba(255,255,255,0.38); width: 46px; flex-shrink: 0;
+    }
+    .shape-sel {
+      flex: 1; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.70);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 6px; padding: 4px 24px 4px 8px;
+      cursor: pointer; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center;
+    }
+    .shape-sel option { background: #111; color: #ccc; }
+    .shape-sel optgroup { background: #0a0a0a; color: rgba(255,255,255,0.35); font-size: 10px; }
+    .shape-sel:hover { border-color: rgba(255,255,255,0.28); }
+    .solo-btn {
+      flex-shrink: 0; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 300;
+      color: rgba(255,255,255,0.28); background: none;
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
+      padding: 3px 8px; cursor: pointer; transition: all 0.12s;
+    }
+    .solo-btn.active {
+      color: rgba(255,255,255,0.90); background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.42);
+    }
+    .solo-btn:hover:not(.active) { color: rgba(255,255,255,0.55); border-color: rgba(255,255,255,0.28); }
+
+    /* ── Alpha slider (in settings panel) ──────────────────────────────────── */
+    .alpha-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 6px 14px; }
+    .alpha-row { padding-bottom: 6px; }
+    .alpha-label { color: rgba(255,255,255,0.40) !important; }
+    .floor-range {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    .floor-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.70); cursor: pointer;
+    }
+    .floor-range::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.70); cursor: pointer;
+    }
+    .floor-val {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.35); width: 28px; text-align: right; flex-shrink: 0;
+    }
+
+    /* ── Weight indicators ──────────────────────────────────────────────────── */
+    #stem-weights {
+      position: absolute; bottom: 52px; right: 40px;
+      pointer-events: none; display: flex; flex-direction: column; gap: 5px;
+    }
+    .sw-row { display: flex; align-items: center; gap: 8px; }
+    .sw-name {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.22); width: 44px; text-align: right; flex-shrink: 0;
+    }
+    .sw-bars { display: flex; flex-direction: column; gap: 3px; width: 80px; overflow: hidden; }
+    .sw-bar {
+      height: 2px; border-radius: 1px;
+      width: 100%; transform: scaleX(0); transform-origin: left center;
+    }
+    .sw-bar-soft  { background: rgba(255,255,255,0.18); }
+    .sw-bar-final { background: rgba(255,255,255,0.72); }
+
+    /* ── Progress bar ───────────────────────────────────────────────────────── */
+    #progress-wrap {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 36px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      pointer-events: all;
+    }
+    #time-current, #time-total {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 36px;
+    }
+    #time-total { text-align: right; }
+    #seek {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    #seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    #seek::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+
+    /* ── Loading ────────────────────────────────────────────────────────────── */
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    #loading-tracks { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+    .load-row { display: flex; align-items: center; gap: 10px; }
+    .load-name {
+      font-family: 'Google Sans Code', monospace; font-size: 12px;
+      color: rgba(255,255,255,0.40); width: 52px; flex-shrink: 0;
+    }
+    .load-bar-bg {
+      flex: 1; height: 1px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .load-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.55); border-radius: 1px;
+      transition: width 0.08s linear;
+    }
+    .load-bar-fill.indeterminate {
+      width: 30%; animation: spin 1.2s ease-in-out infinite;
+    }
+    @keyframes spin {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(430%); }
+    }
+    .load-pct {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <div id="settings-wrap">
+        <button id="settings-btn" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Shapes
+        </button>
+        <div id="settings-panel" role="region" aria-label="Shape settings"></div>
+      </div>
+      <div id="stem-weights"></div>
+      <button id="aa-btn" aria-label="Antialiasing off">Antialias</button>
+      <button id="play-btn" aria-label="Play"></button>
+      <div id="progress-wrap">
+        <span id="time-current">0:00</span>
+        <input id="seek" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+        <span id="time-total">0:00</span>
+      </div>
+    </div>
+    <div id="loading">
+      <div id="loading-label">Loading audio data</div>
+      <div id="loading-tracks"></div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960; canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

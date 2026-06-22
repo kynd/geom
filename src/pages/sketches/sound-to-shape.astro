@@ -1,0 +1,28 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Sound to shape" slug="sketches/sound-to-shape">
+  <div class="monologue">
+    Mapping spectral history onto 3D geometry — the surface displacement follows the sound.
+  </div>
+
+  <section class="demo-section" id="sound-tube">
+    <div class="demo-header">
+      <h2>Sound tube</h2>
+      <a href={`${base}/sketches/sound-to-shape/01-sound-tube/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/sound-to-shape/01-sound-tube/index.html?embedded`} title="Sound tube" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        FFT history wrapped onto a tube, sphere, or cone.
+        Frequency maps vertically (bass at bottom, treble at top);
+        time wraps around the circumference — drag to orbit and reveal older frames.
+      </p>
+    </div>
+  </section>
+
+</PageLayout>

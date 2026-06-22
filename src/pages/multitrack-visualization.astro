@@ -5,10 +5,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 <PageLayout title="Multitrack visualization" slug="multitrack-visualization">
   <div class="monologue">
-    Placeholder — How can we use and mix all the separate stems of the sound?
+    Using all the separate stems of the sound simultaneously.
   </div>
 
-  <section class="demo-section">
+  <section class="demo-section" id="visualizer">
     <div class="demo-header">
       <h2>Multitrack visualizer</h2>
       <a href={`${base}/demos/multitrack/index.html`} target="_blank" rel="noopener">open full size ↗</a>
@@ -23,6 +23,172 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         the right section is the live waveform.
         Use the progress bar to seek anywhere in the track.
       </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="composer">
+    <div class="demo-header">
+      <h2>Shape composer</h2>
+      <a href={`${base}/demos/multitrack-shapes/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/multitrack-shapes/index.html?embedded`} title="Sound × shape composer" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Divide the view into 2, 3, or 4 panes. Each pane runs an independent shape renderer reacting to a chosen stem track.
+        Pick the shape family, deformation effect, and lighting independently per pane.
+        The master track always plays; the visual in each pane reacts to whichever stem is selected.
+      </p>
+      <p>
+        Starts at the 2-minute mark. Use the gear icon in each pane to configure it.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="sdf-blend">
+    <div class="demo-header">
+      <h2>SDF blend</h2>
+      <a href={`${base}/demos/sdf-blend/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sdf-blend/index.html?embedded`} title="SDF blend" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Two SDF shapes placed side by side, blended together using a smooth union operation.
+        Each shape independently reacts to its assigned stem track — only those two stems are audible.
+        The <strong>Distance</strong> slider sets the separation between centres;
+        <strong>Blend</strong> controls the smooth union radius;
+        <strong>Intensity</strong> scales the strength of the deformation effect.
+      </p>
+    </div>
+  </section>
+  <div class="monologue">
+    If we can allocate different shapes, colors, and effects to different stems (hypothetically—it's not a finalized strategy), but we don't want to draw all of them at once, how could we deterministically decide which stems are more important at the moment?
+  </div>
+  <section class="demo-section" id="prominence">
+    <div class="demo-header">
+      <h2>Track prominence</h2>
+      <a href={`${base}/demos/prominence/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/prominence/index.html?embedded`} title="Track prominence" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Two hypotheses about what makes a stem feel prominent at any given moment.
+        The first is direct: the louder a track is right now, the more it stands out.
+        The second weights sudden increases — a drum hit that breaks the silence draws attention
+        in a way that a pad sustaining at the same average level does not.
+        Three columns show the pipeline: raw level, raw onset energy, and a combined prominence score — the softmax of their sum across active stems.
+        Toggle stems on and off; the prominence scores redistribute among whatever remains active.
+      </p>
+
+      <details>
+        <summary>Level and onset — definitions</summary>
+
+        <h3>Level prominence</h3>
+        <p>
+          The simplest hypothesis: a louder track is more prominent. The <strong>Level</strong> column shows
+          the instantaneous mono amplitude of each stem:
+        </p>
+        <p class="math-block">{"\\[ P_i^{\\text{lv}}(t) = \\tfrac{1}{2}\\bigl(A_i^L(t) + A_i^R(t)\\bigr) \\]"}</p>
+        <p>
+          This captures sustained elements well — a dense pad or a driving bass line score high throughout the
+          section — but it gives no extra weight to sudden events.
+        </p>
+
+        <h3>Onset prominence</h3>
+        <p>
+          The second hypothesis is that a rapid increase in volume draws more attention than the same level
+          held steady. Compute the positive amplitude flux at each frame:
+        </p>
+        <p class="math-block">{"\\[ \\delta_i(t) = \\max\\!\\bigl(0,\\; A_i(t) - A_i(t{-}1)\\bigr) \\]"}</p>
+        <p>
+          Then apply a leaky peak-hold so the spike persists briefly before fading:
+        </p>
+        <p class="math-block">{"\\[ P_i^{\\text{on}}(t) = \\max\\!\\bigl(\\delta_i(t),\\;\\alpha \\cdot P_i^{\\text{on}}(t{-}1)\\bigr) \\]"}</p>
+        <p>
+          With {"\\(\\alpha = 0.92\\)"} at 60 fps the onset energy decays to half in roughly 8 frames
+          ({"\\(\\approx\\)"} 130 ms) — long enough to read, short enough to track fast rhythms.
+        </p>
+        <p>
+          To reveal which track is <em>relatively</em> dominant among the active set {"\\(\\mathcal{A}\\)"},
+          the two scores are summed and softmax-normalised with temperature {"\\(\\beta = 5\\)"}:
+        </p>
+        <p class="math-block">{"\\[ \\tilde{P}_i(t) = \\frac{e^{\\,\\beta\\,\\bigl(P_i^{\\text{lv}}(t)\\,+\\,P_i^{\\text{on}}(t)\\bigr)}}{\\displaystyle\\sum_{j \\in \\mathcal{A}} e^{\\,\\beta\\,\\bigl(P_j^{\\text{lv}}(t)\\,+\\,P_j^{\\text{on}}(t)\\bigr)}} \\]"}</p>
+        <p>
+          A high {"\\(\\beta\\)"} sharpens the distribution: when one track spikes, it claims most of the
+          weight and the others collapse toward zero. The <strong>Prominence</strong> column shows {"\\(\\tilde{P}_i\\)"};
+          the <strong>Level</strong> and <strong>Onset</strong> columns show the raw inputs before combination.
+        </p>
+      </details>
+    </div>
+  </section>
+
+  <section class="demo-section" id="stem-radar">
+    <div class="demo-header">
+      <h2>Stem radar</h2>
+      <a href={`${base}/demos/stem-radar/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/stem-radar/index.html?embedded`} title="Stem radar" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The same combined prominence score as a seven-pointed shape. Each axis represents one stem; the vertex travels outward in proportion to that stem's softmax prominence. When a stem dominates — a kick transient, a bass sustain — its axis extends toward the outer ring while the others retract inward.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="stem-shapes">
+    <div class="demo-header">
+      <h2>Shape interpolation</h2>
+      <a href={`${base}/demos/stem-shapes/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/stem-shapes/index.html?embedded`} title="Stem shapes" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Each stem is assigned a scalar field. The seven fields are blended in real time using their softmax
+        prominence scores as weights — the shape of whichever stem is loudest or most transient
+        pulls the surface toward its geometry while the others fade into the mix.
+        Open the Shapes panel to reassign any stem.
+      </p>
+
+      <details>
+        <summary>Sparse weighting — why and how</summary>
+
+        <p>
+          Softmax assigns non-zero weight to every stem, always.
+          Even a completely silent stem receives {"\\(e^{\\beta \\cdot 0} = 1\\)"} before normalisation,
+          so at {"\\(\\beta = 5\\)"} a single active stem in a group of seven only claims roughly 55% of the total weight —
+          the remaining 45% leaks into six geometries no one is hearing.
+          The result is a surface that never looks fully like any one shape.
+        </p>
+
+        <h3>Relative-floor threshold</h3>
+        <p>
+          After computing the softmax distribution {"\\(\\tilde{P}_i\\)"},
+          zero out any stem whose weight falls below a fixed fraction {"\\(\\alpha\\)"} of the current peak, then renormalise over the survivors:
+        </p>
+        <p class="math-block">{"\\[ \\tau(t) = \\alpha \\cdot \\max_j \\tilde{P}_j(t) \\]"}</p>
+        <p class="math-block">{"\\[ w_i(t) = \\begin{cases} \\tilde{P}_i(t) & \\tilde{P}_i(t) \\geq \\tau(t) \\\\ 0 & \\text{otherwise} \\end{cases} \\]"}</p>
+        <p class="math-block">{"\\[ \\hat{w}_i(t) = \\frac{w_i(t)}{\\displaystyle\\sum_k w_k(t)} \\]"}</p>
+        <p>
+          With {"\\(\\alpha = 0.25\\)"}, a stem must carry at least a quarter of the peak weight to contribute to the blend.
+          The threshold is relative, so it adapts automatically: when one stem dominates,
+          the bar rises and the weaker stems fall below it; when several stems are close in prominence, more of them survive.
+          The dominant stem always survives by definition — {"\\(\\tau \\leq \\tilde{P}_{\\max}\\)"} — so the renormalisation denominator is never zero.
+        </p>
+        <p>
+          In the bass-only passage at the start, the six silent stems each receive softmax weight {"\\(\\approx 0.075\\)"}
+          while bass gets {"\\(\\approx 0.55\\)"}. The floor {"\\(\\tau = 0.25 \\times 0.55 = 0.14\\)"} is above 0.075,
+          so all six are zeroed and bass gets weight 1.0 — a clean, unambiguous shape.
+        </p>
+      </details>
     </div>
   </section>
 </PageLayout>

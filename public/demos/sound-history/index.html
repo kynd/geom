@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History deformation</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    #ctrl-bar {
+      position: absolute; top: 28px; right: 32px;
+      display: flex; align-items: center; gap: 8px;
+      pointer-events: all;
+    }
+    .ctrl-sep { width: 1px; height: 26px; background: rgba(255,255,255,0.18); margin: 0 4px; }
+
+    #play-btn { width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; transition: background 0.15s; flex-shrink: 0; }
+    #play-btn:hover { background: rgba(255,255,255,0.24); }
+
+    #aa-btn { height: 36px; padding: 0 14px; border-radius: 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.30); transition: all 0.15s; flex-shrink: 0; }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.55); }
+
+    .ctrl-select { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; padding: 0 28px 0 10px; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; height: 36px; }
+    .ctrl-select:hover { border-color: rgba(255,255,255,0.40); }
+    .ctrl-select option, .ctrl-select optgroup { background: #111; color: #fff; }
+    #sound-select { font-family: 'Google Sans Code', monospace; font-size: 12px; height: 48px; padding: 0 32px 0 12px; border-radius: 4px; }
+
+    .param-row { display: flex; align-items: center; gap: 10px; }
+    .param-label { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 300; color: rgba(255,255,255,0.38); letter-spacing: 0.06em; text-transform: uppercase; width: 52px; text-align: right; }
+    .param-val { font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.38); width: 32px; }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 130px; height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px; outline: none; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; }
+    input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; border: none; }
+
+    #param-panel {
+      position: absolute; top: 88px; right: 32px;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: all;
+    }
+    .param-set { display: none; flex-direction: column; gap: 8px; }
+    .param-set.active { display: flex; }
+
+    #bloom-controls { position: absolute; bottom: 32px; right: 32px; display: flex; flex-direction: column; gap: 10px; pointer-events: all; }
+    .bloom-heading { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase; text-align: right; margin-bottom: 2px; }
+
+    #label { position: absolute; left: 56px; bottom: 56px; pointer-events: none; }
+    #label .label-name { font-family: 'Sora', sans-serif; font-size: 12px; color: #fff; }
+    #label .label-fn   { font-family: 'Google Sans Code', monospace; font-size: 12px; color: rgba(255,255,255,0.50); margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+
+      <div id="ctrl-bar">
+        <select id="category-select" class="ctrl-select">
+          <option value="sdf">SDF shapes</option>
+          <option value="platonic">Platonic</option>
+          <option value="scalar">Scalar fields</option>
+          <option value="moving" selected>Moving scalar</option>
+        </select>
+        <select id="shape-select" class="ctrl-select"></select>
+        <div class="ctrl-sep"></div>
+        <select id="deform-select" class="ctrl-select">
+          <option value="4" selected>Ripple</option>
+          <option value="5">Rings</option>
+          <option value="6">Twist</option>
+        </select>
+        <div class="ctrl-sep"></div>
+        <select id="lighting-select" class="ctrl-select">
+          <option value="0">Rim</option>
+          <option value="1">Flash</option>
+          <option value="2">Env</option>
+          <optgroup label="Fill">
+            <option value="3">Wave · anisotropic</option>
+            <option value="4">Phase portrait</option>
+            <option value="5">Crystal · drift</option>
+            <option value="6">Spectrogram</option>
+            <option value="7">Bilateral spectrogram</option>
+            <option value="8">Spectral bands · hue</option>
+            <option value="9">Spectral bands · hue + L</option>
+          </optgroup>
+        </select>
+        <div class="ctrl-sep"></div>
+        <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias</button>
+        <button id="play-btn" aria-label="Play"></button>
+        <select id="sound-select" class="ctrl-select">
+          <option value="arp">arp</option>
+          <option value="bass" selected>bass</option>
+          <option value="hat">hat</option>
+          <option value="kick1">kick 1</option>
+          <option value="kick2">kick 2</option>
+          <option value="pad">pad</option>
+          <option value="snare">snare</option>
+          <option value="master">master</option>
+        </select>
+      </div>
+
+      <div id="param-panel">
+        <!-- 4: Ripple -->
+        <div class="param-set active" data-mode="4">
+          <div class="param-row">
+            <span class="param-label">Intensity</span>
+            <input type="range" id="p1-ripple" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="1.0">
+            <span class="param-val" id="p1-ripple-val">1.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Duration</span>
+            <input type="range" id="hist-dur-4" data-uniform="u_histDuration" min="0.05" max="1.0" step="0.01" value="0.5">
+            <span class="param-val" id="hist-dur-4-val">0.50</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Soften</span>
+            <input type="range" id="hist-sft-4" data-uniform="u_histSoften" min="0" max="1" step="0.05" value="0">
+            <span class="param-val" id="hist-sft-4-val">0.00</span>
+          </div>
+        </div>
+        <!-- 5: Rings -->
+        <div class="param-set" data-mode="5">
+          <div class="param-row">
+            <span class="param-label">Intensity</span>
+            <input type="range" id="p1-rings" data-uniform="u_deformP1" min="0" max="2" step="0.01" value="0.44">
+            <span class="param-val" id="p1-rings-val">0.44</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Duration</span>
+            <input type="range" id="hist-dur-5" data-uniform="u_histDuration" min="0.05" max="1.0" step="0.01" value="1.0">
+            <span class="param-val" id="hist-dur-5-val">1.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Soften</span>
+            <input type="range" id="hist-sft-5" data-uniform="u_histSoften" min="0" max="1" step="0.05" value="0">
+            <span class="param-val" id="hist-sft-5-val">0.00</span>
+          </div>
+        </div>
+        <!-- 6: Twist -->
+        <div class="param-set" data-mode="6">
+          <div class="param-row">
+            <span class="param-label">Angle</span>
+            <input type="range" id="p1-twist" data-uniform="u_deformP1" min="0" max="8" step="0.1" value="2.8">
+            <span class="param-val" id="p1-twist-val">2.80</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Duration</span>
+            <input type="range" id="hist-dur-6" data-uniform="u_histDuration" min="0.05" max="1.0" step="0.01" value="1.0">
+            <span class="param-val" id="hist-dur-6-val">1.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Soften</span>
+            <input type="range" id="hist-sft-6" data-uniform="u_histSoften" min="0" max="1" step="0.05" value="0">
+            <span class="param-val" id="hist-sft-6-val">0.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Axis X</span>
+            <input type="range" id="twist-ax-x" data-uniform="u_twistAxisX" min="-1" max="1" step="0.05" value="0">
+            <span class="param-val" id="twist-ax-x-val">0.00</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">Axis Z</span>
+            <input type="range" id="twist-ax-z" data-uniform="u_twistAxisZ" min="-1" max="1" step="0.05" value="0">
+            <span class="param-val" id="twist-ax-z-val">0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="bloom-controls">
+        <div class="bloom-heading">Bloom</div>
+        <div class="param-row">
+          <span class="param-label">Strength</span>
+          <input type="range" id="bloom-strength" min="0" max="3" step="0.05" value="0.25">
+          <span class="param-val" id="bloom-strength-val">0.25</span>
+        </div>
+        <div class="param-row">
+          <span class="param-label">Threshold</span>
+          <input type="range" id="bloom-threshold" min="0" max="1" step="0.01" value="0.1">
+          <span class="param-val" id="bloom-threshold-val">0.10</span>
+        </div>
+      </div>
+
+      <div id="label">
+        <div class="label-name">History</div>
+        <div class="label-fn">ripple · rings · twist</div>
+      </div>
+
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960;  canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

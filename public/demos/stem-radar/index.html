@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stem radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    #play-btn {
+      position: absolute; top: 32px; right: 32px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; pointer-events: all; z-index: 10;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.24); }
+
+    #progress-wrap {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 36px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      pointer-events: all;
+    }
+    #time-current, #time-total {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 36px;
+    }
+    #time-total { text-align: right; }
+    #seek {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    #seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    #seek::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    #loading-tracks { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+    .load-row { display: flex; align-items: center; gap: 10px; }
+    .load-name {
+      font-family: 'Google Sans Code', monospace; font-size: 12px;
+      color: rgba(255,255,255,0.40); width: 52px; flex-shrink: 0;
+    }
+    .load-bar-bg {
+      flex: 1; height: 1px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .load-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.55); border-radius: 1px;
+      transition: width 0.08s linear;
+    }
+    .load-bar-fill.indeterminate {
+      width: 30%; animation: indeterminate 1.2s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(430%); }
+    }
+    .load-pct {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <button id="play-btn" aria-label="Play"></button>
+      <div id="progress-wrap">
+        <span id="time-current">0:00</span>
+        <input id="seek" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+        <span id="time-total">0:00</span>
+      </div>
+    </div>
+    <div id="loading">
+      <div id="loading-label">Loading audio data</div>
+      <div id="loading-tracks"></div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960; canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

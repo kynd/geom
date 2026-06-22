@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
       { label: 'Platonic duals',       href: '#platonic-duals' },
       { label: 'Scalar fields',        href: '#scalar-fields' },
       { label: 'Moving scalar fields', href: '#moving-scalar-fields' },
+      { label: 'Scalar field blend',   href: '#scalar-blend' },
     ]
   },
   { label: 'Lighting and rendering', href: `${base}/lighting-and-rendering`, slug: 'lighting-and-rendering',
@@ -44,7 +45,24 @@ const navItems: NavItem[] = [
     ]
   },
   { label: 'Sound-reactive environment', href: `${base}/sound-reactive-environment`, slug: 'sound-reactive-environment' },
-  { label: 'Multitrack visualization',  href: `${base}/multitrack-visualization`,  slug: 'multitrack-visualization' },
+  { label: 'Sound-reactive shapes',     href: `${base}/sound-reactive-shapes`,     slug: 'sound-reactive-shapes',
+    subLinks: [
+      { label: 'Amplitude',      href: '#amplitude' },
+      { label: 'History',        href: '#history' },
+      { label: 'Frequency',      href: '#frequency' },
+      { label: 'Form',           href: '#form' },
+    ]
+  },
+  { label: 'Multitrack visualization',  href: `${base}/multitrack-visualization`,  slug: 'multitrack-visualization',
+    subLinks: [
+      { label: 'Visualizer',        href: '#visualizer' },
+      { label: 'Shape composer',    href: '#composer' },
+      { label: 'SDF blend',         href: '#sdf-blend' },
+      { label: 'Prominence',        href: '#prominence' },
+      { label: 'Stem radar',        href: '#stem-radar' },
+      { label: 'Shape interpolation', href: '#stem-shapes' },
+    ]
+  },
   { label: 'Transitions',              href: `${base}/transitions`,               slug: 'transitions' },
   ...(import.meta.env.DEV ? [
     { label: '[Sketch] Fill functions', href: `${base}/sketches/fill-functions`, slug: 'sketches/fill-functions', sketch: true,
@@ -55,6 +73,8 @@ const navItems: NavItem[] = [
         { label: 'Multitrack',       href: '#multitrack' },
       ]
     },
+    { label: '[Sketch] Sound to shape', href: `${base}/sketches/sound-to-shape`, slug: 'sketches/sound-to-shape', sketch: true },
+    { label: '[Sketch] Naming reference', href: `${base}/sketches/naming`, slug: 'sketches/naming', sketch: true },
   ] : []),
 ];
 ---
@@ -220,6 +240,8 @@ const navItems: NavItem[] = [
       color: var(--fg-muted); letter-spacing: -0.01em;
     }
     .monologue p { margin: 0; }
+    .monologue a { color: var(--fg-muted); text-decoration: underline; text-decoration-color: var(--fg-muted); text-underline-offset: 3px; transition: text-decoration-color 0.15s; }
+    .monologue a:hover { text-decoration-color: var(--fg); }
 
     /* Demo sections */
     .demo-section { width: 960px; max-width: calc(100% - 1.5rem); margin: 0 0 4rem 1.5rem; }
@@ -258,6 +280,12 @@ const navItems: NavItem[] = [
     }
     .prose a:hover { text-decoration-color: var(--fg); }
     .prose .math-block { margin: 1.4rem 0; text-align: left; overflow-x: auto; }
+    .prose .math-block .katex-display { text-align: left; }
+    .prose .math-block .katex-display > .katex { text-align: left; }
+    .prose h3 {
+      font-size: 0.92rem; font-weight: 600; letter-spacing: -0.005em;
+      margin-top: 2rem; margin-bottom: 0.6rem;
+    }
     .prose h2 {
       font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
       margin-top: 2.5rem; margin-bottom: 0.8rem;
@@ -266,8 +294,12 @@ const navItems: NavItem[] = [
     .prose ul li { margin-bottom: 0.4rem; }
     .prose ol { list-style: decimal; padding-left: 1.4rem; }
     .prose ol li { margin-bottom: 0.4rem; }
-    .prose .shape-desc p { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
+    .prose .shape-desc p,
+    .prose .shape-desc li { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
     .prose > details { margin-top: 1rem; }
+    .prose details p,
+    .prose details h3,
+    .prose details strong { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
     .prose > details > summary {
       display: inline-block; list-style: none; cursor: pointer;
       font-size: 0.82rem; color: var(--fg-muted); opacity: 0.6;
@@ -275,10 +307,45 @@ const navItems: NavItem[] = [
     }
     .prose > details > summary::-webkit-details-marker { display: none; }
     .prose > details > summary::marker { display: none; }
+    .prose > details > summary::before { content: '▸\00a0'; font-size: 0.7rem; }
+    .prose > details[open] > summary::before { content: '▾\00a0'; }
     .prose > details[open] > summary { opacity: 1; margin-bottom: 1rem; }
     .prose code {
       font-family: var(--font-code); font-size: 0.88em;
       background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px;
+    }
+
+    /* ── Heading anchor links ─────────────────────────────────────────── */
+    .prose h2,
+    .prose h3,
+    .demo-header h2 {
+      position: relative;
+    }
+    .anchor-copy-btn {
+      position: absolute;
+      left: -1.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      color: var(--fg-muted);
+      transition: opacity 0.12s;
+    }
+    .prose h2:hover > .anchor-copy-btn,
+    .prose h3:hover > .anchor-copy-btn,
+    .demo-header h2:hover > .anchor-copy-btn,
+    .anchor-copy-btn:hover {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     @media (max-width: 768px) {
@@ -391,6 +458,59 @@ const navItems: NavItem[] = [
     applyFont(localStorage.getItem('font-mode') || 'serif');
     btnSerif.addEventListener('click', () => applyFont('serif'));
     btnSans.addEventListener('click',  () => applyFont('sans'));
+  </script>
+  <script>
+    (function () {
+      const LINK_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+      function copyLink(url: string) {
+        navigator.clipboard.writeText(url).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = url;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        });
+      }
+
+      function makeBtn(url: string): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.className = 'anchor-copy-btn';
+        btn.setAttribute('aria-label', 'Copy link to section');
+        btn.innerHTML = LINK_ICON;
+        btn.addEventListener('click', (e: MouseEvent) => { e.preventDefault(); copyLink(url); });
+        return btn;
+      }
+
+      function slugify(text: string): string {
+        return text.trim().toLowerCase()
+          .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '');
+      }
+      const seen: Record<string, number> = {};
+      function uniqueId(base: string): string {
+        if (!base) base = 'section';
+        if (!seen[base]) { seen[base] = 1; return base; }
+        seen[base]++;
+        return base + '-' + seen[base];
+      }
+
+      // Prose headings: auto-generate IDs from text content
+      document.querySelectorAll<HTMLElement>('.prose h2, .prose h3').forEach(heading => {
+        const id = uniqueId(slugify(heading.textContent || ''));
+        heading.id = id;
+        const url = window.location.origin + window.location.pathname + '#' + id;
+        heading.prepend(makeBtn(url));
+      });
+
+      // Demo section headers: link to parent section's existing ID
+      document.querySelectorAll<HTMLElement>('.demo-header h2').forEach(heading => {
+        const section = heading.closest<HTMLElement>('section[id]');
+        if (!section) return;
+        const url = window.location.origin + window.location.pathname + '#' + section.id;
+        heading.prepend(makeBtn(url));
+      });
+    })();
   </script>
 </body>
 </html>

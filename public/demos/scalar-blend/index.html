@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scalar field blend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #canvas { display: block; width: 1920px; height: 1080px; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+
+    /* ── Standard buttons ──────────────────────────────────────────────────── */
+    #play-btn {
+      position: absolute; top: 32px; right: 32px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; pointer-events: all; z-index: 10;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.26); }
+
+    #aa-btn {
+      position: absolute; top: 32px; right: 96px;
+      height: 48px; padding: 0 14px; border-radius: 24px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s; pointer-events: all; z-index: 10;
+    }
+    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+
+    /* ── Blend controls ────────────────────────────────────────────────────── */
+    #controls-bottom {
+      position: absolute; bottom: 42px; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: center;
+      gap: 20px; pointer-events: all;
+    }
+
+    .shape-select {
+      font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 300;
+      color: rgba(255,255,255,0.70);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 8px;
+      padding: 8px 32px 8px 14px;
+      cursor: pointer; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      min-width: 220px;
+    }
+    .shape-select option { background: #111; color: #ccc; }
+    .shape-select optgroup { background: #111; color: rgba(255,255,255,0.40); font-size: 11px; }
+    .shape-select:hover { border-color: rgba(255,255,255,0.30); }
+
+    .blend-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .blend-label {
+      font-family: 'Google Sans Code', monospace; font-size: 11px;
+      color: rgba(255,255,255,0.30); user-select: none;
+    }
+    #blend-slider {
+      width: 280px; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    #blend-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer;
+      border: none;
+    }
+    #blend-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.80); cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div id="overlay">
+      <button id="aa-btn" aria-label="Antialiasing off">Antialias</button>
+      <button id="play-btn" aria-label="Play"></button>
+      <div id="controls-bottom">
+        <select id="shape-a" class="shape-select" aria-label="Shape A"></select>
+        <div class="blend-wrap">
+          <span class="blend-label">A</span>
+          <input id="blend-slider" type="range" min="0" max="1000" value="500" step="1" aria-label="Blend" />
+          <span class="blend-label">B</span>
+        </div>
+        <select id="shape-b" class="shape-select" aria-label="Shape B"></select>
+      </div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960; canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

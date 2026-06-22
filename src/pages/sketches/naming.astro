@@ -1,0 +1,540 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout title="Naming reference" slug="sketches/naming">
+
+<style>
+  .ref-block {
+    max-width: 900px;
+    margin: 0 0 3.5rem 1.5rem;
+  }
+  .ref-block h2 {
+    font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--fg);
+    margin-bottom: 0.4rem;
+  }
+  .ref-block .section-note {
+    font-size: 0.82rem; color: var(--fg-muted); margin-bottom: 1rem;
+  }
+  .ref-grid {
+    display: grid;
+    grid-template-columns: 20ch 16ch 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border);
+  }
+  .ref-grid .rn,
+  .ref-grid .rnn,
+  .ref-grid .rd {
+    font-size: 0.82rem; line-height: 1.55;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ref-grid .rn {
+    font-family: var(--font-code);
+    color: var(--fg);
+    padding-right: 1rem;
+  }
+  .ref-grid .rnn {
+    font-family: var(--font-code);
+    color: var(--fg-muted);
+    padding-right: 1rem;
+  }
+  .ref-grid .rd {
+    color: var(--fg-muted);
+  }
+  .ref-grid .col-hdr {
+    font-size: 0.70rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--fg-muted); opacity: 0.40;
+    padding: 0.5rem 0 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .ref-grid .group-header {
+    grid-column: 1 / -1;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); opacity: 0.55;
+    padding: 0.9rem 0 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .ref-grid .idx {
+    font-family: var(--font-code);
+    font-size: 0.72rem;
+    color: var(--fg-muted);
+    opacity: 0.45;
+    margin-right: 0.5ch;
+  }
+  .vocab-group { margin-top: 1.8rem; }
+  .vocab-heading {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: -0.005em;
+    color: var(--fg); margin-bottom: 0.3rem;
+  }
+  .vocab-grid {
+    display: grid;
+    grid-template-columns: 14ch 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+  .vocab-grid .vt,
+  .vocab-grid .vd {
+    font-size: 0.82rem; line-height: 1.55;
+    padding: 0.32rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .vocab-grid .vt {
+    font-family: var(--font-code);
+    color: var(--fg);
+    padding-right: 1rem;
+  }
+  .vocab-grid .vd { color: var(--fg-muted); }
+  .vocab-grid .vd em { font-style: italic; color: var(--fg); }
+  .vocab-grid-prohibited .vt { color: var(--fg-muted); opacity: 0.55; }
+  .vt-bad { text-decoration: line-through; text-decoration-color: currentColor; }
+
+  .policy-list {
+    list-style: decimal; padding-left: 1.4rem;
+    margin-top: 0.8rem;
+  }
+  .policy-list li {
+    font-size: 0.82rem; line-height: 1.65; color: var(--fg-muted);
+    margin-bottom: 0.55rem;
+  }
+  .policy-list li strong { color: var(--fg); font-weight: 600; }
+  .disc {
+    font-size: 0.82rem; color: var(--fg-muted);
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+</style>
+
+<div class="monologue">
+  Names in use across all demos — shapes, effects, lighting, and stems.
+  Flags anything inconsistent.
+</div>
+
+<div class="ref-block">
+  <h2>Naming policies</h2>
+  <p class="section-note">Rules that govern the "new" column. Apply to all categories unless noted.</p>
+  <ol class="policy-list">
+    <li><strong>Clear.</strong> The name should be self-explanatory without needing to see the thing. Avoid abbreviations and acronyms unless they are established mathematical notation.</li>
+    <li><strong>Mathematically true.</strong> The name should reflect what is actually happening in the formula — the underlying surface type, the operation, the parameter that varies. Don't describe the visual impression if a more precise term exists.</li>
+    <li><strong>No metaphor or poetic language.</strong> Names describe geometry and motion, not mood or feeling. "Oscillating" not "breathing". "Vertical compression" not "squash" if a more precise term fits.</li>
+    <li><strong>Distinct.</strong> No two names in the same category should be confusable or interchangeable. If two names could plausibly describe the same thing, at least one needs revision.</li>
+    <li><strong>Consistent patterns within families.</strong> If several items share the same base formula or the same motion type, that relationship must be visible in the name. Don't vary the word for the same concept across entries.</li>
+    <li><strong>[Modifier · base] structure for animated surfaces.</strong> Every animated surface name follows exactly <em>[present-participle motion] [mathematical shape noun]</em> — e.g., "Oscillating paraboloid", "Pulsing sphere". Word order is fixed; no exceptions without a documented reason (e.g., the surface is a recognised mathematical proper noun).</li>
+    <li><strong>Prefer established mathematical terminology for base shapes.</strong> If the mathematical literature has a name for the surface or structure (paraboloid, hyperboloid, gyroid, lemniscate), use it. Don't substitute an informal synonym ("bowl", "donut", "figure-eight") when a precise term exists.</li>
+    <li><strong>No root reuse across different phenomena.</strong> The same root word must not appear in names for conceptually unrelated things. If "ripple" names the static radially-decaying cosine surface, the same root cannot be used to describe animation on a torus or an outward-traveling wave.</li>
+  </ol>
+</div>
+
+<!-- ── Vocabulary ─────────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Approved vocabulary</h2>
+  <p class="section-note">Pick from these lists when composing a new name. Unlisted terms require justification against the policies.</p>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Base shape nouns</h3>
+    <p class="section-note">The mathematical name of the underlying surface. Used as the final noun in an animated surface name.</p>
+    <div class="vocab-grid">
+      <span class="vt">paraboloid</span>
+      <span class="vd">Quadratic surface opening in one direction; includes elliptic and hyperbolic variants</span>
+      <span class="vt">hyperboloid</span>
+      <span class="vd">One-sheet ruled quadratic surface; x² + z² − y² = c</span>
+      <span class="vt">ellipsoid</span>
+      <span class="vd">Triaxially scaled sphere; all quadratic terms positive</span>
+      <span class="vt">sphere</span>
+      <span class="vd">Zero set of x² + y² + z² = r²</span>
+      <span class="vt">torus</span>
+      <span class="vd">Surface of revolution of a circle; defined by major and tube radii</span>
+      <span class="vt">cone</span>
+      <span class="vd">Ruled quadratic surface with a vertex; x² + z² = y²</span>
+      <span class="vt">saddle</span>
+      <span class="vd">Hyperbolic paraboloid or higher-degree saddle-type surface</span>
+      <span class="vt">Gaussian</span>
+      <span class="vd">Surface whose equation contains e^(−r²/σ²); bell-curve profile</span>
+      <span class="vt">cubic</span>
+      <span class="vd">Algebraic surface of degree 3</span>
+      <span class="vt">quartic</span>
+      <span class="vd">Algebraic surface of degree 4</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Proper mathematical names</h3>
+    <p class="section-note">Recognised names from the literature. Use as-is; do not paraphrase or translate.</p>
+    <div class="vocab-grid">
+      <span class="vt">gyroid</span>
+      <span class="vd">Triply periodic minimal surface; cos(x)sin(y) + cos(y)sin(z) + cos(z)sin(x) = 0</span>
+      <span class="vt">Schwartz P</span>
+      <span class="vd">Triply periodic minimal surface; cos(2x) + cos(2y) + cos(2z) = c</span>
+      <span class="vt">Schoen I-WP</span>
+      <span class="vd">Triply periodic surface; cos(2x)cos(2y) + cos(2y)cos(2z) + cos(2z)cos(2x) = c</span>
+      <span class="vt">lemniscate</span>
+      <span class="vd">Figure-eight curve of revolution; (x²+y²+z²)² = a²(x²−z²)</span>
+      <span class="vt">Chmutov T₄</span>
+      <span class="vd">Degree-4 surface from Chebyshev polynomials T₄; T₄(x)+T₄(y)+T₄(z) = 0</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Animation participles</h3>
+    <p class="section-note">Present-participle words describing what the time parameter is doing. Used as the leading modifier in an animated surface name.</p>
+    <div class="vocab-grid">
+      <span class="vt">oscillating</span>
+      <span class="vd">A scalar parameter alternates sign periodically; e.g., amplitude goes positive → negative → positive</span>
+      <span class="vt">pulsing</span>
+      <span class="vd">A magnitude varies periodically while staying positive; e.g., radius or height swells and contracts</span>
+      <span class="vt">traveling</span>
+      <span class="vd">A spatial feature (wave front, peak) translates through space; the surface moves, not just deforms</span>
+      <span class="vt">rotating</span>
+      <span class="vd">Angular position increases monotonically; the surface or a feature spins</span>
+      <span class="vt">drifting</span>
+      <span class="vd">A parameter shifts slowly and continuously without periodicity; no return to origin</span>
+      <span class="vt">tilting</span>
+      <span class="vd">The orientation angle of the surface varies; a rotation that reverses rather than spins continuously</span>
+      <span class="vt">alternating</span>
+      <span class="vd">The surface transitions between two discrete configurations; a binary oscillation</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Spatial qualifiers</h3>
+    <p class="section-note">Adjectives or adverbs that specify the geometry of a feature — used when the base noun alone is ambiguous.</p>
+    <div class="vocab-grid">
+      <span class="vt">radial</span>
+      <span class="vd">Depends only on r = √(x²+z²); rotationally symmetric about the vertical axis</span>
+      <span class="vt">axial</span>
+      <span class="vd">Varies along the primary (vertical) axis; independent of angle</span>
+      <span class="vt">angular</span>
+      <span class="vd">Depends on azimuthal angle θ; periodic in θ</span>
+      <span class="vt">transverse</span>
+      <span class="vd">Perpendicular to the primary axis or wave direction</span>
+      <span class="vt">sinusoidal</span>
+      <span class="vd">Profile follows a sin or cos function; use when the wave shape itself is the defining feature</span>
+      <span class="vt">triply periodic</span>
+      <span class="vd">Repeating in all three spatial directions; reserved for minimal surfaces and their relatives</span>
+    </div>
+  </div>
+
+  <div class="vocab-group">
+    <h3 class="vocab-heading">Prohibited terms</h3>
+    <p class="section-note">Words that violate one or more policies, with the preferred alternative.</p>
+    <div class="vocab-grid vocab-grid-prohibited">
+      <span class="vt vt-bad">swaying</span>
+      <span class="vd">Too evocative. Use <em>tilting</em> (if orientation angle varies) or <em>oscillating</em> (if a scalar alternates)</span>
+      <span class="vt vt-bad">wavy</span>
+      <span class="vd">Describes appearance, not math. Use <em>sinusoidal</em> or <em>oscillating</em> with the axis specified</span>
+      <span class="vt vt-bad">bumpy</span>
+      <span class="vd">Describes appearance. Specify the perturbation type: <em>perturbed</em> + base, or name the perturbation function</span>
+      <span class="vt vt-bad">ripple / rippling</span>
+      <span class="vd">Reserved for the static radially-decaying cosine surface (idx 09). Do not reuse for animation or for torus modulation</span>
+      <span class="vt vt-bad">wave (standalone)</span>
+      <span class="vd">Ambiguous — could mean wave shape, wave motion, or wave equation. Qualify: <em>sinusoidal surface</em>, <em>traveling wave</em>, etc.</span>
+      <span class="vt vt-bad">blend</span>
+      <span class="vd">Describes an operation, not a surface. Name the result geometrically: what surface does the blend produce?</span>
+      <span class="vt vt-bad">twisted</span>
+      <span class="vd">Ambiguous between torsion (differential geometry) and casual use. Use <em>rotating</em> if angular position varies monotonically</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Scalar fields — static ─────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Scalar fields — static</h2>
+  <p class="section-note">Time-independent implicit surfaces f(x,y,z) = 0. Used as selectable shapes in scalar-blend and shape interpolation.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn"><span class="idx">01</span>Elliptic paraboloid</span><span class="rnn">Elliptic paraboloid</span>
+    <span class="rd">Upward bowl; z = x² + z²</span>
+    <span class="rn"><span class="idx">02</span>Hyperbolic paraboloid</span><span class="rnn">Hyperbolic paraboloid</span>
+    <span class="rd">Saddle surface; z = x² − z²</span>
+    <span class="rn"><span class="idx">03</span>Cone</span><span class="rnn">Cone</span>
+    <span class="rd">Double cone; x² + z² = y²</span>
+    <span class="rn"><span class="idx">04</span>Sphere</span><span class="rnn">Sphere</span>
+    <span class="rd">Perfect sphere; x² + y² + z² = r²</span>
+    <span class="rn"><span class="idx">05</span>Torus</span><span class="rnn">Torus</span>
+    <span class="rd">Ring surface defined by distance to a circle</span>
+    <span class="rn"><span class="idx">06</span>Hyperboloid</span><span class="rnn">Hyperboloid</span>
+    <span class="rd">One-sheet hyperboloid; x² + z² − y² = c</span>
+    <span class="rn"><span class="idx">07</span>Monkey saddle</span><span class="rnn">Monkey saddle</span>
+    <span class="rd">Three-valley saddle; z = x³ − 3xz²</span>
+    <span class="rn"><span class="idx">08</span>Wave surface</span><span class="rnn">Sinusoidal surface</span>
+    <span class="rd">Standing sinusoidal grid; z = sin(x)·cos(z)</span>
+    <span class="rn"><span class="idx">09</span>Ripple</span><span class="rnn">Radial damped cosine</span>
+    <span class="rd">Radially decaying cosine; z = e^(−r)·cos(kr)</span>
+    <span class="rn"><span class="idx">10</span>Ellipsoid</span><span class="rnn">Ellipsoid</span>
+    <span class="rd">Sphere with three independent semi-axes</span>
+  </div>
+</div>
+
+<!-- ── Scalar fields — moving ─────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Scalar fields — moving</h2>
+  <p class="section-note">Animated implicit surfaces; the time parameter t drives deformation. Used in moving-scalar-fields, scalar-blend, and shape interpolation.</p>
+  <p class="disc">Note: multitrack-shapes calls index 18 "Lemniscate surface" — the canonical name used elsewhere is "Lemniscate".</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn"><span class="idx">11</span>Traveling ripple</span><span class="rnn">Traveling radial damped cosine</span>
+    <span class="rd">Radial wave propagating outward from centre</span>
+    <span class="rn"><span class="idx">12</span>Rippling torus</span><span class="rnn">Pulsing torus</span>
+    <span class="rd">Torus tube radius pulsing with angular waves</span>
+    <span class="rn"><span class="idx">13</span>Wave sheet</span><span class="rnn">Traveling sinusoidal surface</span>
+    <span class="rd">Sinusoidal sheet animating in two orthogonal directions</span>
+    <span class="rn"><span class="idx">14</span>Pulsing sphere</span><span class="rnn">Oscillating spheroid</span>
+    <span class="rd">Sphere radius modulated by a Legendre polynomial</span>
+    <span class="rn"><span class="idx">15</span>Oscillating saddle</span><span class="rnn">Pulsing saddle</span>
+    <span class="rd">Hyperbolic paraboloid amplitude swinging back and forth</span>
+    <span class="rn"><span class="idx">16</span>Gyroid</span><span class="rnn">Pulsing gyroid</span>
+    <span class="rd">Triply periodic minimal surface; amplitude oscillating</span>
+    <span class="rn"><span class="idx">17</span>Schwartz P</span><span class="rnn">Oscillating Schwartz P</span>
+    <span class="rd">Triply periodic surface; level set drifting</span>
+    <span class="rn"><span class="idx">18</span>Lemniscate</span><span class="rnn">Pulsing lemniscate</span>
+    <span class="rd">Figure-eight surface of revolution; parameter oscillating</span>
+    <span class="rn"><span class="idx">19</span>Swaying ellipsoid</span><span class="rnn">Tilting ellipsoid</span>
+    <span class="rd">Ellipsoid axes animating with a slow tilt</span>
+    <span class="rn"><span class="idx">20</span>Tanglecube</span><span class="rnn">Pulsing tanglecube</span>
+    <span class="rd">Degree-4 algebraic surface with eight lobes</span>
+    <span class="rn"><span class="idx">21</span>Chmutov T₄</span><span class="rnn">Pulsing Chmutov T₄</span>
+    <span class="rd">Degree-4 surface from Chebyshev polynomials; scale oscillating</span>
+    <span class="rn"><span class="idx">22</span>Rippled cone</span><span class="rnn">Traveling sinusoidal cone</span>
+    <span class="rd">Cone with a helical standing wave on its surface</span>
+    <span class="rn"><span class="idx">23</span>Pulsing Gaussian</span><span class="rnn">Pulsing Gaussian</span>
+    <span class="rd">Bell curve pulsing in amplitude and width</span>
+    <span class="rn"><span class="idx">24</span>Schoen I-WP</span><span class="rnn">Oscillating Schoen I-WP</span>
+    <span class="rd">Triply periodic I-WP surface; level set oscillating</span>
+    <span class="rn"><span class="idx">25</span>Saddle blend</span><span class="rnn">Tilting saddle</span>
+    <span class="rd">Hyperbolic paraboloid with a rotating cross-term</span>
+    <span class="rn"><span class="idx">26</span>Twisted torus</span><span class="rnn">Rotating torus</span>
+    <span class="rd">Torus with tube radius varying per angle, rotating</span>
+    <span class="rn"><span class="idx">27</span>Bumpy sphere</span><span class="rnn">Rotating harmonic sphere</span>
+    <span class="rd">Sphere with spherical-harmonic bumps drifting longitudinally</span>
+    <span class="rn"><span class="idx">28</span>Wavy hyperboloid</span><span class="rnn">Traveling hyperboloid</span>
+    <span class="rd">One-sheet hyperboloid with transverse oscillation</span>
+    <span class="rn"><span class="idx">29</span>Permuted cubic</span><span class="rnn">Pulsing cyclic cubic</span>
+    <span class="rd">Symmetric degree-3 surface; constant drifting</span>
+    <span class="rn"><span class="idx">30</span>Flipping paraboloid</span><span class="rnn">Rotating paraboloid</span>
+    <span class="rd">Paraboloid flipping between upward and downward orientation</span>
+  </div>
+</div>
+
+<!-- ── SDF shapes ────────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>SDF shapes</h2>
+  <p class="section-note">Signed-distance function primitives. Used in the shape composer, SDF blend, and platonic duals demos.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn">Sphere</span><span class="rnn">Sphere</span>
+    <span class="rd">Exact sphere SDF</span>
+    <span class="rn">Box</span><span class="rnn">Box</span>
+    <span class="rd">Axis-aligned box</span>
+    <span class="rn">Round box</span><span class="rnn">Round box</span>
+    <span class="rd">Box with rounded edges</span>
+    <span class="rn">Box frame</span><span class="rnn">Box frame</span>
+    <span class="rd">Hollow wireframe box</span>
+    <span class="rn">Torus</span><span class="rnn">Torus</span>
+    <span class="rd">Ring; major radius + tube radius</span>
+    <span class="rn">Capped torus</span><span class="rnn">Capped torus</span>
+    <span class="rd">Torus with an angular cap</span>
+    <span class="rn">Link</span><span class="rnn">Link</span>
+    <span class="rd">Chain-link shape; two torus arcs joined</span>
+    <span class="rn">Infinite cylinder</span><span class="rnn">Infinite cylinder</span>
+    <span class="rd">Infinite-length cylinder along an axis</span>
+    <span class="rn">Cone</span><span class="rnn">Cone</span>
+    <span class="rd">Capped cone from apex to base disc</span>
+    <span class="rn">Infinite cone</span><span class="rnn">Infinite cone</span>
+    <span class="rd">Double infinite cone from origin</span>
+    <span class="rn">Hex prism</span><span class="rnn">Hex prism</span>
+    <span class="rd">Hexagonal prism</span>
+    <span class="rn">Capsule</span><span class="rnn">Capsule</span>
+    <span class="rd">Segment with hemispherical caps; arbitrary orientation</span>
+    <span class="rn">Vertical capsule</span><span class="rnn">Vertical capsule</span>
+    <span class="rd">Upright capsule aligned to Y axis</span>
+    <span class="rn">Capped cylinder</span><span class="rnn">Capped cylinder</span>
+    <span class="rd">Finite-length cylinder with flat caps</span>
+    <span class="rn">Arb. cylinder</span><span class="rnn">Arb. cylinder</span>
+    <span class="rd">Cylinder between two arbitrary endpoints</span>
+    <span class="rn">Rounded cylinder</span><span class="rnn">Rounded cylinder</span>
+    <span class="rd">Cylinder with rounded caps and edges</span>
+    <span class="rn">Capped cone</span><span class="rnn">Capped cone</span>
+    <span class="rd">Cone truncated between two radii</span>
+    <span class="rn">Arb. capped cone</span><span class="rnn">Arb. capped cone</span>
+    <span class="rd">Truncated cone between two arbitrary endpoints</span>
+    <span class="rn">Solid angle</span><span class="rnn">Solid angle</span>
+    <span class="rd">Cone-sphere intersection; ice-cream-scoop shape</span>
+    <span class="rn">Cut sphere</span><span class="rnn">Cut sphere</span>
+    <span class="rd">Sphere with a planar cut; dome</span>
+    <span class="rn">Cut hollow sphere</span><span class="rnn">Cut hollow sphere</span>
+    <span class="rd">Thin spherical shell with a planar cut</span>
+    <span class="rn">Death star</span><span class="rnn">Death star</span>
+    <span class="rd">Sphere with a hemispherical bite taken out</span>
+    <span class="rn">Round cone</span><span class="rnn">Round cone</span>
+    <span class="rd">Cone with a rounded apex</span>
+    <span class="rn">Arb. round cone</span><span class="rnn">Arb. round cone</span>
+    <span class="rd">Round cone between two arbitrary endpoints</span>
+    <span class="rn">Vesica segment</span><span class="rnn">Vesica segment</span>
+    <span class="rd">Lens-shaped intersection of two spheres</span>
+    <span class="rn">Rhombus</span><span class="rnn">Rhombus</span>
+    <span class="rd">Flattened diamond; extruded rhombus</span>
+    <span class="rn">Octahedron</span><span class="rnn">Octahedron</span>
+    <span class="rd">8-faced regular polyhedron; exact SDF</span>
+    <span class="rn">Octahedron (fast)</span><span class="rnn">Octahedron (fast)</span>
+    <span class="rd">Octahedron; approximate bound (cheaper)</span>
+    <span class="rn">Pyramid</span><span class="rnn">Pyramid</span>
+    <span class="rd">Square-based pyramid</span>
+    <span class="rn">Ellipsoid</span><span class="rnn">Ellipsoid</span>
+    <span class="rd">Triaxially scaled sphere; approximate SDF</span>
+    <span class="rn">Triangular prism</span><span class="rnn">Triangular prism</span>
+    <span class="rd">Infinite triangular prism along one axis</span>
+  </div>
+</div>
+
+<!-- ── Platonic duals ─────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Platonic dual pairs</h2>
+  <p class="section-note">Dual polyhedra interleaved and blended. Each pair cycles between the two solids.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn">Cube / Octahedron</span><span class="rnn">Cube / Octahedron</span>
+    <span class="rd">6-face cube dual to 8-face octahedron</span>
+    <span class="rn">Tetrahedron / Tetrahedron</span><span class="rnn">Tetrahedron / Tetrahedron</span>
+    <span class="rd">Self-dual; both solids are 4-face tetrahedra</span>
+    <span class="rn">Dodecahedron / Icosahedron</span><span class="rnn">Dodecahedron / Icosahedron</span>
+    <span class="rd">12-face dodecahedron dual to 20-face icosahedron</span>
+  </div>
+</div>
+
+<!-- ── Sound form modes ──────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Sound form modes</h2>
+  <p class="section-note">Procedural audio-reactive geometry driven by FFT or waveform history. Used in the shape composer.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn"><span class="idx">01</span>Radial spectrum</span><span class="rnn">Spectral fan</span>
+    <span class="rd">Frequency bars fanning outward from centre</span>
+    <span class="rn"><span class="idx">02</span>Band interference</span><span class="rnn">Interference rings</span>
+    <span class="rd">Two concentric FFT rings creating moiré interference</span>
+    <span class="rn"><span class="idx">03</span>Spectrogram drum</span><span class="rnn">Spectrogram cylinder</span>
+    <span class="rd">Cylinder with spectrogram history scrolling around its circumference</span>
+    <span class="rn"><span class="idx">04</span>Frequency tube</span><span class="rnn">Spectral tube</span>
+    <span class="rd">Tube whose radius is driven by FFT band energy</span>
+    <span class="rn"><span class="idx">05</span>Temporal shell</span><span class="rnn">Waveform sphere</span>
+    <span class="rd">Sphere displaced outward by waveform history</span>
+    <span class="rn"><span class="idx">06</span>Harmonic rings</span><span class="rnn">Harmonic rings</span>
+    <span class="rd">Concentric rings scaled by harmonic overtone energy</span>
+    <span class="rn"><span class="idx">07</span>Spectrogram cone</span><span class="rnn">Spectrogram cone</span>
+    <span class="rd">Conical surface with scrolling spectrogram</span>
+    <span class="rn"><span class="idx">08</span>Frequency terrain</span><span class="rnn">Spectral terrain</span>
+    <span class="rd">Flat terrain mesh with height driven by FFT</span>
+    <span class="rn"><span class="idx">09</span>Spectral helix</span><span class="rnn">Spectral helix</span>
+    <span class="rd">Helix with cross-section driven by spectrum</span>
+    <span class="rn"><span class="idx">10</span>Box ribbon</span><span class="rnn">Spectral ribbon</span>
+    <span class="rd">Ribbon folded along a box path, driven by frequency amplitude</span>
+  </div>
+</div>
+
+<!-- ── Deformation effects ───────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Deformation effects</h2>
+  <p class="section-note">Spatial deformations applied to shapes in real time. Each group is driven by a different signal.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="group-header">Amplitude — instantaneous RMS</span>
+    <span class="rn">Inflate</span><span class="rnn">Radial expansion</span>
+    <span class="rd">Uniform outward expansion proportional to amplitude</span>
+    <span class="rn">Squash</span><span class="rnn">Axial compression</span>
+    <span class="rd">Vertical compression proportional to amplitude</span>
+    <span class="rn">Spikes</span><span class="rnn">Normal extrusion</span>
+    <span class="rd">Sharp radial extrusion along the surface normal</span>
+    <span class="group-header">History — windowed amplitude buffer</span>
+    <span class="rn">Ripple</span><span class="rnn">Radial displacement</span>
+    <span class="rd">Concentric radial displacement tracking amplitude over time</span>
+    <span class="rn">Rings</span><span class="rnn">Banded displacement</span>
+    <span class="rd">Discrete band steps tracking amplitude history</span>
+    <span class="rn">Twist</span><span class="rnn">Axial rotation</span>
+    <span class="rd">Axial rotation accumulating with history</span>
+    <span class="group-header">Frequency — FFT spectrum</span>
+    <span class="rn">EQ</span><span class="rnn">Spectral displacement</span>
+    <span class="rd">Per-band vertical displacement (equaliser style)</span>
+    <span class="rn">Contour</span><span class="rnn">Spectral contours</span>
+    <span class="rd">Iso-contour displacement at frequency-driven thresholds</span>
+    <span class="rn">Shear</span><span class="rnn">Spectral shear</span>
+    <span class="rd">Lateral shear driven by spectral centroid position</span>
+  </div>
+</div>
+
+<!-- ── Lighting modes ────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Lighting modes</h2>
+  <p class="section-note">Render styles applied to the same raymarched surface. Indices match the selector in the shape composer.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn"><span class="idx">0</span>Rim</span><span class="rnn">Rim lighting</span>
+    <span class="rd">Two-light studio with high-contrast rim; dark interior, bright silhouette</span>
+    <span class="rn"><span class="idx">1</span>Flash</span><span class="rnn">Amplitude flash</span>
+    <span class="rd">Point light synced to amplitude peaks; strobe-like response</span>
+    <span class="rn"><span class="idx">2</span>Env</span><span class="rnn">Environment map</span>
+    <span class="rd">Environment map; OKLCH-gradient chrome material</span>
+    <span class="rn"><span class="idx">3</span>Wave · anisotropic</span><span class="rnn">Anisotropic wave</span>
+    <span class="rd">Anisotropic specular with audio-driven wave direction</span>
+    <span class="rn"><span class="idx">4</span>Phase portrait</span><span class="rnn">Normal phase portrait</span>
+    <span class="rd">Hue encodes surface-normal orientation; abstract coloring</span>
+    <span class="rn"><span class="idx">5</span>Crystal · drift</span><span class="rnn">Drifting caustic</span>
+    <span class="rd">Caustic-like refractions with drifting cool hues</span>
+    <span class="rn"><span class="idx">6</span>Spectrogram</span><span class="rnn">Spectrogram</span>
+    <span class="rd">Surface hue maps to frequency band energy</span>
+    <span class="rn"><span class="idx">7</span>Bilateral spectrogram</span><span class="rnn">Bilateral spectrogram</span>
+    <span class="rd">Spectrogram mirrored across left and right hemispheres</span>
+    <span class="rn"><span class="idx">8</span>Spectral bands · hue</span><span class="rnn">Spectral hue</span>
+    <span class="rd">Discrete hue-banded coloring driven by FFT energy</span>
+    <span class="rn"><span class="idx">9</span>Spectral bands · hue + L</span><span class="rnn">Spectral hue-lightness</span>
+    <span class="rd">Spectral hue with lightness modulation added</span>
+  </div>
+</div>
+
+<!-- ── Standard lighting ─────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Standard studio lighting</h2>
+  <p class="section-note">Fixed parameters shared by all scalar field demos (lighting.glsl). Not a selectable mode — always on.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">parameter</span><span class="col-hdr"></span><span class="col-hdr">value</span>
+    <span class="rn">Material</span><span class="rnn"></span>
+    <span class="rd">vec3(0.88) — near-white diffuse</span>
+    <span class="rn">Ambient</span><span class="rnn"></span>
+    <span class="rd">0.13</span>
+    <span class="rn">Key light</span><span class="rnn"></span>
+    <span class="rd">normalize(0.6, 1.0, 0.7) — upper-right-front; diffuse coeff 0.84</span>
+    <span class="rn">Fill light</span><span class="rnn"></span>
+    <span class="rd">normalize(−0.8, 0.3, 0.5) — upper-left-front; diffuse coeff 0.28</span>
+    <span class="rn">Specular</span><span class="rnn"></span>
+    <span class="rd">vec3(0.40) Blinn-Phong, power 72</span>
+    <span class="rn">Fresnel rim</span><span class="rnn"></span>
+    <span class="rd">vec3(0.12, 0.18, 0.38) × 0.6, power 4 — subtle blue rim</span>
+    <span class="rn">Gamma</span><span class="rnn"></span>
+    <span class="rd">pow(col, 0.4545) applied in main(); Three.js set to LinearSRGBColorSpace</span>
+  </div>
+</div>
+
+<!-- ── Stems ─────────────────────────────────────────────────────── -->
+<div class="ref-block">
+  <h2>Stems</h2>
+  <p class="section-note">The seven isolated tracks from the reference audio session (250621_a1_mix1). Master is used in some demos but not part of the stem set.</p>
+  <div class="ref-grid">
+    <span class="col-hdr">current</span><span class="col-hdr">new</span><span class="col-hdr">description</span>
+    <span class="rn">Arp</span><span class="rnn"></span>
+    <span class="rd">Arpeggiated melodic line</span>
+    <span class="rn">Bass</span><span class="rnn"></span>
+    <span class="rd">Bass line</span>
+    <span class="rn">Hat</span><span class="rnn"></span>
+    <span class="rd">Hi-hat</span>
+    <span class="rn">Kick 1</span><span class="rnn"></span>
+    <span class="rd">Primary kick drum</span>
+    <span class="rn">Kick 2</span><span class="rnn"></span>
+    <span class="rd">Secondary kick drum</span>
+    <span class="rn">Pad</span><span class="rnn"></span>
+    <span class="rd">Sustained pad / chord layer</span>
+    <span class="rn">Snare</span><span class="rnn"></span>
+    <span class="rd">Snare drum</span>
+  </div>
+</div>
+
+</PageLayout>

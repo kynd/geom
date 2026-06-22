@@ -1,0 +1,219 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Sound-reactive shapes" slug="sound-reactive-shapes">
+  <div class="monologue">
+    Deforming or generating shapes in response to sound input.
+  </div>
+
+  <section class="demo-section" id="amplitude">
+    <div class="demo-header">
+      <h2>Amplitude</h2>
+      <a href={`${base}/demos/sound-amplitude/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sound-amplitude/index.html?embedded`} title="Amplitude deformation" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Shapes from previously discussed four parametric families — SDF, Platonic, scalar fields, moving scalar —
+        deformed in real time by audio.
+      </p>
+      <p>
+        These effects read only the amplitude at the current frame — the reaction is immediate
+        and tight on transients. Each sample point is displaced before the SDF or scalar field
+        is evaluated, so normals are finite-differenced on the displaced geometry and interact
+        directly with lighting.
+      </p>
+      <details>
+        <summary>Inflate, Squash, Spikes</summary>
+        <div class="shape-desc">
+          <strong>Inflate</strong>
+          <p>Mono amplitude shifts the scalar threshold — the marcher
+          renders a different isosurface of the same field. For closed shapes (sphere, box,
+          torus, Platonic solids) this expands the surface outward uniformly. For open surfaces
+          (paraboloid, saddle, hyperboloid) it translates the surface along the field gradient —
+          the sheet moves rather than inflates.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Squash</strong>
+          <p>Left channel compresses the Y axis; right channel expands
+          X and Z. Width and height each have their own slider, so the effect can be made
+          very drastic independently on each axis.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Spikes</strong>
+          <p>A hash function assigns each surface point a fixed random
+          displacement, creating a spiky silhouette that reacts to mono amplitude. Lighting
+          uses the smooth base-surface normal rather than the displaced one: the rim term
+          follows the original curvature, so the glowing corona tracks the clean outline of
+          the shape while the spiky geometry defines its edge.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="demo-section" id="history">
+    <div class="demo-header">
+      <h2>History</h2>
+      <a href={`${base}/demos/sound-history/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sound-history/index.html?embedded`} title="History deformation" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        A 256-frame ring buffer (~4 seconds at 60 fps) stores past amplitude values.
+        Each method maps a spatial coordinate to a time offset, so the shape holds a visible
+        record of recent sound. <strong>Duration</strong> narrows the history window — at low values
+        only the most recent frames are visible, compressing the timeline onto the surface.
+        <strong>Soften</strong> applies a Gaussian blur across adjacent history frames, smoothing
+        sharp transients into gradual waves.
+      </p>
+      <details>
+        <summary>Ripple, Rings, Twist</summary>
+        <div class="shape-desc">
+          <strong>Ripple</strong>
+          <p>The bottom of the shape samples the current frame;
+          the top samples the oldest. Amplitude pulses appear at the base and travel upward
+          as time passes.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Rings</strong>
+          <p>The centre samples the current amplitude; the outer surface
+          samples the oldest. A beat inflates the centre first, then the effect spreads
+          outward as a concentric pressure wave.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Twist</strong>
+          <p>Each horizontal slice rotates by the amplitude at the
+          corresponding historical moment. The angle slider controls maximum rotation.
+          The twist axis defaults to vertical but can be tilted in X and Z — tilting toward
+          horizontal turns the corkscrew into a side-roll.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="demo-section" id="frequency">
+    <div class="demo-header">
+      <h2>Frequency</h2>
+      <a href={`${base}/demos/sound-frequency/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sound-frequency/index.html?embedded`} title="Frequency deformation" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The current frame's 128-bin mel-scale spectrum drives displacement. Different frequency
+        ranges map to different spatial regions or axes.
+      </p>
+      <details>
+        <summary>EQ, Contour, Shear</summary>
+        <div class="shape-desc">
+          <strong>EQ</strong>
+          <p>Vertical position on the shape maps continuously to a frequency
+          bin. Each height level inflates laterally by the energy in that bin — sub-bass bows
+          the equator out, high partials flare the top. The shape becomes a 3D equaliser display.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Contour</strong>
+          <p>N evenly-spaced frequency bands (2–8, set by the Bands slider)
+          are mapped to N positions along the shape's height. A Catmull-Rom spline connects them,
+          giving a smooth C1-continuous deformation curve. The curve value at each surface point
+          drives a radial outward displacement along the surface normal. With 2 bands the bottom
+          responds to sub-bass and the top to treble; adding more bands gives finer spectral
+          resolution.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Shear</strong>
+          <p>Two pairs of frequency bands drive opposing shear deformations
+          on different axes: sub-bass vs. top treble tilt one axis, low-mid vs. upper-mid tilt
+          the other. When spectral energy is balanced the shape stands upright; imbalance leans
+          it. A heavy low end tilts the shape one way, a high-heavy mix the other. The shear axes
+          rotate slowly over time so the lean direction changes rather than always pointing the same way.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="demo-section" id="form">
+    <div class="demo-header">
+      <h2>Form</h2>
+      <a href={`${base}/demos/sound-form/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sound-form/index.html?embedded`} title="Sound form" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Instead of deforming a base shape, these modes construct geometry directly from audio data.
+      </p>
+      <details>
+        <summary>Radial spectrum, Band interference, Spectrogram drum, Frequency tube, Temporal shell, Harmonic rings, Spectrogram cone, Frequency terrain, Spectral helix, Box ribbon</summary>
+        <div class="shape-desc">
+          <strong>Radial spectrum</strong>
+          <p>A cylinder whose cross-section at every height is the
+          frequency spectrum in polar form — azimuthal angle maps to an FFT bin, radius equals
+          that bin's energy. The spectrum is extruded vertically into a column.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Band interference</strong>
+          <p>Eight FFT bands each weight a standing wave along a
+          distinct 3D direction, distributed uniformly using a golden-angle spiral. The shape is the
+          isosurface of their interference sum, restructuring as spectral content shifts.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Spectrogram drum</strong>
+          <p>A horizontal cylinder; position along its long axis
+          maps to frequency, azimuthal angle around the cross-section maps to time. The full 2D
+          spectrogram wraps around the drum surface. Rotates around its own axis.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Frequency tube</strong>
+          <p>Two vertical tubes side by side — left carries the
+          L-channel FFT, right carries the R-channel. Each tube's radius at a given height equals
+          the energy at the corresponding frequency bin for that channel.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Temporal shell</strong>
+          <p>Two surfaces of revolution side by side: left driven
+          by the L-channel amplitude history, right by the R-channel. Height encodes time; a beat
+          imprints a bulge that travels upward as the frame advances.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Harmonic rings</strong>
+          <p>Seven tori arranged horizontally, each tuned to one
+          mel-band. The major radius of each ring scales with the energy in its band. Rotates
+          around its own axis.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Spectrogram cone</strong>
+          <p>Tip points toward the camera; the cone widens toward
+          the back. Azimuthal angle encodes frequency, position along the cone's axis encodes time.
+          A slow bilateral wiggle reveals different azimuthal slices.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Frequency terrain</strong>
+          <p>A height map tilted toward the camera: horizontal
+          position encodes frequency, vertical position encodes time, and depth encodes spectral
+          amplitude. The full spectrogram becomes a 3D landscape.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Spectral helix</strong>
+          <p>A four-coil helix where each segment's tube radius
+          equals the FFT amplitude at the corresponding frequency. Constant one-directional rotation
+          creates the barber-pole illusion of a signal climbing endlessly upward.</p>
+        </div>
+        <div class="shape-desc">
+          <strong>Box ribbon</strong>
+          <p>A horizontally elongated box where the shell thickness at
+          each position along its length equals the magnitude of spectral change between the current
+          frame and 48 frames prior. Frequencies that shifted most protrude furthest from the surface.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</PageLayout>
