@@ -24,26 +24,30 @@
     #canvas { display: block; width: 1920px; height: 1080px; }
     #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
 
-    /* ── Standard buttons ──────────────────────────────────────────────────── */
-    #play-btn {
-      position: absolute; top: 32px; right: 32px;
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: #fff; transition: background 0.15s; pointer-events: all; z-index: 10;
+    /* ── Control bar ───────────────────────────────────────────────────────── */
+    #ctrl-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 80px;
+      display: flex; align-items: flex-end; gap: 6px; padding: 0 20px 8px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%);
+      pointer-events: all; z-index: 20;
     }
-    #play-btn:hover { background: rgba(255,255,255,0.26); }
+
+    #play-btn {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.24); }
 
     #aa-btn {
-      position: absolute; top: 32px; right: 96px;
-      height: 48px; padding: 0 14px; border-radius: 24px;
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      color: rgba(255,255,255,0.30); transition: all 0.15s; pointer-events: all; z-index: 10;
+      height: 28px; padding: 0 10px; border-radius: 14px; flex-shrink: 0; margin-left: auto;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s;
     }
     #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
-    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
+    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
 
     /* ── Blend controls ────────────────────────────────────────────────────── */
     #controls-bottom {
@@ -90,14 +94,17 @@
       width: 14px; height: 14px; border-radius: 50%; border: none;
       background: rgba(255,255,255,0.80); cursor: pointer;
     }
+    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
   <div class="canvas-wrap">
     <canvas id="canvas" width="1920" height="1080"></canvas>
-    <div id="overlay">
+    <div id="ctrl-bar">
       <button id="aa-btn" aria-label="Antialiasing off">Antialias</button>
       <button id="play-btn" aria-label="Play"></button>
+    </div>
+    <div id="overlay">
       <div id="controls-bottom">
         <select id="shape-a" class="shape-select" aria-label="Shape A"></select>
         <div class="blend-wrap">
@@ -108,7 +115,8 @@
         <select id="shape-b" class="shape-select" aria-label="Shape B"></select>
       </div>
     </div>
-  </div>
+      <div id="fps-meter">-- fps</div>
+</div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');
@@ -119,5 +127,8 @@
     }
   </script>
   <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
 </body>
 </html>

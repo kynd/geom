@@ -55,6 +55,7 @@
     .bloom-heading { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase; text-align: right; margin-bottom: 2px; }
 
     #bottom-controls { display: flex; flex-direction: column; gap: 8px; }
+    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
@@ -190,7 +191,8 @@
 
 
     </div>
-  </div>
+      <div id="fps-meter">-- fps</div>
+</div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');
@@ -201,5 +203,8 @@
     }
   </script>
   <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
 </body>
 </html>

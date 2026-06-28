@@ -29,6 +29,7 @@
     #sound-select { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.22); border-radius: 4px; padding: 0 28px 0 10px; cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; height: 36px; }
     #sound-select:hover { border-color: rgba(255,255,255,0.40); }
     #sound-select option { background: #111; color: #fff; }
+    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
@@ -50,7 +51,8 @@
         </select>
       </div>
     </div>
-  </div>
+      <div id="fps-meter">-- fps</div>
+</div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');
@@ -61,5 +63,8 @@
     }
   </script>
   <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
 </body>
 </html>

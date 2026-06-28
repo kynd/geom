@@ -201,6 +201,7 @@
       font-family: 'Google Sans Code', monospace; font-size: 10px;
       color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
     }
+    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
@@ -230,7 +231,8 @@
       <div id="loading-label">Loading audio data</div>
       <div id="loading-tracks"></div>
     </div>
-  </div>
+      <div id="fps-meter">-- fps</div>
+</div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');
@@ -241,5 +243,8 @@
     }
   </script>
   <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
 </body>
 </html>
