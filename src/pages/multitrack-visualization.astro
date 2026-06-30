@@ -191,4 +191,24 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </details>
     </div>
   </section>
+
+  <section class="demo-section" id="prominence-composer">
+    <div class="demo-header">
+      <h2>Prominence composer</h2>
+      <a href={`${base}/sketches/prominence-composer/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/prominence-composer/index.html?embedded`} title="Prominence composer" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        One shape per stem. The most prominent stem at any moment takes the full canvas — its shape, lighting, and bloom filling the frame while everything else waits offscreen.
+        When all stems are close in prominence or the signal is quiet, the last winner holds until something new breaks through.
+      </p>
+      <p>
+        Every stem is independently configurable: open Settings to assign each one a shape type, deformation effect, lighting mode, and bloom parameters.
+        Use Solo to lock a single stem and audition its visual in isolation.
+      </p>
+    </div>
+  </section>
 </PageLayout>
