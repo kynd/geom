@@ -341,12 +341,9 @@ const navItems: NavItem[] = [
       cursor: pointer;
       padding: 0;
       color: var(--fg-muted);
-      transition: opacity 0.12s;
+      transition: opacity 0.15s;
     }
-    .prose h2:hover > .anchor-copy-btn,
-    .prose h3:hover > .anchor-copy-btn,
-    .demo-header h2:hover > .anchor-copy-btn,
-    .anchor-copy-btn:hover {
+    .anchor-copy-btn.visible {
       opacity: 1;
       pointer-events: auto;
     }
@@ -486,6 +483,21 @@ const navItems: NavItem[] = [
         return btn;
       }
 
+      function wireHover(heading: HTMLElement, btn: HTMLButtonElement) {
+        let hideTimer: ReturnType<typeof setTimeout> | null = null;
+        function show() {
+          if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+          btn.classList.add('visible');
+        }
+        function scheduleHide() {
+          hideTimer = setTimeout(() => { btn.classList.remove('visible'); hideTimer = null; }, 200);
+        }
+        heading.addEventListener('mouseenter', show);
+        heading.addEventListener('mouseleave', scheduleHide);
+        btn.addEventListener('mouseenter', show);
+        btn.addEventListener('mouseleave', scheduleHide);
+      }
+
       function slugify(text: string): string {
         return text.trim().toLowerCase()
           .replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '');
@@ -503,7 +515,9 @@ const navItems: NavItem[] = [
         const id = uniqueId(slugify(heading.textContent || ''));
         heading.id = id;
         const url = window.location.origin + window.location.pathname + '#' + id;
-        heading.prepend(makeBtn(url));
+        const btn = makeBtn(url);
+        heading.prepend(btn);
+        wireHover(heading, btn);
       });
 
       // Demo section headers: link to parent section's existing ID
@@ -511,7 +525,9 @@ const navItems: NavItem[] = [
         const section = heading.closest<HTMLElement>('section[id]');
         if (!section) return;
         const url = window.location.origin + window.location.pathname + '#' + section.id;
-        heading.prepend(makeBtn(url));
+        const btn = makeBtn(url);
+        heading.prepend(btn);
+        wireHover(heading, btn);
       });
     })();
   </script>
