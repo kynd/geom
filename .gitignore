@@ -27,3 +27,12 @@ sound/original/
 CLAUDE.md
 writing-style-guide.md
 Writing/
+
+# Claude Code internals
+.claude/
+
+# Local scratch files
+alignment.md
+*.py
+"Screenshot *.png"
+Screenshot*.png
