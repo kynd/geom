@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prominence composer</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative; width: 1920px; height: 1080px; flex-shrink: 0; background: #000;
+    }
+
+    /* ── Control bar ───────────────────────────────────────────────────────── */
+    #ctrl-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 80px;
+      display: flex; align-items: flex-end; gap: 6px; padding: 0 20px 10px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%);
+      pointer-events: all; z-index: 20;
+    }
+    .ctrl-sep {
+      width: 1px; height: 24px; background: rgba(255,255,255,0.14); margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .ctrl-btn {
+      height: 28px; padding: 0 10px; border-radius: 14px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s; flex-shrink: 0;
+    }
+    .ctrl-btn.active {
+      background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38);
+      color: rgba(255,255,255,0.90);
+    }
+    .ctrl-btn:hover:not(.active) {
+      background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55);
+    }
+
+    #play-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; flex-shrink: 0;
+    }
+    #play-btn:hover { background: rgba(255,255,255,0.24); }
+
+    /* ── Main canvas area ─────────────────────────────────────────────────── */
+    #main-canvas {
+      position: absolute; top: 0; left: 0; display: block;
+    }
+
+    /* ── Chart canvas ─────────────────────────────────────────────────────── */
+    #chart-canvas {
+      position: absolute; bottom: 44px; left: 32px;
+      pointer-events: none; display: none; z-index: 15;
+    }
+
+    /* ── Settings panel ───────────────────────────────────────────────────── */
+    #settings-panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 380px;
+      background: rgba(8,8,8,0.95); border-left: 1px solid rgba(255,255,255,0.08);
+      z-index: 30; overflow-y: auto; padding: 88px 16px 44px;
+      pointer-events: all;
+    }
+    #settings-panel[hidden] { display: none; }
+
+    .sp-stem {
+      margin-bottom: 24px; padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .sp-stem-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .sp-stem-name {
+      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,0.45); letter-spacing: 0.08em; text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .sp-stem.active .sp-stem-name { color: rgba(255,255,255,0.90); }
+    .sp-prominence-bar-bg {
+      flex: 1; height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .sp-prominence-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.30); border-radius: 1px;
+      transition: width 0.1s linear;
+    }
+    .sp-stem.active .sp-prominence-bar-fill { background: rgba(255,255,255,0.70); }
+    .sp-active-dot {
+      width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.80); opacity: 0;
+    }
+    .sp-stem.active .sp-active-dot { opacity: 1; }
+    .sp-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: wrap; }
+    .sp-label {
+      font-family: 'Sora', sans-serif; font-size: 10px;
+      color: rgba(255,255,255,0.28); white-space: nowrap;
+    }
+    .sp-select {
+      height: 24px; padding: 0 16px 0 6px; border-radius: 4px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.70); font-family: 'Sora', sans-serif; font-size: 10px;
+      cursor: pointer; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='4' viewBox='0 0 6 4'%3E%3Cpath d='M0 0l3 4 3-4z' fill='rgba(255,255,255,0.30)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 4px center;
+    }
+    .sp-select option { background: #111; color: #fff; }
+    .sp-solo-btn {
+      margin-left: auto; height: 18px; padding: 0 7px; border-radius: 9px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 400;
+      color: rgba(255,255,255,0.30); letter-spacing: 0.04em; transition: all 0.15s; flex-shrink: 0;
+    }
+    .sp-solo-btn.active {
+      background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.40);
+      color: rgba(255,255,255,0.90);
+    }
+    .sp-solo-btn:hover:not(.active) { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.55); }
+    .sp-slider {
+      width: 40px; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    .sp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    .sp-val {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.35); width: 28px;
+    }
+
+    /* ── Seek bar ──────────────────────────────────────────────────────────── */
+    #seek-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 36px;
+      display: flex; align-items: center; gap: 10px; padding: 0 20px;
+      background: linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%);
+      pointer-events: all; z-index: 20;
+    }
+    #time-current, #time-total {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 34px;
+    }
+    #time-total { text-align: right; }
+    #seek {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    #seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    #seek::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+
+    /* ── Loading overlay ───────────────────────────────────────────────────── */
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    #loading-tracks { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+    .load-row { display: flex; align-items: center; gap: 10px; }
+    .load-name {
+      font-family: 'Google Sans Code', monospace; font-size: 12px;
+      color: rgba(255,255,255,0.40); width: 52px; flex-shrink: 0;
+    }
+    .load-bar-bg {
+      flex: 1; height: 1px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .load-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.55); border-radius: 1px;
+      transition: width 0.08s linear;
+    }
+    .load-bar-fill.indeterminate {
+      width: 30%; animation: indeterminate 1.2s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(430%); }
+    }
+    .load-pct {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
+    }
+
+    #fps-meter {
+      position: absolute; top: 2px; right: 2px;
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.28); pointer-events: none; user-select: none;
+      letter-spacing: 0.04em; z-index: 50;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+
+    <!-- ── Control bar ─────────────────────────────────────────────────────── -->
+    <div id="ctrl-bar">
+      <button id="aa-btn" class="ctrl-btn" aria-label="Antialiasing off">Antialias</button>
+      <button id="play-btn" aria-label="Play"></button>
+      <div class="ctrl-sep"></div>
+      <button id="score-btn" class="ctrl-btn" aria-label="Scores off">Scores</button>
+      <button id="settings-btn" class="ctrl-btn" aria-label="Settings">Settings</button>
+      <div class="ctrl-sep"></div>
+      <button id="cam-light-btn" class="ctrl-btn" aria-label="Light: world">Cam light</button>
+    </div>
+
+    <!-- ── Main 3D canvas ─────────────────────────────────────────────────── -->
+    <canvas id="main-canvas" width="1920" height="1080"></canvas>
+
+    <!-- ── Prominence chart canvas ────────────────────────────────────────── -->
+    <canvas id="chart-canvas" width="420" height="240"></canvas>
+
+    <!-- ── Settings panel ─────────────────────────────────────────────────── -->
+    <div id="settings-panel" hidden></div>
+
+    <!-- ── FPS meter ──────────────────────────────────────────────────────── -->
+    <div id="fps-meter">-- fps</div>
+
+    <!-- ── Seek bar ────────────────────────────────────────────────────────── -->
+    <div id="seek-bar">
+      <span id="time-current">2:00</span>
+      <input id="seek" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+      <span id="time-total">0:00</span>
+    </div>
+
+    <!-- ── Loading overlay ─────────────────────────────────────────────────── -->
+    <div id="loading">
+      <div id="loading-label">Loading audio data</div>
+      <div id="loading-tracks"></div>
+    </div>
+
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const wrap = document.querySelector('.canvas-wrap');
+      wrap.style.width  = '960px';
+      wrap.style.height = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
+</body>
+</html>

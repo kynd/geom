@@ -15,6 +15,7 @@ uniform float u_bass;
 uniform float u_mid;
 uniform float u_treble;
 uniform float u_amp;
+uniform float u_waveBlend;
 
 const float PI = 3.14159265359;
 
@@ -221,6 +222,46 @@ vec3 mode6(vec2 nUV) {
   return oklch(L, C, H);
 }
 
+// ── Mode 7 — Phase portrait + anisotropic wave ───────────────────────────────
+// u_waveBlend 0 = phase portrait structure with anisotropic hue;
+//             1 = pure anisotropic wave.
+vec3 mode7(vec2 uv) {
+  float density = 0.0;
+  for (int i = 0; i < 32; i++) {
+    float t  = 0.2 + float(i) / 31.0 * 0.6;
+    int   gi = int(mod(float(i), 4.0));
+    float lag;
+    if      (gi == 0) lag =  0.07;
+    else if (gi == 1) lag = -0.07;
+    else if (gi == 2) lag =  0.18;
+    else              lag = -0.18;
+    float w0 = sampleWave(t);
+    float w1 = sampleWave(fract(t + lag + 1.0));
+    vec2  pt = vec2(w0, w1) * 0.85;
+    float dx = uv.x - pt.x;
+    float dy = uv.y - pt.y;
+    density += exp(-(dx*dx + dy*dy) * 60.0);
+  }
+  density = min(density * 0.7, 1.0);
+  vec2  uvS = vec2(uv.x * 0.4, uv.y);
+  float I   = 0.0;
+  for (int k = 0; k < 12; k++) {
+    float freq = (float(k) + 0.5) / 12.0;
+    float amp  = sampleFFT(freq);
+    float ang  = 2.0 * PI * float(k) / 12.0;
+    float sf   = 2.0 + amp * 6.5;
+    I += amp * cos(dot(vec2(cos(ang), sin(ang)), uvS) * sf + iTime * (0.35 + amp));
+  }
+  I /= 12.0;
+  float waveL = 0.5 + 0.5 * I;
+  float effDensity = mix(density, waveL, u_waveBlend);
+  if (effDensity < 0.002) return vec3(0.0);
+  float H = mod(uv.x * 0.8 + I * PI + iTime * 0.1, 2.0 * PI);
+  float L = mix(0.12 + 0.68 * density, 0.20 + 0.58 * waveL, u_waveBlend);
+  float C = mix(density, 1.0, u_waveBlend) * maxChroma(L, H) * 0.9;
+  return oklch(L, C, H);
+}
+
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
 vec2 toUV(vec2 fc)   { return (fc * 2.0 - iResolution.xy) / iResolution.y; }
@@ -233,7 +274,8 @@ vec3 fill(vec2 uv, vec2 nUV) {
   if (u_mode == 3) return mode0(nUV);
   if (u_mode == 4) return mode4(nUV);
   if (u_mode == 5) return mode5(nUV);
-  return mode6(nUV);
+  if (u_mode == 6) return mode6(nUV);
+  return mode7(uv);
 }
 
 void main() {
