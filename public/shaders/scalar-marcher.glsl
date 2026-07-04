@@ -20,30 +20,40 @@ vec3 calcNormal(vec3 p) {
   );
 }
 
+const float SPHERE_R   = 1.58;
+const float EXT_MARGIN = 1.5;
+
 bool castRay(vec3 ro, vec3 rd, out float t, out vec3 nor) {
-  vec2 tb = raySphere(ro, rd, 1.58);
+  vec2 tb = raySphere(ro, rd, SPHERE_R);
   if (tb.x > tb.y) return false;
   float tMin = max(tb.x, 0.01);
-  float tMax = tb.y;
-  float dt   = 0.013;
+  float tMax = tb.y + EXT_MARGIN;
+  float dt   = 0.030;
   t = tMin;
   float prevF = surfaceF(ro + rd * t);
-  for (int i = 0; i < 240; i++) {
+  for (int i = 0; i < 400; i++) {
     t += dt;
     if (t > tMax) return false;
     float F = surfaceF(ro + rd * t);
     if (prevF * F < 0.0) {
-      float t0 = t - dt, t1 = t, F0 = prevF;
+      float t0 = t - dt, t1 = t, F0 = prevF, F1 = F;
       for (int j = 0; j < 8; j++) {
         float tm = 0.5 * (t0 + t1);
         float Fm = surfaceF(ro + rd * tm);
-        if (F0 * Fm <= 0.0) { t1 = tm; }
-        else                { t0 = tm; F0 = Fm; }
+        if (F0 * Fm <= 0.0) { t1 = tm; } else { t0 = tm; F0 = Fm; }
       }
-      t = 0.5 * (t0 + t1);
-      nor = calcNormal(ro + rd * t);
-      if (dot(nor, -rd) < 0.0) nor = -nor;
-      return true;
+      float tHit = 0.5 * (t0 + t1);
+      vec3  pHit = ro + rd * tHit;
+      if (length(pHit) <= SPHERE_R) {
+        t   = tHit;
+        nor = calcNormal(ro + rd * t);
+        if (dot(nor, -rd) < 0.0) nor = -nor;
+        return true;
+      }
+      // Crossing is outside display radius — discard and keep marching.
+      t     = t1;
+      prevF = F1;
+      continue;
     }
     prevF = F;
   }
