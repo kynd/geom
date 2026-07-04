@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Component Guide — Geom</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #000000;
+      --border:        rgba(255,255,255,0.10);
+      --text-primary:  rgba(255,255,255,0.90);
+      --text-muted:    rgba(255,255,255,0.38);
+      --text-dim:      rgba(255,255,255,0.20);
+
+      --h-bar:   28px;   /* controls inside the top bar     */
+      --h-play:  48px;   /* play/pause button — always      */
+      --r-bar:   14px;   /* pill radius at bar scale        */
+      --r-sq:     4px;   /* square-ish (selects, panels)    */
+
+      --font-ui:   'Sora', sans-serif;
+      --font-mono: 'Google Sans Code', monospace;
+      --sz-sm:  10px;
+      --sz-md:  11px;
+      --sz-lg:  12px;
+    }
+
+    html, body { width: 100%; min-height: 100%; background: var(--bg); color: var(--text-primary); font-family: var(--font-ui); }
+
+    /* ── Page ──────────────────────────────────────────── */
+    .page { max-width: 920px; margin: 0 auto; padding: 64px 40px 120px; }
+
+    h1 { font-size: 18px; font-weight: 400; margin-bottom: 8px; }
+    .page-sub { font-size: 11px; font-weight: 300; color: var(--text-muted); margin-bottom: 64px; line-height: 1.6; max-width: 540px; }
+
+    .section { margin-bottom: 68px; }
+    .section-title {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 20px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Spec table ────────────────────────────────────── */
+    .spec-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
+    .spec-table th {
+      text-align: left; font-weight: 400; color: var(--text-dim); font-size: 9px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0 16px 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .spec-table td {
+      padding: 8px 16px 8px 0; color: var(--text-muted);
+      border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top;
+    }
+    .spec-table td:first-child { color: var(--text-primary); font-weight: 400; }
+    code {
+      font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px;
+    }
+
+    /* ── Demo area ─────────────────────────────────────── */
+    .demo { background: #080808; border: 1px solid var(--border); border-radius: 6px; padding: 20px; margin-bottom: 12px; }
+    .demo.flush { padding: 0; overflow: hidden; }
+    .demo-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+    .demo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .demo-row:last-child { margin-bottom: 0; }
+    .state-hint { font-size: 9px; color: var(--text-dim); }
+
+    .note { font-size: 10px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+    .note strong { color: var(--text-muted); font-weight: 400; }
+
+    /* ══════════════════════════════════════════════════════
+       CANONICAL COMPONENT STYLES
+       ══════════════════════════════════════════════════════ */
+
+    /* ── Play button ──────────────────────────────────── */
+    .play-btn {
+      width: var(--h-play); height: var(--h-play); border-radius: 50%;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #fff; transition: background 0.15s; flex-shrink: 0;
+    }
+    .play-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── Bar button ──────────────────────────────────── */
+    .bar-btn {
+      height: var(--h-bar); padding: 0 10px; border-radius: var(--r-bar);
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+      color: rgba(255,255,255,0.30); transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .bar-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    .bar-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+
+    /* ── Bar select ──────────────────────────────────── */
+    .bar-select {
+      height: var(--h-bar); padding: 0 22px 0 8px; border-radius: var(--r-sq);
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+      cursor: pointer; font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+      color: rgba(255,255,255,0.70); -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 6px center; outline: none; flex-shrink: 0;
+    }
+    .bar-select option { background: #111; color: #fff; }
+
+    /* ── Separator ──────────────────────────────────── */
+    .bar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.13); flex-shrink: 0; margin: 0 2px; }
+
+    /* ── Slider: horizontal (label left, val right) ─── */
+    .sl-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .sl-label { font-family: var(--font-ui); font-size: var(--sz-sm); color: rgba(255,255,255,0.55); white-space: nowrap; }
+    .sl-track {
+      -webkit-appearance: none; appearance: none; width: 64px; height: 2px;
+      background: rgba(255,255,255,0.20); border-radius: 1px; outline: none; cursor: pointer; flex-shrink: 0;
+    }
+    .sl-track::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; }
+    .sl-track::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; border: none; background: rgba(255,255,255,0.80); cursor: pointer; }
+    .sl-val { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.60); width: 28px; text-align: right; flex-shrink: 0; }
+
+    /* ── Slider: stacked (label above, compact) ─────── */
+    .sl-col { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+    .sl-col-top { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+    .sl-col-label { font-family: var(--font-ui); font-size: 9px; color: rgba(255,255,255,0.50); white-space: nowrap; }
+    .sl-col-val { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.55); }
+    .sl-col-track { width: 56px; } /* inherits sl-track */
+
+    /* ── Play + FPS stack ───────────────────────────── */
+    .play-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
+    .fps-inline {
+      font-family: var(--font-mono); font-size: 9px;
+      color: rgba(255,255,255,0.22); letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* ── Shape label (bottom-left) ──────────────────── */
+    .shape-label { display: flex; flex-direction: column; gap: 4px; }
+    .shape-label-name { font-family: var(--font-ui); font-size: var(--sz-lg); font-weight: 400; color: rgba(255,255,255,0.90); }
+    .shape-label-fn { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.38); }
+
+    /* ── A / B shape buttons ─────────────────────────── */
+    .shape-btn { width: var(--h-bar); height: var(--h-bar); border-radius: 50%; border: 1px solid; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: var(--font-ui); font-size: 10px; font-weight: 600; transition: all 0.15s; flex-shrink: 0; }
+    .shape-btn-a { background: rgba(80,150,255,0.15); border-color: rgba(80,150,255,0.35); color: rgba(120,180,255,0.85); }
+    .shape-btn-a.active { background: rgba(80,150,255,0.30); border-color: rgba(80,150,255,0.70); color: #fff; }
+    .shape-btn-b { background: rgba(255,160,60,0.12); border-color: rgba(255,160,60,0.30); color: rgba(255,190,100,0.75); }
+    .shape-btn-b.active { background: rgba(255,160,60,0.28); border-color: rgba(255,160,60,0.65); color: #fff; }
+
+    /* ── Seek bar ──────────────────────────────────── */
+    .seek-bar { display: flex; align-items: center; gap: 10px; padding: 0 20px; height: 36px; background: linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%); }
+    .seek-time { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 34px; }
+    .seek-time.right { text-align: right; }
+    .seek-track { flex: 1; -webkit-appearance: none; appearance: none; height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px; outline: none; cursor: pointer; }
+    .seek-track::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer; }
+
+    /* ── Side params panel ──────────────────────────── */
+    .params-panel { display: flex; flex-direction: column; gap: 8px; }
+    .params-row { display: flex; align-items: center; gap: 8px; }
+    .params-lbl { font-family: var(--font-ui); font-size: var(--sz-sm); color: rgba(255,255,255,0.55); text-align: right; width: 72px; flex-shrink: 0; white-space: nowrap; }
+    .params-sl { width: 120px; } /* inherits sl-track */
+    .params-val { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.60); width: 36px; text-align: right; flex-shrink: 0; }
+
+    /* ── Source/tab buttons (bottom-centre) ─────────── */
+    .tab-btns { display: flex; align-items: center; gap: 6px; }
+    .tab-btn {
+      height: 28px; padding: 0 14px; border-radius: 14px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+      cursor: pointer; font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+      color: rgba(255,255,255,0.35); transition: all 0.15s; white-space: nowrap;
+    }
+    .tab-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+    .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+
+    /* ── Settings drawer ──────────────────────────── */
+    .settings-drawer {
+      width: 280px; background: rgba(8,8,8,0.97); border-left: 1px solid rgba(255,255,255,0.08);
+      padding: 16px; display: flex; flex-direction: column; gap: 0;
+    }
+    .sd-section { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sd-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .sd-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .sd-name { font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.45); flex: 1; }
+    .sd-active .sd-name { color: rgba(255,255,255,0.90); }
+    .sd-bar-bg { flex: 1; height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden; }
+    .sd-bar-fill { height: 100%; background: rgba(255,255,255,0.28); border-radius: 1px; }
+    .sd-active .sd-bar-fill { background: rgba(255,255,255,0.70); }
+    .sd-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.80); opacity: 0; flex-shrink: 0; }
+    .sd-active .sd-dot { opacity: 1; }
+    .sd-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: nowrap; }
+    .sd-label { font-family: var(--font-ui); font-size: 10px; color: rgba(255,255,255,0.50); white-space: nowrap; width: 52px; flex-shrink: 0; }
+    .sd-select {
+      height: 24px; padding: 0 18px 0 6px; border-radius: var(--r-sq);
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.70); font-family: var(--font-ui); font-size: 10px;
+      -webkit-appearance: none; appearance: none; outline: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.30)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 4px center;
+    }
+    .sd-select option { background: #111; color: #fff; }
+    .sd-solo {
+      margin-left: auto; height: 18px; padding: 0 7px; border-radius: 9px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer; font-family: var(--font-ui); font-size: 9px;
+      color: rgba(255,255,255,0.30); transition: all 0.15s;
+    }
+    .sd-solo.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.40); color: rgba(255,255,255,0.90); }
+    .sd-sl { width: 48px; } /* inherits sl-track */
+    .sd-val { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.35); width: 26px; text-align: right; }
+
+    /* ── Canvas mockup ──────────────────────────────── */
+    .canvas-mock {
+      position: relative; width: 100%; padding-top: 56.25%;
+      background: #050505; border-radius: 4px; overflow: hidden;
+    }
+    .canvas-mock-inner { position: absolute; inset: 0; }
+    .canvas-mock-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 38% 55%, rgba(55,35,110,0.45) 0%, transparent 58%),
+                  radial-gradient(ellipse at 68% 38%, rgba(18,60,110,0.30) 0%, transparent 48%);
+    }
+
+    /* ── Ctrl bar (reusable across layout mockups) ─── */
+    .ctrl-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 64px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%);
+      display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 16px;
+    }
+    .ctrl-bar-r1 { display: flex; align-items: center; gap: 6px; }
+    .ctrl-bar-r2 { display: flex; justify-content: flex-end; }
+    .ctrl-bar-spacer { flex: 1; }
+
+    /* scale play button down for inside a bar */
+    .ctrl-bar .play-btn { width: 36px; height: 36px; }
+    .ctrl-bar .play-btn svg { width: 11px; height: 11px; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>UI Component Guide</h1>
+  <p class="page-sub">Canonical components for all Geom demos. One layout pattern — the top bar — scales from a single play button up to a full control strip. All demos use the same token sizes, fonts, and colour values.</p>
+
+  <!-- ══ TOKENS ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Tokens</div>
+    <table class="spec-table">
+      <tr><th>Token</th><th>Value</th><th>Usage</th></tr>
+      <tr><td><code>--h-bar</code></td><td>28 px</td><td>All controls inside the bar (buttons, selects)</td></tr>
+      <tr><td><code>--h-play</code></td><td>48 px</td><td>Play button — always; 36 px inside the bar only</td></tr>
+      <tr><td><code>--r-bar</code></td><td>14 px</td><td>Pill radius for bar buttons</td></tr>
+      <tr><td><code>--r-sq</code></td><td>4 px</td><td>Select, panel rows</td></tr>
+      <tr><td><code>--font-ui</code></td><td>Sora</td><td>All labels, buttons, selects</td></tr>
+      <tr><td><code>--font-mono</code></td><td>Google Sans Code</td><td>Numeric readouts, function signatures, timestamps</td></tr>
+      <tr><td><code>--sz-sm</code></td><td>10 px</td><td>Controls, labels, values</td></tr>
+      <tr><td><code>--sz-lg</code></td><td>12 px</td><td>Shape name in bottom-left label</td></tr>
+    </table>
+    <p class="note"><strong>Both fonts must be loaded in every demo.</strong> AA button always defaults off — no <code>active</code> class, <code>u_ssaa: 0</code>.</p>
+  </div>
+
+  <!-- ══ BAR BUTTON ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Bar button (toggle)</div>
+    <p class="note">28 px pill. Used for all toggle actions in the top bar: Antialias, Scores, Settings, Cam light, etc.</p>
+    <div class="demo">
+      <div class="demo-row">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <button class="bar-btn">Antialias</button>
+          <span class="state-hint">default (off)</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <button class="bar-btn active">Cam light</button>
+          <span class="state-hint">active (on)</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <button class="bar-btn" onclick="this.classList.toggle('active')">Click me</button>
+          <span class="state-hint">interactive</span>
+        </div>
+      </div>
+    </div>
+    <table class="spec-table">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Height</td><td>28 px</td></tr>
+      <tr><td>Padding</td><td><code>0 10px</code></td></tr>
+      <tr><td>Border radius</td><td>14 px (pill)</td></tr>
+      <tr><td>Font</td><td>Sora 10 px weight 300</td></tr>
+      <tr><td>Default color</td><td><code>rgba(255,255,255,0.30)</code></td></tr>
+      <tr><td>Active bg / border / color</td><td><code>rgba(255,255,255,0.18)</code> / <code>0.38</code> / <code>0.90</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ══ BAR SELECT ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Bar select</div>
+    <p class="note">28 px height, 4 px radius (not pill — a wider select reads as a dropdown, not a toggle). Custom SVG chevron 8 × 5 px, <code>rgba(255,255,255,0.35)</code>.</p>
+    <div class="demo">
+      <div class="demo-row">
+        <select class="bar-select">
+          <option>Anisotropic wave</option>
+          <option>Normal phase portrait</option>
+          <option>Drifting caustic</option>
+        </select>
+        <select class="bar-select">
+          <option>Track 1 — Arp</option>
+          <option>Track 2 — Bass</option>
+        </select>
+      </div>
+    </div>
+    <table class="spec-table">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Height</td><td>28 px</td></tr>
+      <tr><td>Padding</td><td><code>0 22px 0 8px</code></td></tr>
+      <tr><td>Border radius</td><td>4 px</td></tr>
+      <tr><td>Chevron position</td><td><code>right 6px center</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ══ SEPARATOR ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Separator</div>
+    <p class="note">1 × 22 px vertical rule. Groups related controls within the bar. Add <code>margin: 0 2px</code>.</p>
+    <div class="demo">
+      <div class="demo-row">
+        <button class="bar-btn active">Antialias</button>
+        <button class="bar-btn">Bloom</button>
+        <div class="bar-sep"></div>
+        <button class="bar-btn">Scores</button>
+        <button class="bar-btn active">Settings</button>
+        <div class="bar-sep"></div>
+        <button class="bar-btn">Cam light</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FPS METER (INLINE) ══════════════════════════ -->
+  <div class="section">
+    <div class="section-title">FPS meter — inline in bar</div>
+    <p class="note">Lives inside the ctrl-bar at the far right, after a <code>flex: 1</code> spacer. Google Sans Code, 10 px, very dim. Also placed absolutely at <code>top: 2px; right: 2px; z-index: 50</code> for demos without a bar.</p>
+    <div class="demo">
+      <div style="background:rgba(0,0,0,0.4);padding:8px 12px;border-radius:4px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="bar-btn">Antialias</button>
+          <button class="bar-btn">Bloom</button>
+          <div style="flex:1"></div>
+          <button class="play-btn" style="width:36px;height:36px">
+            <svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="1,0 10,6 1,12"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <span class="fps-inline">121 fps</span>
+        </div>
+      </div>
+    </div>
+    <table class="spec-table">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Font</td><td>Google Sans Code 10 px</td></tr>
+      <tr><td>Color</td><td><code>rgba(255,255,255,0.22)</code></td></tr>
+      <tr><td>In-bar position</td><td>After <code>flex: 1</code> spacer, before play button</td></tr>
+      <tr><td>Abs fallback</td><td><code>top: 2px; right: 2px; z-index: 50</code></td></tr>
+    </table>
+  </div>
+
+  <!-- ══ SLIDERS ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Slider — horizontal (label left)</div>
+    <p class="note">Default. Use when horizontal space allows and there are ≤ 3 sliders in the bar.</p>
+    <div class="demo">
+      <div class="demo-row">
+        <div class="sl-row">
+          <span class="sl-label">Dist</span>
+          <input type="range" class="sl-track" min="0" max="1" step="0.01" value="1.0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+          <span class="sl-val">1.00</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-label">Blend</span>
+          <input type="range" class="sl-track" min="0" max="1" step="0.01" value="0.6" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+          <span class="sl-val">0.60</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-label">Intensity</span>
+          <input type="range" class="sl-track" min="0" max="1" step="0.01" value="0.83" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+          <span class="sl-val">0.83</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Slider — stacked (label above)</div>
+    <p class="note">Compact form. Use when 4+ sliders share the bar, or when horizontal label width would be wasteful. Label and value sit above the 56 px track on two lines. Several stacked sliders can sit side-by-side without crowding the bar.</p>
+    <div class="demo">
+      <div class="demo-row" style="align-items:flex-end;gap:16px">
+        <div class="sl-col">
+          <div class="sl-col-top">
+            <span class="sl-col-label">Dist</span>
+            <span class="sl-col-val" id="scv1">1.00</span>
+          </div>
+          <input type="range" class="sl-track sl-col-track" min="0" max="1" step="0.01" value="1.0" oninput="document.getElementById('scv1').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+        <div class="sl-col">
+          <div class="sl-col-top">
+            <span class="sl-col-label">Blend</span>
+            <span class="sl-col-val" id="scv2">0.60</span>
+          </div>
+          <input type="range" class="sl-track sl-col-track" min="0" max="1" step="0.01" value="0.6" oninput="document.getElementById('scv2').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+        <div class="sl-col">
+          <div class="sl-col-top">
+            <span class="sl-col-label">Intensity</span>
+            <span class="sl-col-val" id="scv3">0.83</span>
+          </div>
+          <input type="range" class="sl-track sl-col-track" min="0" max="1" step="0.01" value="0.83" oninput="document.getElementById('scv3').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+        <div class="sl-col">
+          <div class="sl-col-top">
+            <span class="sl-col-label">Rim pow</span>
+            <span class="sl-col-val" id="scv4">3.0</span>
+          </div>
+          <input type="range" class="sl-track sl-col-track" min="1" max="6" step="0.1" value="3.0" oninput="document.getElementById('scv4').textContent=parseFloat(this.value).toFixed(1)">
+        </div>
+        <div class="sl-col">
+          <div class="sl-col-top">
+            <span class="sl-col-label">SSS str</span>
+            <span class="sl-col-val" id="scv5">0.30</span>
+          </div>
+          <input type="range" class="sl-track sl-col-track" min="0" max="1.5" step="0.01" value="0.3" oninput="document.getElementById('scv5').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+      </div>
+    </div>
+    <table class="spec-table">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Track width</td><td>56 px (narrower than horizontal's 64 px)</td></tr>
+      <tr><td>Label font</td><td>Sora 9 px <code>rgba(255,255,255,0.28)</code></td></tr>
+      <tr><td>Value font</td><td>Google Sans Code 9 px <code>rgba(255,255,255,0.35)</code></td></tr>
+      <tr><td>Gap label → track</td><td>3 px</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ A/B BUTTONS ══════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">A / B shape selector buttons</div>
+    <p class="note">Color-coded 28 × 28 px circles. A = blue, B = orange. Sit at the left edge of the bar, before the shape dropdown.</p>
+    <div class="demo">
+      <div class="demo-row">
+        <button class="shape-btn shape-btn-a active">A</button>
+        <button class="shape-btn shape-btn-b">B</button>
+        <span class="state-hint" style="margin-left:8px">A active — editing shape A</span>
+      </div>
+      <div class="demo-row">
+        <button class="shape-btn shape-btn-a">A</button>
+        <button class="shape-btn shape-btn-b active">B</button>
+        <span class="state-hint" style="margin-left:8px">B active — editing shape B</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEEK BAR ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Seek bar</div>
+    <p class="note">Absolute bottom edge of canvas-wrap. Height 36 px, gradient scrim fades upward. IDs: <code>#time-current</code>, <code>#seek</code>, <code>#time-total</code>.</p>
+    <div class="demo flush">
+      <div class="seek-bar">
+        <span class="seek-time">1:34</span>
+        <input type="range" class="seek-track" min="0" max="10000" value="3800">
+        <span class="seek-time right">4:09</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SHAPE LABEL ════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Shape label (bottom-left)</div>
+    <p class="note">Absolute <code>left: 56px; bottom: 56px</code>. Name in Sora 12 px; function signature in Google Sans Code 10 px.</p>
+    <div class="demo">
+      <div class="shape-label">
+        <span class="shape-label-name">Sphere</span>
+        <span class="shape-label-fn">sdf_sphere(p, 1.0)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LAYOUT PATTERN A — TOP BAR ════════════════════ -->
+  <div class="section">
+    <div class="section-title">Layout pattern A — Top bar</div>
+    <p class="note">The only layout pattern. Scale from a single play button up to a full strip of controls. Bar is <strong>64 px tall</strong>, controls vertically centred (<code>align-items: center</code>), top gradient scrim. Play button sits at the far right. FPS meter is to the left of play.</p>
+    <p class="note">Three examples below — minimal, standard, and dense — all using the same bar.</p>
+
+    <!-- Minimal -->
+    <div class="demo-label">Minimal — just Antialias + play (e.g. Platonic duals)</div>
+    <div class="canvas-mock" style="margin-bottom:16px">
+      <div class="canvas-mock-inner">
+        <div class="canvas-mock-bg"></div>
+        <div class="ctrl-bar">
+          <div class="ctrl-bar-r1">
+            <div class="ctrl-bar-spacer"></div>
+            <button class="bar-btn">Antialias</button>
+            <button class="play-btn"><svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="1,0 10,6 1,12"/></svg></button>
+          </div>
+          <div class="ctrl-bar-r2"><span class="fps-inline">60 fps</span></div>
+        </div>
+        <div style="position:absolute;left:22px;bottom:28px">
+          <div class="shape-label">
+            <span class="shape-label-name" style="font-size:10px">Icosidodecahedron</span>
+            <span class="shape-label-fn" style="font-size:10px">platonic_dual(p, 3)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standard -->
+    <div class="demo-label">Standard — select + sliders + toggles (e.g. SDF blend)</div>
+    <div class="canvas-mock" style="margin-bottom:16px">
+      <div class="canvas-mock-inner">
+        <div class="canvas-mock-bg"></div>
+        <div class="ctrl-bar">
+          <div class="ctrl-bar-r1">
+            <button class="shape-btn shape-btn-a active">A</button>
+            <button class="shape-btn shape-btn-b">B</button>
+            <select class="bar-select" style="width:130px"><option>Anisotropic wave</option></select>
+            <div class="bar-sep"></div>
+            <div class="sl-row">
+              <span class="sl-label">Dist</span>
+              <input type="range" class="sl-track" style="width:48px" value="100" oninput="">
+              <span class="sl-val">1.00</span>
+            </div>
+            <div class="sl-row">
+              <span class="sl-label">Blend</span>
+              <input type="range" class="sl-track" style="width:48px" value="60" oninput="">
+              <span class="sl-val">0.60</span>
+            </div>
+            <div class="bar-sep"></div>
+            <button class="bar-btn">Antialias</button>
+            <button class="bar-btn">Bloom</button>
+            <div class="ctrl-bar-spacer"></div>
+            <button class="play-btn"><svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="1,0 10,6 1,12"/></svg></button>
+          </div>
+          <div class="ctrl-bar-r2"><span class="fps-inline">121 fps</span></div>
+        </div>
+        <div style="position:absolute;left:22px;bottom:20px">
+          <div class="seek-bar" style="position:static;height:24px;padding:0;background:none;gap:8px">
+            <span class="seek-time" style="font-size:9px">1:34</span>
+            <input type="range" class="seek-track" style="width:200px" value="3800">
+            <span class="seek-time right" style="font-size:9px">4:09</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dense (stacked sliders) -->
+    <div class="demo-label">Dense — many sliders using stacked variant (e.g. Prominence composer)</div>
+    <div class="canvas-mock">
+      <div class="canvas-mock-inner">
+        <div class="canvas-mock-bg"></div>
+        <div class="ctrl-bar">
+          <div class="ctrl-bar-r1">
+            <button class="bar-btn">Scores</button>
+            <button class="bar-btn active">Settings</button>
+            <div class="bar-sep"></div>
+            <button class="bar-btn">Cam light</button>
+            <div class="bar-sep"></div>
+            <select class="bar-select"><option>Phase + anisotropic</option></select>
+            <div class="sl-col">
+              <div class="sl-col-top"><span class="sl-col-label">Bg</span><span class="sl-col-val" id="dv1">0.00</span></div>
+              <input type="range" class="sl-track sl-col-track" value="0" oninput="document.getElementById('dv1').textContent=parseFloat(this.value/100).toFixed(2)">
+            </div>
+            <div class="sl-col">
+              <div class="sl-col-top"><span class="sl-col-label">Obj</span><span class="sl-col-val" id="dv2">0.00</span></div>
+              <input type="range" class="sl-track sl-col-track" value="0" oninput="document.getElementById('dv2').textContent=parseFloat(this.value/100).toFixed(2)">
+            </div>
+            <div class="sl-col">
+              <div class="sl-col-top"><span class="sl-col-label">Bloom T</span><span class="sl-col-val" id="dv3">0.08</span></div>
+              <input type="range" class="sl-track sl-col-track" value="8" oninput="document.getElementById('dv3').textContent=parseFloat(this.value/100).toFixed(2)">
+            </div>
+            <div class="sl-col">
+              <div class="sl-col-top"><span class="sl-col-label">Bloom S</span><span class="sl-col-val" id="dv4">1.00</span></div>
+              <input type="range" class="sl-track sl-col-track" value="100" oninput="document.getElementById('dv4').textContent=parseFloat(this.value/100).toFixed(2)">
+            </div>
+            <div class="ctrl-bar-spacer"></div>
+            <button class="bar-btn">Antialias</button>
+            <button class="play-btn"><svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="1,0 10,6 1,12"/></svg></button>
+          </div>
+          <div class="ctrl-bar-r2"><span class="fps-inline">121 fps</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SIDE PARAMS + BOTTOM TABS ══════════════════════ -->
+  <div class="section">
+    <div class="section-title">Side params panel + bottom tabs</div>
+    <p class="note">Used in demos where the user can tweak many float parameters interactively (e.g. Lighting and rendering — Rim light). The params panel floats at <code>right: 56px; bottom: 110px</code>. Tab buttons at <code>bottom: 52px; left: 50%; transform: translateX(-50%)</code>. Top bar still present for Antialias and play.</p>
+
+    <div class="canvas-mock">
+      <div class="canvas-mock-inner">
+        <div class="canvas-mock-bg" style="background:radial-gradient(ellipse at 50% 50%,rgba(180,180,180,0.15) 0%,transparent 60%)"></div>
+
+        <!-- top bar (minimal) -->
+        <div class="ctrl-bar">
+          <div class="ctrl-bar-r1">
+            <div class="ctrl-bar-spacer"></div>
+            <button class="bar-btn">Antialias</button>
+            <button class="play-btn"><svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg></button>
+          </div>
+          <div class="ctrl-bar-r2"><span class="fps-inline">121 fps</span></div>
+        </div>
+
+        <!-- params panel (right side, middle-bottom) -->
+        <div style="position:absolute;right:18px;bottom:76px">
+          <div class="params-panel">
+            <div class="params-row">
+              <span class="params-lbl">rim</span>
+              <input type="range" class="sl-track params-sl" min="1" max="6" step="0.1" value="3" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+              <span class="params-val">3.0</span>
+            </div>
+            <div class="params-row">
+              <span class="params-lbl">face</span>
+              <input type="range" class="sl-track params-sl" min="0" max="0.05" step="0.001" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(3)">
+              <span class="params-val">0.000</span>
+            </div>
+            <div class="params-row">
+              <span class="params-lbl">SSS str</span>
+              <input type="range" class="sl-track params-sl" min="0" max="1.5" step="0.01" value="0.3" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+              <span class="params-val">0.30</span>
+            </div>
+            <div class="params-row">
+              <span class="params-lbl">SSS density</span>
+              <input type="range" class="sl-track params-sl" min="0.5" max="8" step="0.1" value="2.5" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+              <span class="params-val">2.5</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- shape label -->
+        <div style="position:absolute;left:14px;bottom:58px">
+          <div class="shape-label">
+            <span class="shape-label-name" style="font-size:10px">Traveling radial damped cosine</span>
+          </div>
+        </div>
+
+        <!-- bottom tab buttons -->
+        <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%)">
+          <div class="tab-btns">
+            <button class="tab-btn">SDF shapes</button>
+            <button class="tab-btn">Platonic duals</button>
+            <button class="tab-btn">Scalar fields</button>
+            <button class="tab-btn active">Moving scalar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="spec-table" style="margin-top:16px">
+      <tr><th>Params panel</th><th>Value</th></tr>
+      <tr><td>Position</td><td><code>right: 56px; bottom: 110px</code></td></tr>
+      <tr><td>Label width</td><td>72 px, right-aligned</td></tr>
+      <tr><td>Track width</td><td>120 px</td></tr>
+      <tr><td>Value width</td><td>36 px, right-aligned (mono)</td></tr>
+    </table>
+    <table class="spec-table">
+      <tr><th>Tab buttons</th><th>Value</th></tr>
+      <tr><td>Position</td><td><code>bottom: 52px; left: 50%; transform: translateX(-50%)</code></td></tr>
+      <tr><td>Style</td><td>Same as bar-btn: 28 px pill, same active/hover states</td></tr>
+      <tr><td>Gap</td><td>6 px</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ SETTINGS DRAWER ══════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Settings drawer</div>
+    <p class="note">Full-height right-side panel for per-item configuration (e.g. Prominence composer per-stem settings). Width 380 px. Toggled via a bar button ("Settings"). Contains sections with a stem name, prominence bar, and rows of selects and sliders.</p>
+
+    <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:420px">
+      <!-- canvas area -->
+      <div style="flex:1;position:relative;background:#050505;min-height:360px">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 50%,rgba(55,35,110,0.5) 0%,transparent 58%)"></div>
+        <div class="ctrl-bar" style="position:absolute">
+          <div class="ctrl-bar-r1">
+            <button class="bar-btn">Scores</button>
+            <button class="bar-btn active">Settings</button>
+            <div class="bar-sep"></div>
+            <button class="bar-btn">Cam light</button>
+            <div class="ctrl-bar-spacer"></div>
+            <button class="bar-btn">Antialias</button>
+            <button class="play-btn"><svg viewBox="0 0 10 12" fill="currentColor" width="11" height="11"><polygon points="1,0 10,6 1,12"/></svg></button>
+          </div>
+          <div class="ctrl-bar-r2"><span class="fps-inline">121 fps</span></div>
+        </div>
+      </div>
+      <!-- settings drawer -->
+      <div class="settings-drawer">
+        <!-- Global section -->
+        <div class="sd-section">
+          <div style="font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.22);margin-bottom:10px">Global</div>
+          <div class="sd-row">
+            <span class="sd-label">Lighting</span>
+            <select class="sd-select"><option>Phase + anisotropic</option></select>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Bg</span>
+            <input type="range" class="sl-track sd-sl" value="0">
+            <span class="sd-val">0.00</span>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Obj</span>
+            <input type="range" class="sl-track sd-sl" value="0">
+            <span class="sd-val">0.00</span>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Bloom T</span>
+            <input type="range" class="sl-track sd-sl" value="8">
+            <span class="sd-val">0.08</span>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">S</span>
+            <input type="range" class="sl-track sd-sl" value="100">
+            <span class="sd-val">1.00</span>
+          </div>
+        </div>
+
+        <!-- Stem: ARP (active/winning) -->
+        <div class="sd-section sd-active">
+          <div class="sd-header">
+            <span class="sd-name">ARP</span>
+            <div class="sd-bar-bg"><div class="sd-bar-fill" style="width:72%"></div></div>
+            <div class="sd-dot"></div>
+            <button class="sd-solo">Solo</button>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Type</span>
+            <select class="sd-select"><option>Form</option></select>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Mode</span>
+            <select class="sd-select" style="flex:1"><option>Spectrogram cone</option></select>
+          </div>
+        </div>
+
+        <!-- Stem: BASS -->
+        <div class="sd-section">
+          <div class="sd-header">
+            <span class="sd-name">BASS</span>
+            <div class="sd-bar-bg"><div class="sd-bar-fill" style="width:18%"></div></div>
+            <div class="sd-dot"></div>
+            <button class="sd-solo">Solo</button>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Type</span>
+            <select class="sd-select"><option>History</option></select>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Category</span>
+            <select class="sd-select"><option>Moving scalar</option></select>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Shape</span>
+            <select class="sd-select" style="flex:1"><option>Oscillating Schoen I-WP</option></select>
+          </div>
+        </div>
+
+        <!-- Stem: HAT (truncated) -->
+        <div class="sd-section" style="opacity:0.6">
+          <div class="sd-header">
+            <span class="sd-name">HAT</span>
+            <div class="sd-bar-bg"><div class="sd-bar-fill" style="width:5%"></div></div>
+            <div class="sd-dot"></div>
+            <button class="sd-solo">Solo</button>
+          </div>
+          <div class="sd-row">
+            <span class="sd-label">Type</span>
+            <select class="sd-select"><option>Form</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <table class="spec-table" style="margin-top:16px">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Width</td><td>380 px</td></tr>
+      <tr><td>Background</td><td><code>rgba(8,8,8,0.97)</code></td></tr>
+      <tr><td>Border</td><td><code>1px solid rgba(255,255,255,0.08)</code> (left)</td></tr>
+      <tr><td>Padding</td><td><code>88px 16px 44px</code> (top pad clears ctrl-bar)</td></tr>
+      <tr><td>Section divider</td><td><code>1px solid rgba(255,255,255,0.06)</code></td></tr>
+      <tr><td>Select height</td><td>24 px (smaller than bar selects)</td></tr>
+      <tr><td>Solo button height</td><td>18 px</td></tr>
+      <tr><td>Prominence bar</td><td>2 px track, active fill <code>rgba(255,255,255,0.70)</code></td></tr>
+      <tr><td>Active-stem name</td><td><code>rgba(255,255,255,0.90)</code> (vs 0.45 inactive)</td></tr>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

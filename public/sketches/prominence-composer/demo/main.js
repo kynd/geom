@@ -86,7 +86,8 @@ const STEM_DEFAULTS = [
 const GLOBAL_DEFAULT = {
   lighting: 3,
   bloom: { threshold: 0.08, strength: 1.0, radius: 0.35 },
-  waveBlend: 0.0,
+  waveBlendBg:  0.0,
+  waveBlendObj: 0.0,
 };
 
 // ── Winner state ──────────────────────────────────────────────────────────────
@@ -204,7 +205,10 @@ function createPane(canvas, shaders, envTex) {
   wavTex.magFilter = wavTex.minFilter = THREE.LinearFilter;
   wavTex.needsUpdate = true;
 
-  const fillTarget = new THREE.WebGLRenderTarget(W, H, {
+  const fillTarget   = new THREE.WebGLRenderTarget(W, H, {
+    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+  });
+  const fillTargetBg = new THREE.WebGLRenderTarget(W, H, {
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
   });
 
@@ -232,6 +236,7 @@ function createPane(canvas, shaders, envTex) {
     u_twistAxisZ:   { value: 0.0 },
     u_ctrlN:        { value: 4.0 },
     u_fillTex:      { value: fillTarget.texture },
+    u_fillTexBg:    { value: fillTargetBg.texture },
     u_envScale:     { value: 1.0 },
     u_mode:         { value: 7 },
     u_intensity:    { value: 1.0 },
@@ -290,12 +295,14 @@ function createPane(canvas, shaders, envTex) {
   return {
     canvas, renderer, cam,
     histBuf, histTex, fftBuf, fftTex, specBuf, specTex, wavBuf, wavTex,
-    fillTarget, fillScene, fillUniforms,
+    fillTarget, fillTargetBg, fillScene, fillUniforms,
     scenes, shared, sdfU, platU, scalarU, movingU,
     composer: null, bloomPass: null, renderPass: null,
     activeScene: scenes.form,
     trackFrames: null,
     config: {},
+    waveBlendBg: 0.0,
+    waveBlendObj: 0.0,
   };
 }
 
@@ -354,7 +361,8 @@ function applyBloom(pane, bloom) {
 function applyGlobal(pane, globalCfg) {
   pane.shared.u_lighting.value = globalCfg.lighting;
   applyBloom(pane, globalCfg.bloom);
-  pane.fillUniforms.u_waveBlend.value = globalCfg.waveBlend;
+  pane.waveBlendBg  = globalCfg.waveBlendBg;
+  pane.waveBlendObj = globalCfg.waveBlendObj;
 }
 
 // ── Texture update ────────────────────────────────────────────────────────────
@@ -420,6 +428,10 @@ function renderPane(pane, wallTime) {
 
   if (shared.u_lighting.value >= 3) {
     fillUniforms.u_mode.value = shared.u_lighting.value - 3;
+    fillUniforms.u_waveBlend.value = pane.waveBlendBg;
+    renderer.setRenderTarget(pane.fillTargetBg);
+    renderer.render(fillScene, cam);
+    fillUniforms.u_waveBlend.value = pane.waveBlendObj;
     renderer.setRenderTarget(fillTarget);
     renderer.render(fillScene, cam);
     renderer.setRenderTarget(null);
@@ -440,6 +452,7 @@ function resizePane(pane) {
   const W = pane.canvas.width, H = pane.canvas.height;
   pane.renderer.setSize(W, H, false);
   pane.fillTarget.setSize(W, H);
+  pane.fillTargetBg.setSize(W, H);
   pane.shared.iResolution.value.set(W, H);
   pane.fillUniforms.iResolution.value.set(W, H);
   if (pane.composer) {
@@ -528,9 +541,12 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
       <select class="sp-select sg-lighting">${buildSelect(LIGHTING_OPTIONS, globalConfig.lighting)}</select>
     </div>
     <div class="sp-row sg-wave-row" style="display:${globalConfig.lighting === 10 ? 'flex' : 'none'}">
-      <span class="sp-label">Mix</span>
-      <input type="range" class="sp-slider sg-wave-blend" min="0" max="1" step="0.01" value="${globalConfig.waveBlend}" style="width:80px">
-      <span class="sp-val sg-wave-blend-val">${globalConfig.waveBlend.toFixed(2)}</span>
+      <span class="sp-label">Bg</span>
+      <input type="range" class="sp-slider sg-wave-blend-bg" min="0" max="1" step="0.01" value="${globalConfig.waveBlendBg}" style="width:60px">
+      <span class="sp-val sg-wave-blend-bg-val">${globalConfig.waveBlendBg.toFixed(2)}</span>
+      <span class="sp-label" style="margin-left:6px">Obj</span>
+      <input type="range" class="sp-slider sg-wave-blend-obj" min="0" max="1" step="0.01" value="${globalConfig.waveBlendObj}" style="width:60px">
+      <span class="sp-val sg-wave-blend-obj-val">${globalConfig.waveBlendObj.toFixed(2)}</span>
     </div>
     <div class="sp-row">
       <span class="sp-label">Bloom T</span>
@@ -551,9 +567,11 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
   panel.appendChild(gDivider);
 
   const gLightSel   = globalEl.querySelector('.sg-lighting');
-  const gWaveRow    = globalEl.querySelector('.sg-wave-row');
-  const gWaveBlend  = globalEl.querySelector('.sg-wave-blend');
-  const gWaveBlendV = globalEl.querySelector('.sg-wave-blend-val');
+  const gWaveRow      = globalEl.querySelector('.sg-wave-row');
+  const gWaveBlendBg  = globalEl.querySelector('.sg-wave-blend-bg');
+  const gWaveBlendBgV = globalEl.querySelector('.sg-wave-blend-bg-val');
+  const gWaveBlendObj = globalEl.querySelector('.sg-wave-blend-obj');
+  const gWaveBlendObjV= globalEl.querySelector('.sg-wave-blend-obj-val');
   const gbThresh    = globalEl.querySelector('.sg-b-threshold');
   const gbStrength  = globalEl.querySelector('.sg-b-strength');
   const gbRadius    = globalEl.querySelector('.sg-b-radius');
@@ -566,10 +584,15 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
     gWaveRow.style.display = globalConfig.lighting === 10 ? 'flex' : 'none';
     applyGlobal(pane, globalConfig);
   });
-  gWaveBlend.addEventListener('input', () => {
-    globalConfig.waveBlend = parseFloat(gWaveBlend.value);
-    gWaveBlendV.textContent = globalConfig.waveBlend.toFixed(2);
-    pane.fillUniforms.u_waveBlend.value = globalConfig.waveBlend;
+  gWaveBlendBg.addEventListener('input', () => {
+    globalConfig.waveBlendBg = parseFloat(gWaveBlendBg.value);
+    gWaveBlendBgV.textContent = globalConfig.waveBlendBg.toFixed(2);
+    pane.waveBlendBg = globalConfig.waveBlendBg;
+  });
+  gWaveBlendObj.addEventListener('input', () => {
+    globalConfig.waveBlendObj = parseFloat(gWaveBlendObj.value);
+    gWaveBlendObjV.textContent = globalConfig.waveBlendObj.toFixed(2);
+    pane.waveBlendObj = globalConfig.waveBlendObj;
   });
   gbThresh.addEventListener('input', () => {
     globalConfig.bloom.threshold = parseFloat(gbThresh.value);
@@ -744,7 +767,17 @@ async function init() {
   function injectOrbit(src) {
     src = src.replace(
       'precision highp float;',
-      'precision highp float;\nuniform mat3 u_camRot;\nuniform float u_camDist;\nuniform vec2 u_camPan;\nuniform mat3 u_lightRot;'
+      'precision highp float;\nuniform mat3 u_camRot;\nuniform float u_camDist;\nuniform vec2 u_camPan;\nuniform mat3 u_lightRot;\nuniform sampler2D u_fillTexBg;'
+    );
+    // Inject sampleFillMapBg alongside sampleFillMap (same projection, different texture)
+    src = src.replace(
+      '  vec3 c = texture2D(u_fillTex, uv).rgb;\n  return c * c;\n}',
+      '  vec3 c = texture2D(u_fillTex, uv).rgb;\n  return c * c;\n}\n\nvec3 sampleFillMapBg(vec3 dir) {\n  float u = atan(dir.x, -dir.z) * (0.5 / PI) + 0.5 + iTime * 0.02;\n  float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;\n  vec2  uv = (vec2(u, v) - 0.5) / u_envScale + 0.5;\n  float uf = fract(uv.x);\n  uv.x = uf < 0.5 ? uf * 2.0 : (1.0 - uf) * 2.0;\n  uv.y = clamp(uv.y, 0.0, 1.0);\n  vec3 c = texture2D(u_fillTexBg, uv).rgb;\n  return c * c;\n}'
+    );
+    // Background miss path uses fillTexBg; object lighting (fillLight) uses fillTex
+    src = src.replace(
+      'sampleFillMap(rd) * amp',
+      'sampleFillMapBg(rd) * amp'
     );
     src = src.replace(
       /vec3 ro = vec3\([^)]+\);/,
