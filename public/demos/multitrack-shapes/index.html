@@ -15,25 +15,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 100%; height: 100%; background: #000;
-      display: flex; align-items: center; justify-content: center; overflow: hidden;
-    }
-
-    .canvas-wrap {
-      position: relative; width: 1920px; height: 1080px; flex-shrink: 0; background: #000;
-    }
-
-    /* ── Top control bar ───────────────────────────────────────────────────── */
-    #ctrl-bar {
-      position: absolute; top: 0; left: 0; right: 0; height: 80px;
-      display: flex; align-items: flex-end; gap: 8px; padding: 0 20px 24px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.70) 0%, transparent 100%);
-      pointer-events: all; z-index: 20;
-    }
-    .ctrl-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.14); margin: 0 2px; }
+    html, body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
 
     /* pane-count buttons */
     #pc-group { display: flex; gap: 2px; }
@@ -49,34 +33,10 @@
     }
     .pc-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.60); }
 
-    /* AA, Bloom, Play */
-    #aa-btn, #bloom-btn {
-      height: 32px; padding: 0 12px; border-radius: 16px;
-      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-      cursor: pointer; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      color: rgba(255,255,255,0.30); transition: all 0.15s;
-    }
-    #aa-btn.active, #bloom-btn.active {
-      background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38);
-      color: rgba(255,255,255,0.90);
-    }
-    #aa-btn:hover:not(.active), #bloom-btn:hover:not(.active) {
-      background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55);
-    }
-    #bloom-btn { margin-left: auto; }
-
-    #play-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: #fff; transition: background 0.15s;
-    }
-    #play-btn:hover { background: rgba(255,255,255,0.24); }
-
     /* ── Bloom panel ───────────────────────────────────────────────────────── */
     #bloom-panel {
-      position: absolute; top: 84px; right: 20px; z-index: 20;
-      width: 240px;
+      position: absolute; top: 68px; right: 20px; z-index: 20;
+      width: 300px;
       background: rgba(10,10,10,0.92); border: 1px solid rgba(255,255,255,0.14);
       border-radius: 8px; padding: 12px;
       display: flex; flex-direction: column; gap: 8px;
@@ -146,19 +106,19 @@
     .pane-ui { position: absolute; inset: 0; pointer-events: none; }
 
     .pane-label {
-      position: absolute; bottom: 48px; left: 14px;
-      font-family: 'Google Sans Code', monospace; font-size: 10px;
-      color: rgba(255,255,255,0.30); letter-spacing: 0.06em;
+      position: absolute; bottom: 84px; left: 14px;
+      font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 300;
+      color: rgba(255,255,255,0.38);
       pointer-events: none;
     }
 
     .mini-graph {
-      position: absolute; bottom: 66px; left: 14px;
+      position: absolute; bottom: 102px; left: 14px;
       pointer-events: none; display: block;
     }
 
     .settings-btn {
-      position: absolute; bottom: 44px; right: 10px;
+      position: absolute; bottom: 80px; right: 10px;
       width: 28px; height: 28px; border-radius: 6px;
       background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -169,7 +129,7 @@
     .settings-btn.open { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.40); color: #fff; }
 
     .settings-panel {
-      position: absolute; bottom: 80px; right: 10px;
+      position: absolute; bottom: 116px; right: 10px;
       width: 220px; max-width: calc(100% - 20px);
       background: rgba(10,10,10,0.92); border: 1px solid rgba(255,255,255,0.14);
       border-radius: 8px; padding: 10px;
@@ -195,32 +155,6 @@
     }
     .ctrl-select:hover { border-color: rgba(255,255,255,0.35); }
     .ctrl-select option, .ctrl-select optgroup { background: #111; color: #fff; }
-
-    /* ── Progress bar ──────────────────────────────────────────────────────── */
-    #progress-wrap {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 36px;
-      display: flex; align-items: center; gap: 10px; padding: 0 20px;
-      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
-      pointer-events: all; z-index: 10;
-    }
-    #time-current, #time-total {
-      font-family: 'Google Sans Code', monospace; font-size: 10px;
-      color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 34px;
-    }
-    #time-total { text-align: right; }
-    #seek {
-      flex: 1; -webkit-appearance: none; appearance: none;
-      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
-      outline: none; cursor: pointer;
-    }
-    #seek::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 10px; height: 10px;
-      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
-    }
-    #seek::-moz-range-thumb {
-      width: 10px; height: 10px; border-radius: 50%; border: none;
-      background: rgba(255,255,255,0.75); cursor: pointer;
-    }
 
     /* ── Loading overlay ───────────────────────────────────────────────────── */
     #loading {
@@ -259,23 +193,28 @@
       font-family: 'Google Sans Code', monospace; font-size: 10px;
       color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
     }
-    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; z-index: 50; }
   </style>
 </head>
 <body>
   <div class="canvas-wrap">
 
-    <div id="ctrl-bar">
-      <div id="pc-group">
-        <button class="pc-btn" data-n="1">1</button>
-        <button class="pc-btn" data-n="2">2</button>
-        <button class="pc-btn" data-n="3">3</button>
-        <button class="pc-btn active" data-n="4">4</button>
+    <div id="ctrl-bar" class="ctrl-bar">
+      <div class="ctrl-bar-r1">
+        <div id="pc-group">
+          <button class="pc-btn" data-n="1">1</button>
+          <button class="pc-btn" data-n="2">2</button>
+          <button class="pc-btn" data-n="3">3</button>
+          <button class="pc-btn active" data-n="4">4</button>
+        </div>
+        <div class="bar-sep"></div>
+        <div class="ctrl-bar-spacer"></div>
+        <button id="aa-btn" class="bar-btn" aria-label="Antialiasing off">Antialias</button>
+        <button id="bloom-btn" class="bar-btn" aria-label="Bloom settings">Bloom</button>
+        <button id="play-btn" class="play-btn" aria-label="Play"></button>
       </div>
-      <div class="ctrl-sep"></div>
-      <button id="aa-btn" aria-label="Antialiasing off">Antialias</button>
-      <button id="play-btn" aria-label="Play"></button>
-      <button id="bloom-btn" aria-label="Bloom settings">Bloom</button>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
     </div>
 
     <div id="bloom-panel" hidden>
@@ -312,10 +251,10 @@
 
     <canvas id="composite-canvas"></canvas>
 
-    <div id="progress-wrap">
-      <span id="time-current">2:00</span>
-      <input id="seek" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
-      <span id="time-total">0:00</span>
+    <div id="progress-wrap" class="seek-bar" style="position:absolute;bottom:0;left:0;right:0;z-index:10;">
+      <span id="time-current" class="seek-time">2:00</span>
+      <input id="seek" class="seek-track" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+      <span id="time-total" class="seek-time right">0:00</span>
     </div>
 
     <div id="loading">
@@ -323,8 +262,7 @@
       <div id="loading-tracks"></div>
     </div>
 
-      <div id="fps-meter">-- fps</div>
-</div>
+  </div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const wrap = document.querySelector('.canvas-wrap');

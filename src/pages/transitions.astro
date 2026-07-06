@@ -3,12 +3,38 @@ import PageLayout from '../layouts/PageLayout.astro';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<PageLayout title="Transitions" slug="transitions">
+<PageLayout title="Effects and Refinements" slug="transitions">
   <div class="monologue">
-    This page is to explore ideas for transitions.
+    Techniques for shaping how a rendering looks — lighting blends, surface treatments, and transitions between visual states.
   </div>
 
-  <section class="demo-section">
+  <section class="demo-section" id="mixed-lighting">
+    <div class="demo-header">
+      <h2>Mixed lighting</h2>
+      <a href={`${base}/sketches/prominence-composer/demo/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/prominence-composer/demo/index.html?embedded`} title="Mixed lighting" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>Enables transition between different looks by mixing three lighting models:</p>
+      <ul>
+        <li><strong>Phase portrait</strong> — treats the frequency spectrum as an environment map, projecting the audio's tonal character onto the surface as a slowly shifting spherical light field.</li>
+        <li><strong>Anisotropic wave</strong> — generates a rainbow-spectrum directional wave driven by bass and treble amplitude, producing vivid rapidly cycling colors.</li>
+        <li><strong>Rim light</strong> — a view-dependent silhouette glow that fires where the surface normal is nearly perpendicular to the camera ray.</li>
+      </ul>
+      <p>Sliders:</p>
+      <ul>
+        <li><strong>Bg mix</strong> — blends the background from phase portrait (0) to anisotropic wave (1).</li>
+        <li><strong>Obj mix</strong> — does the same for the object surface shading.</li>
+        <li><strong>Rim light</strong> — intensity of the silhouette glow, added on top regardless of the other sliders.</li>
+        <li><strong>Rim width</strong> — angular spread of the rim; higher values widen the glow across more of the surface.</li>
+        <li><strong>Grayscale</strong> — desaturates the full frame.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="demo-section" id="dimensional-expansion">
     <div class="demo-header">
       <h2>Dimensional expansion</h2>
       <a href={`${base}/demos/transitions/index.html`} target="_blank" rel="noopener">open full size ↗</a>
@@ -18,14 +44,43 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
     <div class="prose">
       <p>
-        The core idea: expanding outward from a concentrated form reads as a transition from 2D to 3D.
-        A flat strip gains depth as it widens — as if a surface is unfolding into the third dimension.
+        Expanding outward from a concentrated form reads as a transition from 2D to 3D —
+        a flat strip gains depth as it widens, as if a surface is unfolding into the third dimension.
       </p>
-      <p>
-        The surface itself is built by spatial Fourier synthesis. Multiple sine waves propagate outward
-        from different source points, and their interference defines the height field. Each wave adds a
-        harmonic — the shape gets richer as more components arrive.
-      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="collapsing">
+    <div class="demo-header">
+      <h2>Collapsing</h2>
+      <a href={`${base}/demos/collapsing/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/collapsing/index.html?embedded`} title="Collapsing" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>Collapses any shape along the Y axis to transition between flat and 3D.</p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="camera-motion">
+    <div class="demo-header">
+      <h2>Camera motion</h2>
+      <a href={`${base}/demos/camera-motion/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/camera-motion/index.html?embedded`} title="Camera motion" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>A sandbox for exploring camera motion on any shape. Camera controls:</p>
+      <ul>
+        <li><strong>Orbit X / Y / Z</strong> — constant rotation rates around each axis; set negative for the opposite direction. Reset button returns each to zero.</li>
+        <li><strong>Direction H / V</strong> — offsets the look target left/right and up/down relative to the camera's current orientation, so the view always tilts toward that side of the world center.</li>
+        <li><strong>Sound zoom</strong> — scales the camera distance by the current amplitude; higher values pull the camera in more on loud transients.</li>
+        <li><strong>Sound pan</strong> — shakes the view using the stem's amplitude and frequency content.</li>
+        <li><strong>Stem</strong> — selects which stem drives the camera effects above.</li>
+      </ul>
+      <p>Drag to orbit, right-drag to pan, scroll to zoom. Orbit and direction sliders stack on top of the mouse position.</p>
     </div>
   </section>
 </PageLayout>

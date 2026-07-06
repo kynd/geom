@@ -388,8 +388,8 @@ async function init() {
 
   // ── Shape category buttons ─────────────────────────────────────────────────
   const srcBtnsWrap = document.getElementById('d3-src-btns');
-  const srcBtns     = Array.from(srcBtnsWrap.querySelectorAll('.d3-src-btn'));
-  const shapeLabel  = document.getElementById('shape-label');
+  const srcBtns     = Array.from(srcBtnsWrap.querySelectorAll('.tab-btn'));
+  const shapeLabel  = document.getElementById('shape-name');
 
   srcBtns.forEach((btn, i) => {
     btn.addEventListener('click', () => {
@@ -416,15 +416,19 @@ async function init() {
     bloomBtn.setAttribute('aria-label', on ? 'Bloom on' : 'Bloom off');
     bloomPass.strength = on ? parseFloat(bloomSlider.value) : 0;
   });
+  const bloomVal = document.getElementById('bloom-val');
   bloomSlider.addEventListener('input', () => {
     if (bloomBtn.classList.contains('active')) bloomPass.strength = parseFloat(bloomSlider.value);
+    bloomVal.textContent = parseFloat(bloomSlider.value).toFixed(2);
   });
 
   // ── Env scale slider ───────────────────────────────────────────────────────
   const envScaleSlider = document.getElementById('env-scale-slider');
+  const envScaleVal = document.getElementById('env-scale-val');
   envScaleSlider.addEventListener('input', () => {
     const v = parseFloat(envScaleSlider.value);
     for (const src of d3Sources) src.uniforms.u_envScale.value = v;
+    envScaleVal.textContent = v.toFixed(2);
   });
 
   // ── Play / pause ───────────────────────────────────────────────────────────

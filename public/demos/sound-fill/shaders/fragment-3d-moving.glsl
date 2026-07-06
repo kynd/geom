@@ -17,7 +17,7 @@ float surfaceF(vec3 p);
 const float PI = 3.14159265359;
 
 vec3 sampleEnvMap(vec3 dir) {
-  float u = atan(dir.x, -dir.z) * (0.5 / PI) + 0.5 + iTime * 0.02;
+  float u = fract(atan(dir.x, -dir.z) * (0.5 / PI) + 0.5 + iTime * 0.02);
   float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;
   vec2 uv = (vec2(u, v) - 0.5) / u_envScale + 0.5;
   float uf = fract(uv.x);

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collapsing</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+
+    #main-canvas { position: absolute; top: 0; left: 0; display: block; }
+
+    #shape-sel  { min-width: 220px; }
+    #effect-sel { min-width: 140px; }
+
+    /* ── Side params panel ────────────────────────────────────────────────────── */
+    #side-params {
+      position: absolute; bottom: 44px; right: 32px;
+      display: flex; flex-direction: row; gap: 28px;
+      pointer-events: all; z-index: 15;
+      background: rgba(0,0,0,0.45); border-radius: 8px;
+      padding: 10px 14px;
+    }
+    #side-params .params-col-label {
+      font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 300;
+      color: rgba(255,255,255,0.22); letter-spacing: 0.08em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+
+    <div id="ctrl-bar" class="ctrl-bar scrim">
+      <div class="ctrl-bar-r1">
+        <select id="type-sel" class="bar-select">
+          <option value="amplitude">Amplitude</option>
+          <option value="history" selected>History</option>
+          <option value="frequency">Frequency</option>
+        </select>
+        <div class="bar-sep"></div>
+        <select id="cat-sel" class="bar-select">
+          <option value="sdf">SDF</option>
+          <option value="platonic">Platonic</option>
+          <option value="scalar">Scalar</option>
+          <option value="moving" selected>Moving</option>
+        </select>
+        <div class="bar-sep"></div>
+        <select id="shape-sel" class="bar-select"></select>
+        <div class="bar-sep"></div>
+        <select id="effect-sel" class="bar-select"></select>
+        <div class="bar-sep"></div>
+        <div class="sl-row">
+          <span class="sl-label">Collapse Y</span>
+          <input type="range" id="collapse-sl" class="sl-track" min="0" max="1" step="0.001" value="1" />
+          <span class="sl-val" id="collapse-val">1.00</span>
+        </div>
+        <div class="ctrl-bar-spacer"></div>
+        <button id="aa-btn" class="bar-btn" aria-label="Antialiasing off">Antialias</button>
+        <button id="play-btn" class="play-btn" aria-label="Play"></button>
+      </div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
+    </div>
+
+    <canvas id="main-canvas" width="1920" height="1080"></canvas>
+
+    <!-- ── Side params panel ─────────────────────────────────────────────────── -->
+    <div id="side-params">
+      <div>
+        <div class="params-col-label">Lighting</div>
+        <div class="params-panel">
+          <div class="params-row">
+            <span class="params-lbl">Bg mix</span>
+            <input type="range" class="params-sl" id="p-bg-mix" min="0" max="1" step="0.01" value="0.00">
+            <span class="params-val" id="p-bg-mix-v">0.00</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Obj mix</span>
+            <input type="range" class="params-sl" id="p-obj-mix" min="0" max="1" step="0.01" value="0.00">
+            <span class="params-val" id="p-obj-mix-v">0.00</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Rim light</span>
+            <input type="range" class="params-sl" id="p-rim" min="0" max="1" step="0.01" value="0.55">
+            <span class="params-val" id="p-rim-v">0.55</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Rim width</span>
+            <input type="range" class="params-sl" id="p-rim-width" min="0" max="1" step="0.01" value="0.23">
+            <span class="params-val" id="p-rim-width-v">0.23</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Grayscale</span>
+            <input type="range" class="params-sl" id="p-grayscale" min="0" max="1" step="0.01" value="1.00">
+            <span class="params-val" id="p-grayscale-v">1.00</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="params-col-label">Bloom</div>
+        <div class="params-panel">
+          <div class="params-row">
+            <span class="params-lbl">Threshold</span>
+            <input type="range" class="params-sl" id="p-b-thresh" min="0" max="1" step="0.01" value="0.08">
+            <span class="params-val" id="p-b-thresh-v">0.08</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Strength</span>
+            <input type="range" class="params-sl" id="p-b-strength" min="0" max="3" step="0.05" value="2.30">
+            <span class="params-val" id="p-b-strength-v">2.30</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Radius</span>
+            <input type="range" class="params-sl" id="p-b-radius" min="0" max="1" step="0.01" value="0.45">
+            <span class="params-val" id="p-b-radius-v">0.45</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Seek bar ──────────────────────────────────────────────────────────── -->
+    <div id="seek-bar" class="seek-bar" style="position:absolute;bottom:0;left:0;right:0;z-index:15;">
+      <span id="time-current" class="seek-time">0:00</span>
+      <input id="seek" type="range" class="seek-track" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+      <span id="time-total" class="seek-time right">0:00</span>
+    </div>
+
+    <!-- ── Loading overlay ─────────────────────────────────────────────────── -->
+    <div id="loading">
+      <div id="loading-label">Loading audio</div>
+    </div>
+  </div>
+
+  <style>
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+    }
+  </style>
+
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const wrap = document.querySelector('.canvas-wrap');
+      wrap.style.width  = '960px';
+      wrap.style.height = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js?v=1"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
+</body>
+</html>

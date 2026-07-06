@@ -39,13 +39,6 @@ const EFFECTS = {
   history:   [{v:4,l:'Radial displacement'},{v:5,l:'Banded displacement'},{v:6,l:'Axial rotation'}],
   frequency: [{v:7,l:'Spectral displacement'},{v:8,l:'Spectral contours'},{v:9,l:'Spectral shear'}],
 };
-const LIGHTING_OPTIONS = [
-  {v:0,l:'Rim lighting'},{v:1,l:'Amplitude flash'},{v:2,l:'Environment map'},
-  {v:3,l:'Anisotropic wave'},{v:4,l:'Normal phase portrait'},{v:5,l:'Drifting caustic'},
-  {v:6,l:'Spectrogram'},{v:7,l:'Bilateral spectrogram'},
-  {v:8,l:'Spectral hue'},{v:9,l:'Spectral hue-lightness'},
-  {v:10,l:'Phase + anisotropic'},
-];
 
 const STEMS = [
   { id:'arp',   label:'Arp',    bin:'250621_a1_mix1_arp.bin'   },
@@ -62,49 +55,32 @@ const FPS         = 60;
 const HIST        = 256;
 const PLAT_CYCLE  = 5.0;
 const START_TIME  = 0;
-const ALPHA       = 0.92;   // onset decay
-const BETA        = 5.0;    // prominence sharpness
-const WIN_THRESH  = 0.20;   // min prominence to switch winner
+const ALPHA       = 0.92;
+const BETA        = 5.0;
+const WIN_THRESH  = 0.20;
+const LIGHTING_GLOBAL = 10;
 
 const STEM_DEFAULTS = [
   // arp
-  { type:'form', formMode:7 },
+  { type:'form', formMode:7, bloom:{threshold:0.08,strength:0.90,radius:0.35} },
   // bass
-  { type:'history', category:'moving', shapeIdx:13, effect:4 },
+  { type:'history', category:'moving', shapeIdx:2, effect:4, bloom:{threshold:0.08,strength:0.30,radius:0.45} },
   // hat
-  { type:'form', formMode:4 },
+  { type:'form', formMode:4, bloom:{threshold:0.08,strength:1.55,radius:0.22} },
   // kick1
-  { type:'amplitude', category:'moving', shapeIdx:0, effect:1 },
+  { type:'amplitude', category:'moving', shapeIdx:0, effect:1, bloom:{threshold:0.08,strength:0.35,radius:0.50} },
   // kick2
-  { type:'amplitude', category:'moving', shapeIdx:2, effect:2 },
+  { type:'amplitude', category:'moving', shapeIdx:2, effect:2, bloom:{threshold:0.08,strength:1.5,radius:0.42} },
   // pad
-  { type:'form', formMode:8 },
+  { type:'form', formMode:8, bloom:{threshold:0.05,strength:1.0,radius:0.44} },
   // snare
-  { type:'frequency', category:'moving', shapeIdx:4, effect:9 },
+  { type:'frequency', category:'moving', shapeIdx:4, effect:9, bloom:{threshold:0.08,strength:1.00,radius:0.30} },
 ];
-
-const GLOBAL_DEFAULT = {
-  lighting: 3,
-  bloom: { threshold: 0.08, strength: 1.0, radius: 0.35 },
-  waveBlendBg:  0.0,
-  waveBlendObj: 0.0,
-};
 
 // ── Winner state ──────────────────────────────────────────────────────────────
 
 let currentWinnerId = 0;
 let soloStemId = null;
-
-// ── Orbit state ───────────────────────────────────────────────────────────────
-
-let camTheta   = 0.3;
-let camPhi     = 0.15;
-let camDist    = 3.2;
-let camPanX    = 0.0;
-let camPanY    = 0.0;
-let camLightCam = false; // false = world-fixed ("fix"), true = camera-relative ("rotate")
-const CAM_DIST_MIN = 1.0;
-const CAM_DIST_MAX = 8.0;
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -172,6 +148,143 @@ function buildLoadingRows() {
   });
 }
 
+// ── GLSL injection helpers ────────────────────────────────────────────────────
+
+const CAM_DECLS = [
+  'uniform mat3  u_camRot;',
+  'uniform float u_camDist;',
+  'uniform vec2  u_camPan;',
+  'uniform sampler2D u_fillTexBg;',
+  'uniform float u_waveBlendBg;',
+  'uniform float u_waveBlendObj;',
+  'uniform float u_rimStr;',
+  'uniform float u_rimWidth;',
+  'uniform float u_grayscale;',
+].join('\n');
+
+const FILL_MAP_BG_FN =
+`vec3 sampleFillMapBg(vec3 dir) {
+  float u = atan(dir.x, -dir.z) * (0.5 / PI) + 0.5 + iTime * 0.02;
+  float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;
+  vec2  uv = (vec2(u, v) - 0.5) / u_envScale + 0.5;
+  float uf = fract(uv.x);
+  uv.x = uf < 0.5 ? uf * 2.0 : (1.0 - uf) * 2.0;
+  uv.y = clamp(uv.y, 0.0, 1.0);
+  vec3 c = texture2D(u_fillTexBg, uv).rgb;
+  return c * c;
+}
+
+vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
+  float _phaseLuma = dot(sampleFillMapBg(nor), vec3(0.333333));
+  vec3 mat = sampleFillMap(nor) * clamp(_phaseLuma * 3.5, 0.0, 1.5);
+  float a1 = iTime * 3.5;
+  vec3 ld1 = normalize(vec3(sin(a1), 0.35, cos(a1)));
+  vec3 h1  = normalize(ld1 - rd);
+  vec3 c1  = mat * max(dot(nor, ld1), 0.0) * 0.85 + sampleFillMap(h1) * pow(max(dot(nor, h1), 0.0), 56.0) * 0.35;
+  float a2 = iTime * 2.1 + 1.9;
+  vec3 ld2 = normalize(vec3(sin(a2), 0.20, cos(a2)));
+  vec3 h2  = normalize(ld2 - rd);
+  vec3 c2  = mat * max(dot(nor, ld2), 0.0) * 0.85 + sampleFillMap(h2) * pow(max(dot(nor, h2), 0.0), 56.0) * 0.35;
+  float aL2 = u_ampL * u_ampL, aR2 = u_ampR * u_ampR;
+  float amp = max(aL2, 0.015) + aR2;
+  vec3 lit  = c1 * max(aL2, 0.015) + c2 * aR2;
+  lit += mat * exp(-thickness * u_sssDensity) * u_sssStr * amp;
+  return lit;
+}`;
+
+// Orbit camera replacement for look-at shaders
+const CAM_LOOKAT =
+`  vec3 _basero = u_camRot * vec3(0.0, 0.0, u_camDist);
+  vec3 ww = normalize(-_basero);
+  vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+  vec3 vv = cross(uu, ww);
+  vec3 ro = _basero + u_camPan.x * uu + u_camPan.y * vv;
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + 3.0 * ww);`;
+
+// Orbit camera replacement for form shader
+const CAM_FORM =
+`  vec3 _basero = u_camRot * vec3(0.0, 0.0, u_camDist);
+  vec3 _ww = normalize(-_basero);
+  vec3 _uu = normalize(cross(_ww, vec3(0.0, 1.0, 0.0)));
+  vec3 _vv = cross(_uu, _ww);
+  vec3 ro = _basero + u_camPan.x * _uu + u_camPan.y * _vv;
+  vec3 rd = normalize(uv.x * _uu + uv.y * _vv + 3.0 * _ww);`;
+
+// Miss-path replacements (vec3 shaders: sdf, platonic, scalar, moving)
+const MISS_OLD_VEC3 =
+  '      return u_lighting >= 3 ? sampleFillMap(rd) * amp : sampleEnvMap(rd) * amp;';
+const MISS_NEW_VEC3 =
+  '      if (u_lighting >= 3) {\n' +
+  '        vec3 _aniso = sampleFillMap(rd);\n' +
+  '        vec3 _phase = u_lighting >= 10\n' +
+  '          ? _aniso * clamp(dot(sampleFillMapBg(rd), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
+  '          : _aniso;\n' +
+  '        return mix(_phase, _aniso, u_waveBlendBg) * amp;\n' +
+  '      }\n' +
+  '      return sampleEnvMap(rd) * amp;';
+
+// Miss-path replacements (vec4 shader: form)
+const MISS_OLD_VEC4 =
+  '      return vec4(u_lighting >= 3 ? sampleFillMap(rd) * amp : sampleEnvMap(rd) * amp, 1.0);';
+const MISS_NEW_VEC4 =
+  '      if (u_lighting >= 3) {\n' +
+  '        vec3 _aniso = sampleFillMap(rd);\n' +
+  '        vec3 _phase = u_lighting >= 10\n' +
+  '          ? _aniso * clamp(dot(sampleFillMapBg(rd), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
+  '          : _aniso;\n' +
+  '        return vec4(mix(_phase, _aniso, u_waveBlendBg) * amp, 1.0);\n' +
+  '      }\n' +
+  '      return vec4(sampleEnvMap(rd) * amp, 1.0);';
+
+// fillLight call replacements — blend phase portrait (0) → anisotropic wave (1), rim light added additively
+const FILL_OLD_TB   = '  if (u_lighting >= 3) return fillLight(nor, rd, tb - t);';
+const FILL_NEW_TB   =
+  '  if (u_lighting >= 3) {\n' +
+  '    vec3 _aniso = fillLight(nor, rd, tb - t);\n' +
+  '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, tb - t) : _aniso;\n' +
+  '    return mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, tb - t) * u_rimStr;\n' +
+  '  }';
+const FILL_OLD_100  = '  if (u_lighting >= 3) return fillLight(nor, rd, 100.0);  // open / periodic: SSS suppressed';
+const FILL_NEW_100  =
+  '  if (u_lighting >= 3) {\n' +
+  '    vec3 _aniso = fillLight(nor, rd, 100.0);\n' +
+  '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, 100.0) : _aniso;\n' +
+  '    return mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, 100.0) * u_rimStr;\n' +
+  '  }';
+const FILL_OLD_VEC4 = '  if (u_lighting >= 3) return vec4(fillLight(nor, rd, tb - t), 1.0);';
+const FILL_NEW_VEC4 =
+  '  if (u_lighting >= 3) {\n' +
+  '    vec3 _aniso = fillLight(nor, rd, tb - t);\n' +
+  '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, tb - t) : _aniso;\n' +
+  '    return vec4(mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, tb - t) * u_rimStr, 1.0);\n' +
+  '  }';
+
+// rimLight call replacements
+const RIM_OLD_TB   = '  return rimLight(pos, nor, rd, tb - t);';
+const RIM_NEW_TB   = '  return rimLight(pos, nor, rd, tb - t) * u_rimStr;';
+const RIM_OLD_100  = '  return rimLight(pos, nor, rd, 100.0);';
+const RIM_NEW_100  = '  return rimLight(pos, nor, rd, 100.0) * u_rimStr;';
+const RIM_OLD_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t), 1.0);';
+const RIM_NEW_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t) * u_rimStr, 1.0);';
+
+// Grayscale post-process — applied after gamma in each screen-output shader
+const GRAY_OLD_VEC3 = '  col = pow(max(col, 0.0), vec3(0.4545));\n  gl_FragColor = vec4(col, 1.0);';
+const GRAY_NEW_VEC3 =
+  '  col = pow(max(col, 0.0), vec3(0.4545));\n' +
+  '  col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
+  '  gl_FragColor = vec4(col, 1.0);';
+const GRAY_OLD_VEC4 = '  gl_FragColor = vec4(pow(max(col.rgb, vec3(0.0)), vec3(0.4545)), 1.0);';
+const GRAY_NEW_VEC4 =
+  '  vec3 _gc = pow(max(col.rgb, vec3(0.0)), vec3(0.4545));\n' +
+  '  _gc = mix(_gc, vec3(dot(_gc, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
+  '  gl_FragColor = vec4(_gc, 1.0);';
+
+function injectCommon(src) {
+  src = src.replace('precision highp float;', 'precision highp float;\n' + CAM_DECLS);
+  src = src.replace('}\n\nvec3 flashLight(', '}\n\n' + FILL_MAP_BG_FN + '\n\nvec3 flashLight(');
+  return src;
+}
+
 // ── Pane creation ─────────────────────────────────────────────────────────────
 
 function createPane(canvas, shaders, envTex) {
@@ -219,7 +332,7 @@ function createPane(canvas, shaders, envTex) {
     u_ampR:         { value: 0.0 },
     u_ampMono:      { value: 0.0 },
     u_ssaa:         { value: 0 },
-    u_lighting:     { value: 0 },
+    u_lighting:     { value: LIGHTING_GLOBAL },
     u_deformMode:   { value: 3 },
     u_histTex:      { value: histTex },
     u_fftTex:       { value: fftTex },
@@ -243,9 +356,13 @@ function createPane(canvas, shaders, envTex) {
     u_specTex:      { value: specTex },
     u_histHead:     { value: 1.0 },
     u_camRot:       { value: new THREE.Matrix3() },
-    u_camDist:      { value: 3.2 },
-    u_camPan:       { value: new THREE.Vector2() },
-    u_lightRot:     { value: new THREE.Matrix3() },
+    u_camDist:      { value: 2.667 },
+    u_camPan:       { value: new THREE.Vector2(0, 0) },
+    u_waveBlendBg:  { value: 0.01 },
+    u_waveBlendObj: { value: 0.50 },
+    u_rimStr:       { value: 0.02 },
+    u_rimWidth:     { value: 0.10 },
+    u_grayscale:    { value: 0.0 },
   };
 
   const sdfU    = { ...shared, u_shapeIndex:  { value: 1 } };
@@ -284,7 +401,6 @@ function createPane(canvas, shaders, envTex) {
     u_mid:       { value: 0.0 },
     u_treble:    { value: 0.0 },
     u_amp:       { value: 0.0 },
-    u_waveBlend: { value: 0.0 },
   };
   const fillScene = new THREE.Scene();
   fillScene.add(new THREE.Mesh(
@@ -301,8 +417,6 @@ function createPane(canvas, shaders, envTex) {
     activeScene: scenes.form,
     trackFrames: null,
     config: {},
-    waveBlendBg: 0.0,
-    waveBlendObj: 0.0,
   };
 }
 
@@ -323,13 +437,14 @@ function buildPaneComposer(pane) {
 // ── Apply config ──────────────────────────────────────────────────────────────
 
 function applyConfig(pane, cfg) {
-  const { scenes, shared, sdfU, platU, scalarU, movingU } = pane;
+  const { scenes, sdfU, platU, scalarU, movingU } = pane;
+  // u_lighting is global — not overridden per-stem
 
   if (cfg.type === 'form') {
-    shared.u_mode.value = cfg.formMode ?? 7;
+    pane.shared.u_mode.value = cfg.formMode ?? 7;
     pane.activeScene = scenes.form;
   } else {
-    shared.u_deformMode.value = cfg.effect ?? 3;
+    pane.shared.u_deformMode.value = cfg.effect ?? 3;
     switch (cfg.category) {
       case 'sdf':
         sdfU.u_shapeIndex.value = (cfg.shapeIdx ?? 0) + 1;
@@ -354,15 +469,6 @@ function applyBloom(pane, bloom) {
   pane.bloomPass.threshold = bloom.threshold;
   pane.bloomPass.strength  = bloom.strength;
   pane.bloomPass.radius    = bloom.radius;
-}
-
-// ── Apply global settings ─────────────────────────────────────────────────────
-
-function applyGlobal(pane, globalCfg) {
-  pane.shared.u_lighting.value = globalCfg.lighting;
-  applyBloom(pane, globalCfg.bloom);
-  pane.waveBlendBg  = globalCfg.waveBlendBg;
-  pane.waveBlendObj = globalCfg.waveBlendObj;
 }
 
 // ── Texture update ────────────────────────────────────────────────────────────
@@ -422,18 +528,29 @@ function updatePaneTextures(pane, frames, audioTime) {
 // ── Render pane ───────────────────────────────────────────────────────────────
 
 function renderPane(pane, wallTime) {
-  const { renderer,cam,fillScene,fillTarget,fillUniforms,shared,platU,activeScene } = pane;
+  const { renderer,cam,fillScene,fillTarget,fillTargetBg,fillUniforms,shared,platU,activeScene } = pane;
   shared.iTime.value       = wallTime;
   fillUniforms.iTime.value = wallTime;
 
   if (shared.u_lighting.value >= 3) {
-    fillUniforms.u_mode.value = shared.u_lighting.value - 3;
-    fillUniforms.u_waveBlend.value = pane.waveBlendBg;
-    renderer.setRenderTarget(pane.fillTargetBg);
-    renderer.render(fillScene, cam);
-    fillUniforms.u_waveBlend.value = pane.waveBlendObj;
-    renderer.setRenderTarget(fillTarget);
-    renderer.render(fillScene, cam);
+    if (shared.u_lighting.value === LIGHTING_GLOBAL) {
+      // Mode 10: anisotropic wave (0) for object, phase portrait (1) for background
+      fillUniforms.u_mode.value = 0;
+      renderer.setRenderTarget(fillTarget);
+      renderer.render(fillScene, cam);
+
+      fillUniforms.u_mode.value = 1;
+      renderer.setRenderTarget(fillTargetBg);
+      renderer.render(fillScene, cam);
+    } else {
+      const mode = shared.u_lighting.value - 3;
+      fillUniforms.u_mode.value = mode;
+      renderer.setRenderTarget(fillTarget);
+      renderer.render(fillScene, cam);
+      fillUniforms.u_mode.value = mode;
+      renderer.setRenderTarget(fillTargetBg);
+      renderer.render(fillScene, cam);
+    }
     renderer.setRenderTarget(null);
   }
 
@@ -485,10 +602,11 @@ function pickWinner(scores) {
 function switchToStem(pane, stemId, stemConfigs, allFrames) {
   if (stemId === currentWinnerId) return;
   currentWinnerId = stemId;
-  applyConfig(pane, stemConfigs[stemId]);
+  const cfg = stemConfigs[stemId];
+  applyConfig(pane, cfg);
   pane.trackFrames = allFrames[STEMS[stemId].id];
-  document.querySelectorAll('.sp-stem').forEach((el, i) =>
-    el.classList.toggle('active', i === stemId)
+  document.querySelectorAll('.sd-section[data-stem]').forEach((el, i) =>
+    el.classList.toggle('sd-active', i === stemId)
   );
 }
 
@@ -507,19 +625,15 @@ function drawProminenceChart(ctx, scores) {
     const midY = y + ROW_H * 0.5;
     const isWinner = i === currentWinnerId;
     const NAME_W = 56, BAR_X = NAME_W + 8, BAR_W = W - NAME_W - 52 - PAD;
-    // name
     ctx.fillStyle = isWinner ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)';
     ctx.font = `300 10px 'Sora', sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(stem.label, PAD, midY);
-    // bar bg
     ctx.fillStyle = 'rgba(255,255,255,0.07)';
     ctx.fillRect(BAR_X, midY - 4, BAR_W, 8);
-    // bar fill
     ctx.fillStyle = isWinner ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.28)';
     ctx.fillRect(BAR_X, midY - 4, BAR_W * scores[i], 8);
-    // value
     ctx.fillStyle = isWinner ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.28)';
     ctx.font = `10px 'Google Sans Code', monospace`;
     ctx.textAlign = 'right';
@@ -529,88 +643,9 @@ function drawProminenceChart(ctx, scores) {
 
 // ── Settings panel ────────────────────────────────────────────────────────────
 
-function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
+function buildSettingsPanel(panel, stemConfigs, pane) {
   panel.innerHTML = '';
 
-  // ── Global section ──────────────────────────────────────────────────────
-  const globalEl = document.createElement('div');
-  globalEl.className = 'sp-global';
-  globalEl.innerHTML = `
-    <div class="sp-row">
-      <span class="sp-label">Lighting</span>
-      <select class="sp-select sg-lighting">${buildSelect(LIGHTING_OPTIONS, globalConfig.lighting)}</select>
-    </div>
-    <div class="sp-row sg-wave-row" style="display:${globalConfig.lighting === 10 ? 'flex' : 'none'}">
-      <span class="sp-label">Bg</span>
-      <input type="range" class="sp-slider sg-wave-blend-bg" min="0" max="1" step="0.01" value="${globalConfig.waveBlendBg}" style="width:60px">
-      <span class="sp-val sg-wave-blend-bg-val">${globalConfig.waveBlendBg.toFixed(2)}</span>
-      <span class="sp-label" style="margin-left:6px">Obj</span>
-      <input type="range" class="sp-slider sg-wave-blend-obj" min="0" max="1" step="0.01" value="${globalConfig.waveBlendObj}" style="width:60px">
-      <span class="sp-val sg-wave-blend-obj-val">${globalConfig.waveBlendObj.toFixed(2)}</span>
-    </div>
-    <div class="sp-row">
-      <span class="sp-label">Bloom T</span>
-      <input type="range" class="sp-slider sg-b-threshold" min="0" max="1" step="0.01" value="${globalConfig.bloom.threshold}">
-      <span class="sp-val sg-bv-threshold">${globalConfig.bloom.threshold.toFixed(2)}</span>
-      <span class="sp-label" style="margin-left:4px">S</span>
-      <input type="range" class="sp-slider sg-b-strength" min="0" max="3" step="0.05" value="${globalConfig.bloom.strength}">
-      <span class="sp-val sg-bv-strength">${globalConfig.bloom.strength.toFixed(2)}</span>
-      <span class="sp-label" style="margin-left:4px">R</span>
-      <input type="range" class="sp-slider sg-b-radius" min="0" max="1" step="0.01" value="${globalConfig.bloom.radius}">
-      <span class="sp-val sg-bv-radius">${globalConfig.bloom.radius.toFixed(2)}</span>
-    </div>
-  `;
-  panel.appendChild(globalEl);
-
-  const gDivider = document.createElement('hr');
-  gDivider.style.cssText = 'border:none;border-top:1px solid rgba(255,255,255,0.10);margin:4px 0 6px';
-  panel.appendChild(gDivider);
-
-  const gLightSel   = globalEl.querySelector('.sg-lighting');
-  const gWaveRow      = globalEl.querySelector('.sg-wave-row');
-  const gWaveBlendBg  = globalEl.querySelector('.sg-wave-blend-bg');
-  const gWaveBlendBgV = globalEl.querySelector('.sg-wave-blend-bg-val');
-  const gWaveBlendObj = globalEl.querySelector('.sg-wave-blend-obj');
-  const gWaveBlendObjV= globalEl.querySelector('.sg-wave-blend-obj-val');
-  const gbThresh    = globalEl.querySelector('.sg-b-threshold');
-  const gbStrength  = globalEl.querySelector('.sg-b-strength');
-  const gbRadius    = globalEl.querySelector('.sg-b-radius');
-  const gbvThresh   = globalEl.querySelector('.sg-bv-threshold');
-  const gbvStr      = globalEl.querySelector('.sg-bv-strength');
-  const gbvRad      = globalEl.querySelector('.sg-bv-radius');
-
-  gLightSel.addEventListener('change', () => {
-    globalConfig.lighting = parseInt(gLightSel.value);
-    gWaveRow.style.display = globalConfig.lighting === 10 ? 'flex' : 'none';
-    applyGlobal(pane, globalConfig);
-  });
-  gWaveBlendBg.addEventListener('input', () => {
-    globalConfig.waveBlendBg = parseFloat(gWaveBlendBg.value);
-    gWaveBlendBgV.textContent = globalConfig.waveBlendBg.toFixed(2);
-    pane.waveBlendBg = globalConfig.waveBlendBg;
-  });
-  gWaveBlendObj.addEventListener('input', () => {
-    globalConfig.waveBlendObj = parseFloat(gWaveBlendObj.value);
-    gWaveBlendObjV.textContent = globalConfig.waveBlendObj.toFixed(2);
-    pane.waveBlendObj = globalConfig.waveBlendObj;
-  });
-  gbThresh.addEventListener('input', () => {
-    globalConfig.bloom.threshold = parseFloat(gbThresh.value);
-    gbvThresh.textContent = globalConfig.bloom.threshold.toFixed(2);
-    applyBloom(pane, globalConfig.bloom);
-  });
-  gbStrength.addEventListener('input', () => {
-    globalConfig.bloom.strength = parseFloat(gbStrength.value);
-    gbvStr.textContent = globalConfig.bloom.strength.toFixed(2);
-    applyBloom(pane, globalConfig.bloom);
-  });
-  gbRadius.addEventListener('input', () => {
-    globalConfig.bloom.radius = parseFloat(gbRadius.value);
-    gbvRad.textContent = globalConfig.bloom.radius.toFixed(2);
-    applyBloom(pane, globalConfig.bloom);
-  });
-
-  // ── Per-stem sections ───────────────────────────────────────────────────
   STEMS.forEach((stem, i) => {
     const cfg = stemConfigs[i];
     const isForm = cfg.type === 'form';
@@ -625,36 +660,40 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
     ];
 
     const stemEl = document.createElement('div');
-    stemEl.className = 'sp-stem' + (i === currentWinnerId ? ' active' : '');
-    stemEl.dataset.idx = i;
+    stemEl.className = 'sd-section' + (i === currentWinnerId ? ' sd-active' : '');
+    stemEl.dataset.stem = i;
 
     stemEl.innerHTML = `
-      <div class="sp-stem-header">
-        <div class="sp-stem-name">${stem.label}</div>
-        <div class="sp-prominence-bar-bg"><div class="sp-prominence-bar-fill"></div></div>
-        <div class="sp-active-dot"></div>
-        <button class="sp-solo-btn" data-stem="${i}">Solo</button>
+      <div class="sd-header">
+        <span class="sd-name">${stem.label}</span>
+        <div class="sd-bar-bg"><div class="sd-bar-fill"></div></div>
+        <div class="sd-dot"></div>
+        <button class="sd-solo" data-stem="${i}">Solo</button>
       </div>
-      <div class="sp-row">
-        <span class="sp-label">Type</span>
-        <select class="sp-select s-type">
+      <div class="sd-row">
+        <span class="sd-label">Type</span>
+        <select class="sd-select s-type">
           <option value="form"${cfg.type==='form'?' selected':''}>Form</option>
           <option value="amplitude"${cfg.type==='amplitude'?' selected':''}>Amplitude</option>
           <option value="history"${cfg.type==='history'?' selected':''}>History</option>
           <option value="frequency"${cfg.type==='frequency'?' selected':''}>Frequency</option>
         </select>
       </div>
-      <div class="sp-row s-shape-rows" style="display:${isForm?'none':'flex'}">
-        <span class="sp-label">Category</span>
-        <select class="sp-select s-category">${buildSelect(catOpts, catKey)}</select>
-        <span class="sp-label" style="margin-left:4px">Shape</span>
-        <select class="sp-select s-shape">${buildShapeOptions(shapeList, cfg.shapeIdx??0)}</select>
-        <span class="sp-label" style="margin-left:4px">Effect</span>
-        <select class="sp-select s-effect">${buildSelect(EFFECTS[effType], effVal)}</select>
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Category</span>
+        <select class="sd-select s-category" style="flex:1">${buildSelect(catOpts, catKey)}</select>
       </div>
-      <div class="sp-row s-form-rows" style="display:${isForm?'flex':'none'}">
-        <span class="sp-label">Mode</span>
-        <select class="sp-select s-mode">
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Shape</span>
+        <select class="sd-select s-shape" style="flex:1">${buildShapeOptions(shapeList, cfg.shapeIdx??0)}</select>
+      </div>
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Effect</span>
+        <select class="sd-select s-effect" style="flex:1">${buildSelect(EFFECTS[effType], effVal)}</select>
+      </div>
+      <div class="sd-row s-form-rows" style="display:${isForm?'flex':'none'}">
+        <span class="sd-label">Mode</span>
+        <select class="sd-select s-mode" style="flex:1">
           ${FORM_MODES.map((m,mi)=>`<option value="${mi+1}"${(cfg.formMode??9)===(mi+1)?' selected':''}>${m}</option>`).join('')}
         </select>
       </div>
@@ -692,9 +731,7 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
         effect:   parseInt(effectSel.value),
         formMode: parseInt(modeSel.value),
       };
-      if (i === currentWinnerId) {
-        applyConfig(pane, stemConfigs[i]);
-      }
+      if (i === currentWinnerId) applyConfig(pane, stemConfigs[i]);
     }
 
     typeSel.addEventListener('change', () => {
@@ -708,10 +745,10 @@ function buildSettingsPanel(panel, stemConfigs, globalConfig, pane) {
     effectSel.addEventListener('change', readAndApply);
     modeSel.addEventListener('change', readAndApply);
 
-    stemEl.querySelector('.sp-solo-btn').addEventListener('click', () => {
+    stemEl.querySelector('.sd-solo').addEventListener('click', () => {
       const wasActive = soloStemId === i;
       soloStemId = wasActive ? null : i;
-      panel.querySelectorAll('.sp-solo-btn').forEach(btn => {
+      panel.querySelectorAll('.sd-solo').forEach(btn => {
         btn.classList.toggle('active', !wasActive && parseInt(btn.dataset.stem) === i);
       });
     });
@@ -730,10 +767,10 @@ async function init() {
   const scoreBtn      = document.getElementById('score-btn');
   const settingsBtn   = document.getElementById('settings-btn');
   const camLightBtn   = document.getElementById('cam-light-btn');
-  const seekEl      = document.getElementById('seek');
-  const timeCur     = document.getElementById('time-current');
-  const timeTot     = document.getElementById('time-total');
-  const loadingEl   = document.getElementById('loading');
+  const seekEl        = document.getElementById('seek');
+  const timeCur       = document.getElementById('time-current');
+  const timeTot       = document.getElementById('time-total');
+  const loadingEl     = document.getElementById('loading');
 
   // ── Fetch shaders ────────────────────────────────────────────────────────
   const [
@@ -758,57 +795,94 @@ async function init() {
     fetch('../../../demos/sound-form/shaders/fragment.glsl').then(r=>r.text()),
   ]);
 
+  // buildFrag applies an ordered list of [old, new] string substitutions
   function buildFrag(tmpl, subs) {
     let s = tmpl;
-    for (const [k,v] of Object.entries(subs)) s = s.replace(k, v);
+    for (const [k,v] of subs) s = s.replace(k, v);
     return s;
   }
 
-  function injectOrbit(src) {
-    src = src.replace(
-      'precision highp float;',
-      'precision highp float;\nuniform mat3 u_camRot;\nuniform float u_camDist;\nuniform vec2 u_camPan;\nuniform mat3 u_lightRot;\nuniform sampler2D u_fillTexBg;'
-    );
-    // Inject sampleFillMapBg alongside sampleFillMap (same projection, different texture)
-    src = src.replace(
-      '  vec3 c = texture2D(u_fillTex, uv).rgb;\n  return c * c;\n}',
-      '  vec3 c = texture2D(u_fillTex, uv).rgb;\n  return c * c;\n}\n\nvec3 sampleFillMapBg(vec3 dir) {\n  float u = atan(dir.x, -dir.z) * (0.5 / PI) + 0.5 + iTime * 0.02;\n  float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;\n  vec2  uv = (vec2(u, v) - 0.5) / u_envScale + 0.5;\n  float uf = fract(uv.x);\n  uv.x = uf < 0.5 ? uf * 2.0 : (1.0 - uf) * 2.0;\n  uv.y = clamp(uv.y, 0.0, 1.0);\n  vec3 c = texture2D(u_fillTexBg, uv).rgb;\n  return c * c;\n}'
-    );
-    // Background miss path uses fillTexBg; object lighting (fillLight) uses fillTex
-    src = src.replace(
-      'sampleFillMap(rd) * amp',
-      'sampleFillMapBg(rd) * amp'
-    );
-    src = src.replace(
-      /vec3 ro = vec3\([^)]+\);/,
-      'vec3 ro = u_camRot * vec3(0.0, 0.0, u_camDist);'
-    );
-    src = src.replace(
-      /vec3 vv = cross\(uu, ww\);/,
-      'vec3 vv = cross(uu, ww);\n  ro += uu * u_camPan.x + vv * u_camPan.y;'
-    );
-    // Before the first lighting call, inject lnor/lrd in lighting space.
-    // u_lightRot = identity (world-fixed) or transpose(camRot) (camera-relative).
-    // Original nor/rd stay untouched so the SSS thickness trace loop is unaffected.
-    src = src.replace(
-      '  if (u_lighting == 1) return flashLight(nor, rd);',
-      '  vec3 lnor = normalize(u_lightRot * nor);\n  vec3 lrd = normalize(u_lightRot * rd);\n  if (u_lighting == 1) return flashLight(lnor, lrd);'
-    );
-    src = src.replace(/envLight\(nor, rd,/g,  'envLight(lnor, lrd,');
-    src = src.replace(/fillLight\(nor, rd,/g, 'fillLight(lnor, lrd,');
-    src = src.replace(/rimLight\(pos, nor, rd,/g, 'rimLight(pos, lnor, lrd,');
-    return src;
-  }
+  const rimLightPatched = rimLightSrc.replace(
+    'pow(1.0 - NdotV, u_rimPow)',
+    'pow(1.0 - NdotV, mix(50.0, 1.5, u_rimWidth))'
+  );
+
   const movingRenamed = movingScalarSrc.replace(/\bsurfaceF\b/g, 'baseScalarF');
+
+  // Exact camera-setup blocks from each fragment source file
+  const CAM_SDF_OLD =
+`  vec3 ro = vec3(0.0, 0.55, 3.5);
+  vec3 ta = vec3(0.0, 0.08, 0.0);
+  vec3 ww = normalize(ta - ro);
+  vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+  vec3 vv = cross(uu, ww);
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + 3.0 * ww);`;
+
+  const CAM_MOVING_OLD =
+`  vec3 ro = vec3(0.0, 1.2, 3.0);
+  vec3 ta = vec3(0.0, 0.0, 0.0);
+  vec3 ww = normalize(ta - ro);
+  vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+  vec3 vv = cross(uu, ww);
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + 3.0 * ww);`;
+
+  const CAM_FORM_OLD =
+`  vec3 ro = vec3(0.0, 0.0, 2.5);
+  vec3 rd = normalize(vec3(uv / 3.0, -1.0));`;
+
+  // Apply common GLSL patches (uniforms + sampleFillMapBg) then shader-specific subs
+  function patchLookat(src) {
+    return injectCommon(src)
+      .replace(MISS_OLD_VEC3, MISS_NEW_VEC3)
+      .replace(FILL_OLD_TB,   FILL_NEW_TB)
+      .replace(FILL_OLD_100,  FILL_NEW_100)
+      .replace(RIM_OLD_TB,    RIM_NEW_TB)
+      .replace(RIM_OLD_100,   RIM_NEW_100)
+      .replace(GRAY_OLD_VEC3, GRAY_NEW_VEC3);
+  }
+
+  function patchForm(src) {
+    return injectCommon(src)
+      .replace(MISS_OLD_VEC4, MISS_NEW_VEC4)
+      .replace(FILL_OLD_VEC4, FILL_NEW_VEC4)
+      .replace(RIM_OLD_VEC4,  RIM_NEW_VEC4)
+      .replace(GRAY_OLD_VEC4, GRAY_NEW_VEC4);
+  }
 
   const shaders = {
     vert:        vertSrc,
     fragFill:    fragFillSrc,
-    fragSdf:     injectOrbit(buildFrag(fragSdfTmpl,      {'// INCLUDE_SDF_FUNCTIONS':sdfFuncSrc,'// INCLUDE_RIM_LIGHTING':rimLightSrc,'// INCLUDE_SDF_MARCHER':sdfMarcherSrc,'// INCLUDE_DEFORM':deformSrc})),
-    fragPlatonic:injectOrbit(buildFrag(fragPlatonicTmpl, {'// INCLUDE_PLATONIC_FUNCTIONS':platonicFuncSrc,'// INCLUDE_RIM_LIGHTING':rimLightSrc,'// INCLUDE_SDF_MARCHER':sdfMarcherSrc,'// INCLUDE_DEFORM':deformSrc})),
-    fragScalar:  injectOrbit(buildFrag(fragScalarTmpl,   {'// INCLUDE_RIM_LIGHTING':rimLightSrc,'// INCLUDE_SCALAR_MARCHER':scalarMarcherSrc,'// INCLUDE_DEFORM':deformSrc})),
-    fragMoving:  injectOrbit(buildFrag(fragMovingTmpl,   {'// INCLUDE_RIM_LIGHTING':rimLightSrc,'// INCLUDE_SCALAR_MARCHER':scalarMarcherSrc,'// INCLUDE_DEFORM':deformSrc,'// INCLUDE_MOVING_SCALAR_FUNCTIONS':movingRenamed})),
-    fragForm:    injectOrbit(fragFormTmpl.replace('// INCLUDE_RIM_LIGHTING', rimLightSrc)),
+    fragSdf: buildFrag(patchLookat(fragSdfTmpl), [
+      ['// INCLUDE_SDF_FUNCTIONS',  sdfFuncSrc],
+      ['// INCLUDE_RIM_LIGHTING',   rimLightPatched],
+      ['// INCLUDE_SDF_MARCHER',    sdfMarcherSrc],
+      ['// INCLUDE_DEFORM',         deformSrc],
+      [CAM_SDF_OLD,                 CAM_LOOKAT],
+    ]),
+    fragPlatonic: buildFrag(patchLookat(fragPlatonicTmpl), [
+      ['// INCLUDE_PLATONIC_FUNCTIONS', platonicFuncSrc],
+      ['// INCLUDE_RIM_LIGHTING',       rimLightPatched],
+      ['// INCLUDE_SDF_MARCHER',        sdfMarcherSrc],
+      ['// INCLUDE_DEFORM',             deformSrc],
+      [CAM_SDF_OLD,                     CAM_LOOKAT],
+    ]),
+    fragScalar: buildFrag(patchLookat(fragScalarTmpl), [
+      ['// INCLUDE_RIM_LIGHTING',    rimLightPatched],
+      ['// INCLUDE_SCALAR_MARCHER',  scalarMarcherSrc],
+      ['// INCLUDE_DEFORM',          deformSrc],
+      [CAM_MOVING_OLD,               CAM_LOOKAT],
+    ]),
+    fragMoving: buildFrag(patchLookat(fragMovingTmpl), [
+      ['// INCLUDE_RIM_LIGHTING',            rimLightPatched],
+      ['// INCLUDE_SCALAR_MARCHER',          scalarMarcherSrc],
+      ['// INCLUDE_DEFORM',                  deformSrc],
+      ['// INCLUDE_MOVING_SCALAR_FUNCTIONS', movingRenamed],
+      [CAM_MOVING_OLD,                       CAM_LOOKAT],
+    ]),
+    fragForm: buildFrag(patchForm(fragFormTmpl), [
+      ['// INCLUDE_RIM_LIGHTING', rimLightPatched],
+      [CAM_FORM_OLD,              CAM_FORM],
+    ]),
   };
 
   // ── Load stem bins ───────────────────────────────────────────────────────
@@ -828,8 +902,6 @@ async function init() {
 
   const allFrames = {};
   STEMS.forEach((s, i) => { allFrames[s.id] = parseBinary(buffers[i]); });
-
-  // Compute onset data for all stems
   const onsetData = STEMS.map(s => computeOnset(allFrames[s.id]));
 
   loadingEl.classList.add('fade-out');
@@ -895,20 +967,15 @@ async function init() {
 
   // ── Env map + pane ───────────────────────────────────────────────────────
   const envTex = buildEnvMapTexture(THREE, 256, 128);
-  const pane = createPane(mainCanvas, shaders, envTex);
+  const pane   = createPane(mainCanvas, shaders, envTex);
   buildPaneComposer(pane);
 
-  // Deep-copy stem defaults so settings panel can mutate them
-  const stemConfigs = STEM_DEFAULTS.map(d => ({ ...d }));
+  const stemConfigs = STEM_DEFAULTS.map(d => ({ ...d, bloom: { ...d.bloom } }));
 
-  // Global lighting + bloom config
-  const globalConfig = { ...GLOBAL_DEFAULT, bloom: { ...GLOBAL_DEFAULT.bloom } };
-
-  // Apply initial config
-  currentWinnerId = 0;
-  pane.trackFrames = allFrames[STEMS[0].id];
-  applyConfig(pane, stemConfigs[0]);
-  applyGlobal(pane, globalConfig);
+  currentWinnerId = 1;
+  pane.trackFrames = allFrames[STEMS[1].id];
+  applyConfig(pane, stemConfigs[1]);
+  applyBloom(pane, stemConfigs[1].bloom);
 
   // ── Embedded resize ──────────────────────────────────────────────────────
   const embedded = new URLSearchParams(location.search).has('embedded');
@@ -918,6 +985,81 @@ async function init() {
     resizePane(pane);
   }
 
+  // ── Orbit camera ─────────────────────────────────────────────────────────
+  let camYaw = 0, camPitch = 0;
+  let camDist = 2.667;
+  let camPanX = 0, camPanY = 0;
+
+  function updateCamera() {
+    const m = new THREE.Matrix4().makeRotationY(camYaw);
+    m.multiply(new THREE.Matrix4().makeRotationX(camPitch));
+    pane.shared.u_camRot.value.setFromMatrix4(m);
+    pane.shared.u_camDist.value = camDist;
+    pane.shared.u_camPan.value.set(camPanX, camPanY);
+  }
+  updateCamera();
+
+  const canvasWrap = document.querySelector('.canvas-wrap');
+  const DRAG_SCALE = 1.0 / mainCanvas.width;
+
+  let isDragging = false, isRightDrag = false, lastMX = 0, lastMY = 0;
+
+  canvasWrap.addEventListener('contextmenu', e => e.preventDefault());
+  canvasWrap.addEventListener('mousedown', e => {
+    if (e.target.closest('input, button, select')) return;
+    isDragging  = true;
+    isRightDrag = e.button === 2;
+    lastMX = e.clientX; lastMY = e.clientY;
+    e.preventDefault();
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = (e.clientX - lastMX) * DRAG_SCALE * 2;
+    const dy = (e.clientY - lastMY) * DRAG_SCALE * 2;
+    lastMX = e.clientX; lastMY = e.clientY;
+    if (isRightDrag) {
+      camPanX += dx * camDist;
+      camPanY -= dy * camDist;
+    } else {
+      camYaw  += dx * Math.PI;
+      camPitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, camPitch + dy * Math.PI));
+    }
+    updateCamera();
+    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+  });
+  canvasWrap.addEventListener('wheel', e => {
+    camDist = Math.max(0.5, Math.min(10.0, camDist + e.deltaY * 0.003));
+    updateCamera();
+    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    e.preventDefault();
+  }, { passive: false });
+
+  let lastTouches = null;
+  canvasWrap.addEventListener('touchstart', e => {
+    lastTouches = e.touches;
+    e.preventDefault();
+  }, { passive: false });
+  canvasWrap.addEventListener('touchmove', e => {
+    if (!lastTouches) return;
+    if (e.touches.length === 1 && lastTouches.length === 1) {
+      const dx = (e.touches[0].clientX - lastTouches[0].clientX) * DRAG_SCALE * 2;
+      const dy = (e.touches[0].clientY - lastTouches[0].clientY) * DRAG_SCALE * 2;
+      camYaw  += dx * Math.PI;
+      camPitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, camPitch + dy * Math.PI));
+      updateCamera();
+    } else if (e.touches.length === 2 && lastTouches.length === 2) {
+      const d0 = Math.hypot(lastTouches[0].clientX - lastTouches[1].clientX, lastTouches[0].clientY - lastTouches[1].clientY);
+      const d1 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      camDist = Math.max(0.5, Math.min(10.0, camDist * (d0 / Math.max(d1, 1))));
+      updateCamera();
+    }
+    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    lastTouches = e.touches;
+    e.preventDefault();
+  }, { passive: false });
+  canvasWrap.addEventListener('touchend', () => { lastTouches = null; });
+
   // ── SSAA ─────────────────────────────────────────────────────────────────
   aaBtn.addEventListener('click', () => {
     const on = aaBtn.classList.toggle('active');
@@ -925,12 +1067,12 @@ async function init() {
     aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
   });
 
-  // ── Camera light toggle ───────────────────────────────────────────────────
+  // ── Cam-light: toggle background fill visibility ──────────────────────────
+  const bgMixEl = document.getElementById('p-bg-mix');
   camLightBtn.addEventListener('click', () => {
-    camLightCam = camLightBtn.classList.toggle('active');
-    camLightBtn.setAttribute('aria-label', camLightCam ? 'Light: camera' : 'Light: world');
-    updateCamUniforms();
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    const active = camLightBtn.classList.toggle('active');
+    camLightBtn.setAttribute('aria-label', active ? 'Light: cam' : 'Light: world');
+    pane.shared.u_waveBlendBg.value = active ? 0.0 : parseFloat(bgMixEl.value);
   });
 
   // ── Scores toggle ────────────────────────────────────────────────────────
@@ -947,104 +1089,56 @@ async function init() {
     settingsBtn.classList.toggle('active', opening);
   });
 
-  // ── Build settings panel ──────────────────────────────────────────────────
-  buildSettingsPanel(settingsPanel, stemConfigs, globalConfig, pane);
+  buildSettingsPanel(settingsPanel, stemConfigs, pane);
 
-  // ── Orbit controls ────────────────────────────────────────────────────────
-  function updateCamUniforms() {
-    const ct = Math.cos(camTheta), st = Math.sin(camTheta);
-    const cp = Math.cos(camPhi),   sp = Math.sin(camPhi);
-    pane.shared.u_camRot.value.set(
-      ct,  -st * sp,  st * cp,
-      0,    cp,       sp,
-      -st, -ct * sp,  ct * cp
-    );
-    pane.shared.u_camDist.value = camDist;
-    pane.shared.u_camPan.value.set(camPanX, camPanY);
-    if (camLightCam) {
-      pane.shared.u_lightRot.value.copy(pane.shared.u_camRot.value).transpose();
-    } else {
-      pane.shared.u_lightRot.value.identity();
-    }
+  // ── Side-params wiring ───────────────────────────────────────────────────
+  function wireSlider(id, valId, onChange) {
+    const sl = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    sl.addEventListener('input', () => {
+      vl.textContent = parseFloat(sl.value).toFixed(2);
+      onChange(parseFloat(sl.value));
+    });
   }
-  updateCamUniforms();
-  mainCanvas.style.cursor = 'grab';
 
-  let isDragging = false, lastMX = 0, lastMY = 0;
-  mainCanvas.addEventListener('mousedown', e => {
-    isDragging = true; lastMX = e.clientX; lastMY = e.clientY;
-    mainCanvas.style.cursor = e.shiftKey ? 'move' : 'grabbing';
-  });
-  window.addEventListener('mouseup', () => { isDragging = false; mainCanvas.style.cursor = 'grab'; });
-  window.addEventListener('mousemove', e => {
-    if (!isDragging) return;
-    const dx = e.clientX - lastMX;
-    const dy = e.clientY - lastMY;
-    if (e.shiftKey) {
-      const sensitivity = camDist * 0.0015;
-      camPanX -= dx * sensitivity;
-      camPanY += dy * sensitivity;
-    } else {
-      camTheta -= dx * 0.005;
-      camPhi = Math.max(-1.4, Math.min(1.4, camPhi - dy * 0.005));
-    }
-    lastMX = e.clientX; lastMY = e.clientY;
-    updateCamUniforms();
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
-  });
-  mainCanvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    camDist = Math.max(CAM_DIST_MIN, Math.min(CAM_DIST_MAX, camDist * (1 + e.deltaY * 0.001)));
-    updateCamUniforms();
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
-  }, { passive: false });
+  wireSlider('p-bg-mix',     'p-bg-mix-v',     v => { pane.shared.u_waveBlendBg.value  = v; });
+  wireSlider('p-obj-mix',    'p-obj-mix-v',     v => { pane.shared.u_waveBlendObj.value = v; });
+  wireSlider('p-rim',        'p-rim-v',         v => { pane.shared.u_rimStr.value        = v; });
+  wireSlider('p-rim-width',  'p-rim-width-v',   v => { pane.shared.u_rimWidth.value      = v; });
+  wireSlider('p-grayscale',  'p-grayscale-v',   v => { pane.shared.u_grayscale.value     = v; });
+  wireSlider('p-b-thresh',   'p-b-thresh-v',    v => { pane.bloomPass.threshold = v; });
+  wireSlider('p-b-strength', 'p-b-strength-v',  v => { pane.bloomPass.strength  = v; });
+  wireSlider('p-b-radius',   'p-b-radius-v',    v => { pane.bloomPass.radius    = v; });
 
-  let lastPinchDist = 0;
-  mainCanvas.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) { isDragging = true; lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY; }
-    if (e.touches.length === 2) lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-  }, { passive: true });
-  mainCanvas.addEventListener('touchmove', e => {
-    if (e.touches.length === 1 && isDragging) {
-      camTheta -= (e.touches[0].clientX - lastMX) * 0.005;
-      camPhi = Math.max(-1.4, Math.min(1.4, camPhi - (e.touches[0].clientY - lastMY) * 0.005));
-      lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
-      updateCamUniforms();
-      if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
-    }
-    if (e.touches.length === 2 && lastPinchDist) {
-      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      camDist = Math.max(CAM_DIST_MIN, Math.min(CAM_DIST_MAX, camDist * (lastPinchDist / d)));
-      lastPinchDist = d;
-      updateCamUniforms();
-      if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
-    }
-  }, { passive: true });
-  mainCanvas.addEventListener('touchend', () => { isDragging = false; lastPinchDist = 0; });
+  // Apply initial slider values to uniforms
+  pane.shared.u_waveBlendBg.value  = parseFloat(bgMixEl.value);
+  pane.shared.u_waveBlendObj.value = parseFloat(document.getElementById('p-obj-mix').value);
+  pane.shared.u_rimStr.value       = parseFloat(document.getElementById('p-rim').value);
+  pane.shared.u_rimWidth.value     = parseFloat(document.getElementById('p-rim-width').value);
+  pane.shared.u_grayscale.value    = parseFloat(document.getElementById('p-grayscale').value);
+  pane.bloomPass.threshold = parseFloat(document.getElementById('p-b-thresh').value);
+  pane.bloomPass.strength  = parseFloat(document.getElementById('p-b-strength').value);
+  pane.bloomPass.radius    = parseFloat(document.getElementById('p-b-radius').value);
 
   // ── Render loop ──────────────────────────────────────────────────────────
-  const globalStart = performance.now();
+  const globalStart = performance.now() - 800;
 
   function renderFrame(audioTime) {
     const wallTime = (performance.now() - globalStart) * 0.001;
     const frameIdx = Math.floor(audioTime * FPS);
 
-    // Compute prominence and pick winner
     const scores = computeProminence(frameIdx, allFrames, onsetData);
     const winner = soloStemId !== null ? soloStemId : pickWinner(scores);
     switchToStem(pane, winner, stemConfigs, allFrames);
 
-    // Update textures and render
     updatePaneTextures(pane, pane.trackFrames, audioTime);
     renderPane(pane, wallTime);
 
-    // Draw chart if visible
     if (chartVisible) drawProminenceChart(chartCtx, scores);
 
-    // Update prominence bars in settings panel
     if (!settingsPanel.hidden) {
-      settingsPanel.querySelectorAll('.sp-stem').forEach((el, i) => {
-        el.querySelector('.sp-prominence-bar-fill').style.width = `${(scores[i] * 100).toFixed(1)}%`;
+      settingsPanel.querySelectorAll('.sd-section[data-stem]').forEach((el, i) => {
+        el.querySelector('.sd-bar-fill').style.width = `${(scores[i] * 100).toFixed(1)}%`;
       });
     }
   }
@@ -1054,7 +1148,6 @@ async function init() {
     renderFrame(audio.currentTime);
   }
 
-  // ── Initial static frame ─────────────────────────────────────────────────
   requestAnimationFrame(() => renderFrame(START_TIME));
 }
 

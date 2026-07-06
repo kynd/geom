@@ -80,8 +80,8 @@ async function init() {
   const canvas   = document.getElementById('canvas');
   const playBtn  = document.getElementById('play-btn');
   const selectEl = document.getElementById('sound-select');
-  const shapeLbl = document.getElementById('shape-label');
-  const srcBtns  = Array.from(document.querySelectorAll('.src-btn'));
+  const shapeLbl = document.getElementById('shape-name');
+  const srcBtns  = Array.from(document.querySelectorAll(".tab-btn"));
   const W = canvas.width, H = canvas.height;
 
   // Build OKLCH env map on the CPU, then upload to GPU as a texture

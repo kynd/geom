@@ -15,15 +15,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%; background: #000;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
     }
-    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
     #canvas { display: block; width: 1920px; height: 1080px; }
-    #overlay { position: absolute; inset: 0; pointer-events: none; user-select: none; }
 
     #axis-labels {
       position: absolute; inset: 0;
@@ -38,7 +36,6 @@
     #label-l0   { position: absolute; left: 56px; bottom: 44px; }
     #label-l50  { position: absolute; left: 56px; top: 50%; transform: translateY(-50%); }
     #label-l100 { position: absolute; left: 56px; top: 44px; }
-    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
@@ -56,8 +53,13 @@
         <span id="label-l100">L 1</span>
       </div>
     </div>
-      <div id="fps-meter">-- fps</div>
-</div>
+    <div id="ctrl-bar" class="ctrl-bar">
+      <div class="ctrl-bar-r1"></div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
+    </div>
+  </div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');

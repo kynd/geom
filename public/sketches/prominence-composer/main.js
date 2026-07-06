@@ -446,8 +446,8 @@ function switchToStem(pane, stemId, stemConfigs, allFrames) {
   applyConfig(pane, cfg);
   applyBloom(pane, cfg.bloom);
   pane.trackFrames = allFrames[STEMS[stemId].id];
-  document.querySelectorAll('.sp-stem').forEach((el, i) =>
-    el.classList.toggle('active', i === stemId)
+  document.querySelectorAll('.sd-section[data-stem]').forEach((el, i) =>
+    el.classList.toggle('sd-active', i === stemId)
   );
 }
 
@@ -505,51 +505,58 @@ function buildSettingsPanel(panel, stemConfigs, pane, allFrames) {
     ];
 
     const stemEl = document.createElement('div');
-    stemEl.className = 'sp-stem' + (i === currentWinnerId ? ' active' : '');
-    stemEl.dataset.idx = i;
+    stemEl.className = 'sd-section' + (i === currentWinnerId ? ' sd-active' : '');
+    stemEl.dataset.stem = i;
 
     stemEl.innerHTML = `
-      <div class="sp-stem-header">
-        <div class="sp-stem-name">${stem.label}</div>
-        <div class="sp-prominence-bar-bg"><div class="sp-prominence-bar-fill"></div></div>
-        <div class="sp-active-dot"></div>
-        <button class="sp-solo-btn" data-stem="${i}">Solo</button>
+      <div class="sd-header">
+        <span class="sd-name">${stem.label}</span>
+        <div class="sd-bar-bg"><div class="sd-bar-fill"></div></div>
+        <div class="sd-dot"></div>
+        <button class="sd-solo" data-stem="${i}">Solo</button>
       </div>
-      <div class="sp-row">
-        <span class="sp-label">Type</span>
-        <select class="sp-select s-type">
+      <div class="sd-row">
+        <span class="sd-label">Lighting</span>
+        <select class="sd-select s-lighting" style="flex:1">${buildSelect(LIGHTING_OPTIONS, cfg.lighting??0)}</select>
+      </div>
+      <div class="sd-row">
+        <span class="sd-label">Type</span>
+        <select class="sd-select s-type" style="flex:1">
           <option value="form"${cfg.type==='form'?' selected':''}>Form</option>
           <option value="amplitude"${cfg.type==='amplitude'?' selected':''}>Amplitude</option>
           <option value="history"${cfg.type==='history'?' selected':''}>History</option>
           <option value="frequency"${cfg.type==='frequency'?' selected':''}>Frequency</option>
         </select>
-        <span class="sp-label" style="margin-left:6px">Lighting</span>
-        <select class="sp-select s-lighting">${buildSelect(LIGHTING_OPTIONS, cfg.lighting??0)}</select>
       </div>
-      <div class="sp-row s-shape-rows" style="display:${isForm?'none':'flex'}">
-        <span class="sp-label">Category</span>
-        <select class="sp-select s-category">${buildSelect(catOpts, catKey)}</select>
-        <span class="sp-label" style="margin-left:4px">Shape</span>
-        <select class="sp-select s-shape">${buildShapeOptions(shapeList, cfg.shapeIdx??0)}</select>
-        <span class="sp-label" style="margin-left:4px">Effect</span>
-        <select class="sp-select s-effect">${buildSelect(EFFECTS[effType], effVal)}</select>
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Category</span>
+        <select class="sd-select s-category" style="flex:1">${buildSelect(catOpts, catKey)}</select>
       </div>
-      <div class="sp-row s-form-rows" style="display:${isForm?'flex':'none'}">
-        <span class="sp-label">Mode</span>
-        <select class="sp-select s-mode">
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Shape</span>
+        <select class="sd-select s-shape" style="flex:1">${buildShapeOptions(shapeList, cfg.shapeIdx??0)}</select>
+      </div>
+      <div class="sd-row s-shape-rows" style="display:${isForm?'none':'flex'}">
+        <span class="sd-label">Effect</span>
+        <select class="sd-select s-effect" style="flex:1">${buildSelect(EFFECTS[effType], effVal)}</select>
+      </div>
+      <div class="sd-row s-form-rows" style="display:${isForm?'flex':'none'}">
+        <span class="sd-label">Mode</span>
+        <select class="sd-select s-mode" style="flex:1">
           ${FORM_MODES.map((m,mi)=>`<option value="${mi+1}"${(cfg.formMode??9)===(mi+1)?' selected':''}>${m}</option>`).join('')}
         </select>
       </div>
-      <div class="sp-row">
-        <span class="sp-label">Bloom T</span>
-        <input type="range" class="sp-slider s-b-threshold" min="0" max="1" step="0.01" value="${cfg.bloom.threshold}">
-        <span class="sp-val s-bv-threshold">${cfg.bloom.threshold.toFixed(2)}</span>
-        <span class="sp-label" style="margin-left:4px">S</span>
-        <input type="range" class="sp-slider s-b-strength" min="0" max="3" step="0.05" value="${cfg.bloom.strength}">
-        <span class="sp-val s-bv-strength">${cfg.bloom.strength.toFixed(2)}</span>
-        <span class="sp-label" style="margin-left:4px">R</span>
-        <input type="range" class="sp-slider s-b-radius" min="0" max="1" step="0.01" value="${cfg.bloom.radius}">
-        <span class="sp-val s-bv-radius">${cfg.bloom.radius.toFixed(2)}</span>
+      <div style="font-family:'Sora',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin:6px 0 2px">Bloom</div>
+      <div class="sd-row" style="flex-wrap:wrap;row-gap:4px">
+        <span class="sd-label">Threshold</span>
+        <input type="range" class="sl-track sd-sl s-b-threshold" min="0" max="1" step="0.01" value="${cfg.bloom.threshold}">
+        <span class="sd-val s-bv-threshold">${cfg.bloom.threshold.toFixed(2)}</span>
+        <span class="sd-label" style="width:auto;padding-left:6px">Strength</span>
+        <input type="range" class="sl-track sd-sl s-b-strength" min="0" max="3" step="0.05" value="${cfg.bloom.strength}">
+        <span class="sd-val s-bv-strength">${cfg.bloom.strength.toFixed(2)}</span>
+        <span class="sd-label" style="width:auto;padding-left:6px">Radius</span>
+        <input type="range" class="sl-track sd-sl s-b-radius" min="0" max="1" step="0.01" value="${cfg.bloom.radius}">
+        <span class="sd-val s-bv-radius">${cfg.bloom.radius.toFixed(2)}</span>
       </div>
     `;
 
@@ -628,10 +635,10 @@ function buildSettingsPanel(panel, stemConfigs, pane, allFrames) {
       if (i === currentWinnerId) applyBloom(pane, stemConfigs[i].bloom);
     });
 
-    stemEl.querySelector('.sp-solo-btn').addEventListener('click', () => {
+    stemEl.querySelector('.sd-solo').addEventListener('click', () => {
       const wasActive = soloStemId === i;
       soloStemId = wasActive ? null : i;
-      panel.querySelectorAll('.sp-solo-btn').forEach(btn => {
+      panel.querySelectorAll('.sd-solo').forEach(btn => {
         btn.classList.toggle('active', !wasActive && parseInt(btn.dataset.stem) === i);
       });
     });
@@ -846,8 +853,8 @@ async function init() {
 
     // Update prominence bars in settings panel
     if (!settingsPanel.hidden) {
-      settingsPanel.querySelectorAll('.sp-stem').forEach((el, i) => {
-        el.querySelector('.sp-prominence-bar-fill').style.width = `${(scores[i] * 100).toFixed(1)}%`;
+      settingsPanel.querySelectorAll('.sd-section[data-stem]').forEach((el, i) => {
+        el.querySelector('.sd-bar-fill').style.width = `${(scores[i] * 100).toFixed(1)}%`;
       });
     }
   }

@@ -538,8 +538,11 @@ function drawMiniGraphs(pane) {
 
 // ── Render one pane ───────────────────────────────────────────────────────────
 
-function renderPane(pane, wallTime, toOffTarget) {
-  const { renderer,cam,fillScene,fillTarget,fillUniforms,shared,platU,activeScene } = pane;
+function renderPane(pane, wallTime, toOffTarget, compRenderer) {
+  const { cam,fillScene,fillTarget,fillUniforms,shared,platU,activeScene } = pane;
+  // In composite mode use the shared compositor renderer so all textures share
+  // the same WebGL context and can be used together in the compositor scene.
+  const renderer = compRenderer || pane.renderer;
   shared.iTime.value       = wallTime;
   fillUniforms.iTime.value = wallTime;
 
@@ -794,7 +797,8 @@ async function init() {
     compCanvas.style.display = isComp ? 'block' : 'none';
     if (isComp) {
       requestAnimationFrame(() => {
-        resizeCompositor(compositor, compCanvas.clientWidth, compCanvas.clientHeight);
+        const p = compCanvas.parentElement;
+        resizeCompositor(compositor, p.clientWidth, p.clientHeight);
         renderAll(audio.currentTime);
       });
     } else if (!isPlaying) {
@@ -820,7 +824,7 @@ async function init() {
     requestAnimationFrame(() => {
       paneEls.slice(0, n).forEach((el, i) => resizePane(panes[i], el));
       if (bloomMode === 'composite') {
-        resizeCompositor(compositor, compCanvas.clientWidth, compCanvas.clientHeight);
+        resizeCompositor(compositor, compCanvas.parentElement.clientWidth, compCanvas.parentElement.clientHeight);
       }
       renderAll(audio.currentTime);
     });
@@ -848,11 +852,12 @@ async function init() {
   const globalStart = performance.now();
 
   function renderAll(audioTime) {
-    const wallTime = (performance.now() - globalStart) * 0.001;
-    const isComp   = bloomMode === 'composite';
+    const wallTime   = (performance.now() - globalStart) * 0.001;
+    const isComp     = bloomMode === 'composite';
+    const compRender = isComp ? compositor.renderer : null;
     for (let i = 0; i < activePaneCount; i++) {
       updatePaneTextures(panes[i], audioTime);
-      renderPane(panes[i], wallTime, isComp);
+      renderPane(panes[i], wallTime, isComp, compRender);
       drawMiniGraphs(panes[i]);
     }
     if (isComp) {

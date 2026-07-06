@@ -8,10 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../../styles/demo-ui.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: #000; width: 100%; height: 100%; overflow: hidden; }
-    .canvas-wrap { position: relative; width: 1920px; height: 1080px; }
+    html, body { background: #000; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
     #canvas { display: block; width: 1920px; height: 1080px; }
     #overlay {
       position: absolute; inset: 0; pointer-events: none;
@@ -23,37 +22,6 @@
       color: rgba(255,255,255,0.40); letter-spacing: 0.06em;
     }
     .label strong { font-weight: 400; color: rgba(255,255,255,0.70); }
-    #controls {
-      position: absolute; top: 28px; right: 28px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    #aa-btn {
-      height: 48px; padding: 0 14px; border-radius: 24px;
-      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.38);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 400;
-      letter-spacing: 0.06em; color: rgba(255,255,255,0.90);
-      transition: all 0.15s; z-index: 10;
-    }
-    #aa-btn:not(.active) { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); color: rgba(255,255,255,0.30); }
-    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
-    #play-btn {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.26);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: #fff; transition: background 0.15s; z-index: 10;
-    }
-    #play-btn:hover { background: rgba(255,255,255,0.26); }
-    #sound-select {
-      height: 48px; padding: 0 36px 0 14px; border-radius: 24px;
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
-      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      color: rgba(255,255,255,0.70); cursor: pointer; outline: none;
-      -webkit-appearance: none; appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center;
-    }
-    #sound-select option { background: #1a1a1a; }
   </style>
 </head>
 <body>
@@ -65,19 +33,25 @@
         bass/treble rotate 4D gyroid; 3D cross-section changes topology
       </div>
     </div>
-    <div id="controls">
-      <select id="sound-select">
-        <option value="arp">arp</option>
-        <option value="bass">bass</option>
-        <option value="hat">hat</option>
-        <option value="kick1">kick 1</option>
-        <option value="kick2">kick 2</option>
-        <option value="pad">pad</option>
-        <option value="snare">snare</option>
-        <option value="master">master</option>
-      </select>
-      <button id="aa-btn" class="active" aria-label="Antialiasing on">Antialias</button>
-      <button id="play-btn" aria-label="Play"></button>
+    <div id="ctrl-bar" class="ctrl-bar">
+      <div class="ctrl-bar-r1">
+        <select id="sound-select" class="bar-select">
+          <option value="arp">arp</option>
+          <option value="bass">bass</option>
+          <option value="hat">hat</option>
+          <option value="kick1">kick 1</option>
+          <option value="kick2">kick 2</option>
+          <option value="pad">pad</option>
+          <option value="snare">snare</option>
+          <option value="master">master</option>
+        </select>
+        <button id="aa-btn" class="bar-btn" aria-label="Antialiasing off">Antialias</button>
+        <div class="ctrl-bar-spacer"></div>
+        <button id="play-btn" class="play-btn" aria-label="Play"></button>
+      </div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
     </div>
   </div>
   <script>
@@ -90,5 +64,8 @@
     }
   </script>
   <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
 </body>
 </html>

@@ -45,7 +45,7 @@ async function init() {
   const canvas   = document.getElementById('canvas');
   const playBtn  = document.getElementById('play-btn');
   const nameEl   = document.getElementById('shape-name');
-  const srcBtns  = Array.from(document.querySelectorAll('.src-btn'));
+  const srcBtns  = Array.from(document.querySelectorAll(".tab-btn"));
   const W = canvas.width, H = canvas.height;
 
   const [

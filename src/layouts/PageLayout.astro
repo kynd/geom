@@ -64,7 +64,14 @@ const navItems: NavItem[] = [
       { label: 'Scalar field interpolation', href: '#stem-shapes' },
     ]
   },
-  { label: 'Transitions',              href: `${base}/transitions`,               slug: 'transitions' },
+  { label: 'Effects and Refinements',   href: `${base}/transitions`,               slug: 'transitions',
+    subLinks: [
+      { label: 'Mixed lighting',         href: '#mixed-lighting' },
+      { label: 'Dimensional expansion',  href: '#dimensional-expansion' },
+      { label: 'Collapsing',             href: '#collapsing' },
+      { label: 'Camera motion',          href: '#camera-motion' },
+    ]
+  },
   ...(import.meta.env.DEV ? [
     { label: '[Sketch] Fill functions', href: `${base}/sketches/fill-functions`, slug: 'sketches/fill-functions', sketch: true,
       subLinks: [
@@ -77,7 +84,7 @@ const navItems: NavItem[] = [
     { label: '[Sketch] Sound to shape', href: `${base}/sketches/sound-to-shape`, slug: 'sketches/sound-to-shape', sketch: true },
     { label: '[Sketch] Naming reference', href: `${base}/sketches/naming`, slug: 'sketches/naming', sketch: true },
     { label: '[Sketch] Link suggestions', href: `${base}/sketches/link-suggestions`, slug: 'sketches/link-suggestions', sketch: true },
-    { label: '[Sketch] Prominence composer', href: `${base}/sketches/prominence-composer`, slug: 'sketches/prominence-composer', sketch: true },
+    { label: '[Sketch] Refinements', href: `${base}/sketches/prominence-composer`, slug: 'sketches/prominence-composer', sketch: true },
     { label: '[Sketch] UI guide', href: `${base}/sketches/ui-guide`, slug: 'sketches/ui-guide', sketch: true },
   ] : []),
 ];

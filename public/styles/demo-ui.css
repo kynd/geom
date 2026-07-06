@@ -1,0 +1,189 @@
+/*
+ * Geom — canonical demo UI component styles
+ * All demo pages link this file. Demo-specific layout overrides go inline.
+ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --h-bar:   28px;
+  --h-play:  48px;
+  --r-bar:   14px;
+  --r-sq:     4px;
+  --font-ui:   'Sora', sans-serif;
+  --font-mono: 'Google Sans Code', monospace;
+  --sz-sm:  10px;
+  --sz-md:  11px;
+  --sz-lg:  12px;
+}
+
+/* ── Canvas wrap ─────────────────────────────────────── */
+.canvas-wrap {
+  position: relative;
+  width: 1920px; height: 1080px;
+  background: #000;
+  overflow: hidden;
+}
+
+/* ── Top control bar ─────────────────────────────────── */
+.ctrl-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 64px;
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 4px;
+  padding: 14px 16px 0;
+  z-index: 10;
+}
+.ctrl-bar.scrim {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%);
+}
+.ctrl-bar-r1 { display: flex; align-items: center; gap: 6px; }
+.ctrl-bar-r2 { display: flex; justify-content: flex-end; }
+.ctrl-bar-spacer { flex: 1; }
+
+/* scale play button down inside bar */
+.ctrl-bar .play-btn { width: 36px; height: 36px; }
+.ctrl-bar .play-btn svg { width: 11px; height: 11px; }
+
+/* ── Play button ─────────────────────────────────────── */
+.play-btn {
+  width: var(--h-play); height: var(--h-play); border-radius: 50%;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #fff; transition: background 0.15s; flex-shrink: 0;
+}
+.play-btn:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Bar button ──────────────────────────────────────── */
+.bar-btn {
+  height: var(--h-bar); padding: 0 10px; border-radius: var(--r-bar);
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+  color: rgba(255,255,255,0.30); transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.bar-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+.bar-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+
+/* ── Bar select ──────────────────────────────────────── */
+.bar-select {
+  height: var(--h-bar); padding: 0 22px 0 8px; border-radius: var(--r-sq);
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+  cursor: pointer; font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+  color: rgba(255,255,255,0.70); -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center; outline: none; flex-shrink: 0;
+}
+.bar-select option { background: #111; color: #fff; }
+
+/* ── Separator ───────────────────────────────────────── */
+.bar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.13); flex-shrink: 0; margin: 0 2px; }
+
+/* ── Slider: horizontal (label left, value right) ────── */
+.sl-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin: 0 6px; }
+.sl-label { font-family: var(--font-ui); font-size: var(--sz-sm); color: rgba(255,255,255,0.55); white-space: nowrap; }
+.sl-track {
+  -webkit-appearance: none; appearance: none; width: 64px; height: 2px;
+  background: rgba(255,255,255,0.20); border-radius: 1px; outline: none; cursor: pointer; flex-shrink: 0;
+}
+.sl-track::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.80); cursor: pointer; }
+.sl-track::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; border: none; background: rgba(255,255,255,0.80); cursor: pointer; }
+.sl-val { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.60); width: 28px; text-align: right; flex-shrink: 0; }
+
+/* ── Slider: stacked (label above, compact) ──────────── */
+.sl-col { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.sl-col-top { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.sl-col-label { font-family: var(--font-ui); font-size: 9px; color: rgba(255,255,255,0.50); white-space: nowrap; }
+.sl-col-val { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.55); }
+.sl-col-track { width: 56px; }
+
+/* ── FPS meter ───────────────────────────────────────── */
+.fps-inline {
+  font-family: var(--font-mono); font-size: 9px;
+  color: rgba(255,255,255,0.22); letter-spacing: 0.04em; white-space: nowrap;
+}
+
+/* ── Shape label (bottom-left) ───────────────────────── */
+.shape-label { position: absolute; left: 32px; bottom: 32px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.shape-label-name { font-family: var(--font-ui); font-size: var(--sz-lg); font-weight: 400; color: rgba(255,255,255,0.90); }
+.shape-label-fn { font-family: var(--font-mono); font-size: var(--sz-lg); color: rgba(255,255,255,0.38); }
+
+/* ── Seek bar ────────────────────────────────────────── */
+.seek-bar {
+  display: flex; align-items: center; gap: 10px; padding: 0 20px; height: 36px;
+  background: linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%);
+}
+.seek-time { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 34px; }
+.seek-time.right { text-align: right; }
+.seek-track { flex: 1; -webkit-appearance: none; appearance: none; height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px; outline: none; cursor: pointer; }
+.seek-track::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer; }
+
+/* ── Side params panel ───────────────────────────────── */
+.params-panel { display: flex; flex-direction: column; gap: 8px; }
+.params-row { display: flex; align-items: center; gap: 8px; }
+.params-lbl { font-family: var(--font-ui); font-size: var(--sz-sm); color: rgba(255,255,255,0.55); text-align: right; width: 72px; flex-shrink: 0; white-space: nowrap; }
+.params-sl {
+  width: 120px;
+  -webkit-appearance: none; appearance: none;
+  height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+  outline: none; cursor: pointer;
+}
+.params-sl::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px;
+  border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+}
+.params-sl::-moz-range-thumb {
+  width: 10px; height: 10px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.75); cursor: pointer;
+}
+.params-val { font-family: var(--font-mono); font-size: var(--sz-sm); color: rgba(255,255,255,0.60); width: 36px; text-align: right; flex-shrink: 0; }
+
+/* ── Tab buttons (bottom-centre) ─────────────────────── */
+.tab-btns { display: flex; align-items: center; gap: 6px; }
+.tab-btn {
+  height: 28px; padding: 0 14px; border-radius: 14px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+  cursor: pointer; font-family: var(--font-ui); font-size: var(--sz-sm); font-weight: 300;
+  color: rgba(255,255,255,0.35); transition: all 0.15s; white-space: nowrap;
+}
+.tab-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
+.tab-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+
+/* ── Settings drawer ─────────────────────────────────── */
+.settings-drawer {
+  width: 280px; background: rgba(8,8,8,0.97); border-left: 1px solid rgba(255,255,255,0.08);
+  padding: 16px; display: flex; flex-direction: column; gap: 0;
+}
+.sd-section { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sd-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.sd-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sd-name { font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.45); flex: 1; }
+.sd-active .sd-name { color: rgba(255,255,255,0.90); }
+.sd-bar-bg { flex: 1; height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden; }
+.sd-bar-fill { height: 100%; background: rgba(255,255,255,0.28); border-radius: 1px; }
+.sd-active .sd-bar-fill { background: rgba(255,255,255,0.70); }
+.sd-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.80); opacity: 0; flex-shrink: 0; }
+.sd-active .sd-dot { opacity: 1; }
+.sd-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: nowrap; }
+.sd-label { font-family: var(--font-ui); font-size: 10px; color: rgba(255,255,255,0.50); white-space: nowrap; width: 52px; flex-shrink: 0; }
+.sd-select {
+  height: 24px; padding: 0 18px 0 6px; border-radius: var(--r-sq);
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.70); font-family: var(--font-ui); font-size: 10px;
+  -webkit-appearance: none; appearance: none; outline: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.30)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 4px center;
+}
+.sd-select option { background: #111; color: #fff; }
+.sd-solo {
+  margin-left: auto; height: 18px; padding: 0 7px; border-radius: 9px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer; font-family: var(--font-ui); font-size: 9px;
+  color: rgba(255,255,255,0.30); transition: all 0.15s;
+}
+.sd-solo.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.40); color: rgba(255,255,255,0.90); }
+.sd-sl { width: 48px; }
+.sd-val { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.35); width: 26px; text-align: right; }
+
+/* ── Overlay ─────────────────────────────────────────── */
+#overlay {
+  position: absolute; inset: 0; pointer-events: none;
+}

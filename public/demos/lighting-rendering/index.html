@@ -10,92 +10,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 100%; height: 100%;
-      background: #000;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
-    }
-    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    html, body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #canvas { display: block; width: 1920px; height: 1080px; }
-    #overlay {
-      position: absolute; inset: 0;
-      pointer-events: none; user-select: none;
-    }
-    #label {
-      position: absolute;
-      bottom: 96px; left: 56px;
-    }
-    #shape-name {
-      font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 400;
-      color: rgba(255,255,255,0.55); letter-spacing: 0.04em;
-      line-height: 1; white-space: nowrap;
-    }
+
     #src-btns {
-      position: absolute;
-      bottom: 52px; left: 50%;
+      position: absolute; bottom: 52px; left: 50%;
       transform: translateX(-50%);
       display: flex; gap: 8px;
       pointer-events: all;
     }
-    .src-btn {
-      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      letter-spacing: 0.06em;
-      color: rgba(255,255,255,0.35);
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 20px;
-      padding: 5px 18px;
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-    .src-btn.active {
-      color: rgba(255,255,255,0.90);
-      background: rgba(255,255,255,0.16);
-      border-color: rgba(255,255,255,0.38);
-    }
-    .src-btn:hover:not(.active) {
-      color: rgba(255,255,255,0.60);
-      background: rgba(255,255,255,0.10);
-    }
-    #play-btn {
-      position: absolute; top: 32px; right: 32px;
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.26);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      color: #ffffff; transition: background 0.15s; z-index: 10;
-    }
-    #play-btn:hover { background: rgba(255,255,255,0.26); }
-    #aa-btn {
-      position: absolute; top: 32px; right: 96px;
-      height: 48px; padding: 0 14px; border-radius: 24px;
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      color: rgba(255,255,255,0.30);
-      transition: all 0.15s; z-index: 10;
-    }
-    #aa-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.38); color: rgba(255,255,255,0.90); }
-    #aa-btn:hover:not(.active) { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.55); }
-
     #params {
-      position: absolute;
-      right: 56px; bottom: 110px;
+      position: absolute; right: 56px; bottom: 110px;
       display: flex; flex-direction: column; gap: 7px;
       pointer-events: all;
     }
-    .param-row {
-      display: flex; align-items: center; gap: 10px;
-    }
+    .param-row { display: flex; align-items: center; gap: 10px; }
     .param-label {
       font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 300;
-      letter-spacing: 0.04em;
-      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.04em; color: rgba(255,255,255,0.35);
       width: 70px; text-align: right;
     }
     .param-slider {
@@ -117,15 +51,14 @@
       font-family: 'Google Sans Code', monospace; font-size: 10px;
       color: rgba(255,255,255,0.35); width: 36px;
     }
-    #fps-meter { position: absolute; top: 2px; right: 2px; font-family: 'Google Sans Code', monospace; font-size: 10px; color: rgba(255,255,255,0.28); pointer-events: none; user-select: none; letter-spacing: 0.04em; }
   </style>
 </head>
 <body>
   <div class="canvas-wrap">
     <canvas id="canvas" width="1920" height="1080"></canvas>
     <div id="overlay">
-      <div id="label">
-        <div id="shape-name"></div>
+      <div id="label" class="shape-label">
+        <div id="shape-name" class="shape-label-name"></div>
       </div>
       <div id="params">
         <div class="param-row">
@@ -150,16 +83,23 @@
         </div>
       </div>
       <div id="src-btns">
-        <button class="src-btn"        data-src="0">SDF shapes</button>
-        <button class="src-btn"        data-src="1">Platonic duals</button>
-        <button class="src-btn"        data-src="2">Scalar fields</button>
-        <button class="src-btn active" data-src="3">Moving scalar</button>
+        <button class="tab-btn"        data-src="0">SDF shapes</button>
+        <button class="tab-btn"        data-src="1">Platonic duals</button>
+        <button class="tab-btn"        data-src="2">Scalar fields</button>
+        <button class="tab-btn active" data-src="3">Moving scalar</button>
       </div>
     </div>
-    <button id="aa-btn" class="" aria-label="Antialiasing off">Antialias</button>
-    <button id="play-btn" aria-label="Pause"></button>
-      <div id="fps-meter">-- fps</div>
-</div>
+    <div id="ctrl-bar" class="ctrl-bar">
+      <div class="ctrl-bar-r1">
+        <div class="ctrl-bar-spacer"></div>
+        <button id="aa-btn" class="bar-btn" aria-label="Antialiasing off">Antialias</button>
+        <button id="play-btn" class="play-btn" aria-label="Pause"></button>
+      </div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
+    </div>
+  </div>
   <script>
     if (new URLSearchParams(location.search).has('embedded')) {
       const canvas = document.getElementById('canvas');
