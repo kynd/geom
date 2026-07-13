@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { buildEnvMapTexture } from '../../../js/oklch-envmap.js';
+import { buildEnvMapTexture } from '../../js/oklch-envmap.js';
 
 // ── Catalogues ────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,8 @@ const STEMS = [
   { id:'snare', label:'Snare',  bin:'250621_a1_mix1_snare.bin' },
 ];
 const MASTER_MP3  = '250621_a1_mix1_master_88.2k24.mp3';
-const SOUND_BASE  = '../../../sound/full/';
+const MASTER_BIN  = '250621_a1_mix1_master_88.2k24.bin';
+const SOUND_BASE  = '../../sound/full/';
 const FPS         = 60;
 const HIST        = 256;
 const PLAT_CYCLE  = 5.0;
@@ -68,7 +69,7 @@ const STEM_DEFAULTS = [
   // hat
   { type:'form', formMode:4, bloom:{threshold:0.08,strength:1.55,radius:0.22} },
   // kick1
-  { type:'amplitude', category:'moving', shapeIdx:0, effect:1, bloom:{threshold:0.08,strength:0.35,radius:0.50} },
+  { type:'amplitude', category:'platonic', shapeIdx:0, effect:3, bloom:{threshold:0.08,strength:0.35,radius:0.50} },
   // kick2
   { type:'amplitude', category:'moving', shapeIdx:2, effect:2, bloom:{threshold:0.08,strength:1.5,radius:0.42} },
   // pad
@@ -154,15 +155,66 @@ const CAM_DECLS = [
   'uniform mat3  u_camRot;',
   'uniform float u_camDist;',
   'uniform vec2  u_camPan;',
+  'uniform vec2  u_camDir;',
+  'uniform float u_collapseY;',
   'uniform sampler2D u_fillTexBg;',
   'uniform float u_waveBlendBg;',
   'uniform float u_waveBlendObj;',
   'uniform float u_rimStr;',
   'uniform float u_rimWidth;',
   'uniform float u_grayscale;',
+  'uniform float u_gamma;',
+  'uniform float u_overlayAmt;',
   'uniform int   u_camLight;',
   'uniform vec3  u_camFwd;',
 ].join('\n');
+
+// Overlay blend mode, applied to a color with itself ("self-overlay") as a
+// cheap contrast/punch boost. Injected once via injectCommon.
+const OVERLAY_FN =
+`float overlayChan(float a, float b) {
+  return a < 0.5 ? 2.0 * a * b : 1.0 - 2.0 * (1.0 - a) * (1.0 - b);
+}
+vec3 overlayBlend(vec3 a, vec3 b) {
+  return vec3(overlayChan(a.r, b.r), overlayChan(a.g, b.g), overlayChan(a.b, b.b));
+}`;
+
+// ── Collapse injection strings ────────────────────────────────────────────────
+
+const COLLAPSE_SF_OLD =
+  'float surfaceF(vec3 p) {\n  vec3 dp = deformP(p);\n  float f = baseScalarF(dp);';
+const COLLAPSE_SF_NEW =
+  'float surfaceF(vec3 p) {\n' +
+  '  float _ky = max(u_collapseY, 0.001); p = vec3(p.x, p.y / _ky, p.z);\n' +
+  '  vec3 dp = deformP(p);\n' +
+  '  float f = baseScalarF(dp) * _ky;';
+
+const COLLAPSE_SDF_OLD =
+  'float sceneSDF(vec3 p) {\n' +
+  '  float a = iTime * 0.35;\n' +
+  '  float ca = cos(a), sa = sin(a);\n' +
+  '  vec3 rp = vec3(ca * p.x + sa * p.z, p.y, -sa * p.x + ca * p.z);\n' +
+  '  vec3 dp = deformP(rp);\n' +
+  '  float d = baseSDF(dp);\n' +
+  '  if (u_deformMode == 1) d -= u_ampMono * u_deformP1;\n' +
+  '  return d;\n}';
+const COLLAPSE_SDF_NEW =
+  'float sceneSDF(vec3 p) {\n' +
+  '  float _ky = max(u_collapseY, 0.001); p = vec3(p.x, p.y / _ky, p.z);\n' +
+  '  float a = iTime * 0.35;\n' +
+  '  float ca = cos(a), sa = sin(a);\n' +
+  '  vec3 rp = vec3(ca * p.x + sa * p.z, p.y, -sa * p.x + ca * p.z);\n' +
+  '  vec3 dp = deformP(rp);\n' +
+  '  float d = baseSDF(dp);\n' +
+  '  if (u_deformMode == 1) d -= u_ampMono * u_deformP1;\n' +
+  '  return d * _ky;\n}';
+
+const COLLAPSE_PLAT_OLD =
+  'float sceneSDF(vec3 p) {\n  // Rotate then deform in the rotated frame\n  vec3 rp;';
+const COLLAPSE_PLAT_NEW =
+  'float sceneSDF(vec3 p) {\n' +
+  '  float _ky = max(u_collapseY, 0.001); p = vec3(p.x, p.y / _ky, p.z);\n' +
+  '  // Rotate then deform in the rotated frame\n  vec3 rp;';
 
 const FILL_MAP_BG_FN =
 `vec3 sampleFillMapBg(vec3 dir) {
@@ -197,16 +249,23 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
 // Orbit camera replacement for look-at shaders
 const CAM_LOOKAT =
 `  vec3 _basero = u_camRot * vec3(0.0, 0.0, u_camDist);
-  vec3 ww = normalize(-_basero);
+  vec3 _ww0 = normalize(-_basero);
+  vec3 _uu0 = normalize(cross(_ww0, vec3(0.0, 1.0, 0.0)));
+  vec3 _vv0 = cross(_uu0, _ww0);
+  vec3 _ta = u_camDir.x * _uu0 + u_camDir.y * _vv0;
+  vec3 ww = normalize(_ta - _basero);
   vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
   vec3 vv = cross(uu, ww);
   vec3 ro = _basero + u_camPan.x * uu + u_camPan.y * vv;
   vec3 rd = normalize(uv.x * uu + uv.y * vv + 3.0 * ww);`;
 
-// Orbit camera replacement for form shader
 const CAM_FORM =
 `  vec3 _basero = u_camRot * vec3(0.0, 0.0, u_camDist);
-  vec3 _ww = normalize(-_basero);
+  vec3 _ww0f = normalize(-_basero);
+  vec3 _uu0f = normalize(cross(_ww0f, vec3(0.0, 1.0, 0.0)));
+  vec3 _vv0f = cross(_uu0f, _ww0f);
+  vec3 _taf = u_camDir.x * _uu0f + u_camDir.y * _vv0f;
+  vec3 _ww = normalize(_taf - _basero);
   vec3 _uu = normalize(cross(_ww, vec3(0.0, 1.0, 0.0)));
   vec3 _vv = cross(_uu, _ww);
   vec3 ro = _basero + u_camPan.x * _uu + u_camPan.y * _vv;
@@ -285,20 +344,23 @@ const RIM_NEW_100  = '  return rimLight(pos, nor, rd, 100.0) * u_rimStr;';
 const RIM_OLD_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t), 1.0);';
 const RIM_NEW_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t) * u_rimStr, 1.0);';
 
-// Grayscale post-process — applied after gamma in each screen-output shader
+// Post-process chain, applied in each screen-output shader:
+// overlay (self-overlay contrast boost) → gamma → grayscale
 const GRAY_OLD_VEC3 = '  col = pow(max(col, 0.0), vec3(0.4545));\n  gl_FragColor = vec4(col, 1.0);';
 const GRAY_NEW_VEC3 =
-  '  col = pow(max(col, 0.0), vec3(0.4545));\n' +
+  '  col = mix(col, overlayBlend(col, col), u_overlayAmt);\n' +
+  '  col = pow(max(col, 0.0), vec3(u_gamma));\n' +
   '  col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
   '  gl_FragColor = vec4(col, 1.0);';
 const GRAY_OLD_VEC4 = '  gl_FragColor = vec4(pow(max(col.rgb, vec3(0.0)), vec3(0.4545)), 1.0);';
 const GRAY_NEW_VEC4 =
-  '  vec3 _gc = pow(max(col.rgb, vec3(0.0)), vec3(0.4545));\n' +
+  '  vec3 _gc = mix(col.rgb, overlayBlend(col.rgb, col.rgb), u_overlayAmt);\n' +
+  '  _gc = pow(max(_gc, 0.0), vec3(u_gamma));\n' +
   '  _gc = mix(_gc, vec3(dot(_gc, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
   '  gl_FragColor = vec4(_gc, 1.0);';
 
 function injectCommon(src) {
-  src = src.replace('precision highp float;', 'precision highp float;\n' + CAM_DECLS);
+  src = src.replace('precision highp float;', 'precision highp float;\n' + CAM_DECLS + '\n' + OVERLAY_FN);
   src = src.replace('}\n\nvec3 flashLight(', '}\n\n' + FILL_MAP_BG_FN + '\n\nvec3 flashLight(');
   return src;
 }
@@ -308,7 +370,7 @@ function injectCommon(src) {
 function createPane(canvas, shaders, envTex) {
   const W = canvas.width, H = canvas.height;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias:false });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, preserveDrawingBuffer: true });
   renderer.setSize(W, H, false);
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
@@ -376,12 +438,16 @@ function createPane(canvas, shaders, envTex) {
     u_camRot:       { value: new THREE.Matrix3() },
     u_camDist:      { value: 2.667 },
     u_camPan:       { value: new THREE.Vector2(0, 0) },
+    u_camDir:       { value: new THREE.Vector2(0, 0) },
+    u_collapseY:    { value: 1.0 },
     u_waveBlendBg:  { value: 0.01 },
     u_waveBlendObj: { value: 0.50 },
     u_rimStr:       { value: 0.02 },
     u_rimWidth:     { value: 0.10 },
     u_grayscale:    { value: 0.0 },
-    u_camLight:     { value: 0 },
+    u_gamma:        { value: 0.4545 },
+    u_overlayAmt:   { value: 0.0 },
+    u_camLight:     { value: 1 },
     u_camFwd:       { value: new THREE.Vector3(0, 0, -1) },
   };
 
@@ -630,7 +696,7 @@ function switchToStem(pane, stemId, stemConfigs, allFrames) {
   );
 }
 
-// ── Prominence chart ──────────────────────────────────────────────────────────
+// ── Prominence chart (bar view) ───────────────────────────────────────────────
 
 function drawProminenceChart(ctx, scores) {
   const W = 420, H = 240;
@@ -658,6 +724,49 @@ function drawProminenceChart(ctx, scores) {
     ctx.font = `10px 'Google Sans Code', monospace`;
     ctx.textAlign = 'right';
     ctx.fillText(scores[i].toFixed(2), W - PAD, midY);
+  });
+}
+
+// ── Prominence radar chart ────────────────────────────────────────────────────
+// The prominence polygon lives on a flat disc in 3D (XZ plane) and is rotated
+// by the same matrix driving the main camera, so it turns in sync with
+// Rotation X/Y/Z and mouse-drag orbit — a real 3D object, not a flat overlay.
+// No background grid — only the shape itself.
+
+const RADAR_N      = STEMS.length;
+const RADAR_ANGLES = Array.from({ length: RADAR_N }, (_, i) => -Math.PI / 2 + (2 * Math.PI * i) / RADAR_N);
+const _radarVec3   = new THREE.Vector3();
+
+function drawRadarChart(ctx, scores, W, H, camRot3, opacity) {
+  const cx = W * 0.5, cy = H * 0.5;
+  const R  = Math.min(W, H) * 0.42;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.globalAlpha = opacity;
+
+  function project(angle, radiusFrac) {
+    _radarVec3.set(Math.cos(angle) * radiusFrac, 0, Math.sin(angle) * radiusFrac);
+    _radarVec3.applyMatrix3(camRot3);
+    return { x: cx + _radarVec3.x * R, y: cy - _radarVec3.y * R };
+  }
+
+  const pts = RADAR_ANGLES.map((a, i) => project(a, scores[i]));
+
+  // Prominence polygon (outline only, no fill)
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.90)';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // Vertex dots
+  const DOT_R = Math.max(2.5, R * 0.010);
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, DOT_R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fill();
   });
 }
 
@@ -780,11 +889,16 @@ function buildSettingsPanel(panel, stemConfigs, pane) {
 async function init() {
   const mainCanvas    = document.getElementById('main-canvas');
   const chartCanvas   = document.getElementById('chart-canvas');
+  const radarCanvas   = document.getElementById('radar-canvas');
+  const resSel        = document.getElementById('res-sel');
   const chartCtx      = chartCanvas.getContext('2d');
+  const radarCtx      = radarCanvas.getContext('2d');
   const settingsPanel = document.getElementById('settings-panel');
   const playBtn       = document.getElementById('play-btn');
   const aaBtn         = document.getElementById('aa-btn');
+  const recBtn        = document.getElementById('rec-btn');
   const scoreBtn      = document.getElementById('score-btn');
+  const radarBtn      = document.getElementById('radar-btn');
   const settingsBtn   = document.getElementById('settings-btn');
   const camLightBtn   = document.getElementById('cam-light-btn');
   const seekEl        = document.getElementById('seek');
@@ -799,20 +913,20 @@ async function init() {
     platonicFuncSrc, movingScalarSrc, rimLightSrc, deformSrc,
     fragFillSrc, fragFormTmpl,
   ] = await Promise.all([
-    fetch('../../../demos/sound-shapes/shaders/fragment-sdf.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-platonic.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-scalar.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-moving.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/vertex.glsl').then(r=>r.text()),
-    fetch('../../../shaders/sdf-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/sdf-marcher.glsl').then(r=>r.text()),
-    fetch('../../../shaders/scalar-marcher.glsl').then(r=>r.text()),
-    fetch('../../../shaders/platonic-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/moving-scalar-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/rim-lighting.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/deform.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-fill/shaders/fragment.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-form/shaders/fragment.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-sdf.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-platonic.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-scalar.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-moving.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/vertex.glsl').then(r=>r.text()),
+    fetch('../../shaders/sdf-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/sdf-marcher.glsl').then(r=>r.text()),
+    fetch('../../shaders/scalar-marcher.glsl').then(r=>r.text()),
+    fetch('../../shaders/platonic-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/moving-scalar-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/rim-lighting.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/deform.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-fill/shaders/fragment.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-form/shaders/fragment.glsl').then(r=>r.text()),
   ]);
 
   // buildFrag applies an ordered list of [old, new] string substitutions
@@ -878,6 +992,7 @@ async function init() {
       ['// INCLUDE_SDF_MARCHER',    sdfMarcherSrc],
       ['// INCLUDE_DEFORM',         deformSrc],
       [CAM_SDF_OLD,                 CAM_LOOKAT],
+      [COLLAPSE_SDF_OLD,            COLLAPSE_SDF_NEW],
     ]),
     fragPlatonic: buildFrag(patchLookat(fragPlatonicTmpl), [
       ['// INCLUDE_PLATONIC_FUNCTIONS', platonicFuncSrc],
@@ -885,12 +1000,14 @@ async function init() {
       ['// INCLUDE_SDF_MARCHER',        sdfMarcherSrc],
       ['// INCLUDE_DEFORM',             deformSrc],
       [CAM_SDF_OLD,                     CAM_LOOKAT],
+      [COLLAPSE_PLAT_OLD,               COLLAPSE_PLAT_NEW],
     ]),
     fragScalar: buildFrag(patchLookat(fragScalarTmpl), [
       ['// INCLUDE_RIM_LIGHTING',    rimLightPatched],
       ['// INCLUDE_SCALAR_MARCHER',  scalarMarcherSrc],
       ['// INCLUDE_DEFORM',          deformSrc],
       [CAM_MOVING_OLD,               CAM_LOOKAT],
+      [COLLAPSE_SF_OLD,              COLLAPSE_SF_NEW],
     ]),
     fragMoving: buildFrag(patchLookat(fragMovingTmpl), [
       ['// INCLUDE_RIM_LIGHTING',            rimLightPatched],
@@ -898,6 +1015,7 @@ async function init() {
       ['// INCLUDE_DEFORM',                  deformSrc],
       ['// INCLUDE_MOVING_SCALAR_FUNCTIONS', movingRenamed],
       [CAM_MOVING_OLD,                       CAM_LOOKAT],
+      [COLLAPSE_SF_OLD,                      COLLAPSE_SF_NEW],
     ]),
     fragForm: buildFrag(patchForm(fragFormTmpl), [
       ['// INCLUDE_RIM_LIGHTING', rimLightPatched],
@@ -905,24 +1023,28 @@ async function init() {
     ]),
   };
 
-  // ── Load stem bins ───────────────────────────────────────────────────────
+  // ── Load stem bins (+ master, for getLevel/getProminence) ────────────────
   const bars = buildLoadingRows();
-  const buffers = await Promise.all(
-    STEMS.map((s, i) =>
-      fetch(SOUND_BASE + s.bin)
-        .then(r => r.arrayBuffer())
-        .then(buf => {
-          bars[i].fill.classList.remove('indeterminate');
-          bars[i].fill.style.width = '100%';
-          bars[i].pct.textContent  = '100%';
-          return buf;
-        })
-    )
-  );
+  const [buffers, masterBuf] = await Promise.all([
+    Promise.all(
+      STEMS.map((s, i) =>
+        fetch(SOUND_BASE + s.bin)
+          .then(r => r.arrayBuffer())
+          .then(buf => {
+            bars[i].fill.classList.remove('indeterminate');
+            bars[i].fill.style.width = '100%';
+            bars[i].pct.textContent  = '100%';
+            return buf;
+          })
+      )
+    ),
+    fetch(SOUND_BASE + MASTER_BIN).then(r => r.arrayBuffer()),
+  ]);
 
   const allFrames = {};
   STEMS.forEach((s, i) => { allFrames[s.id] = parseBinary(buffers[i]); });
   const onsetData = STEMS.map(s => computeOnset(allFrames[s.id]));
+  const masterFrames = parseBinary(masterBuf);
 
   loadingEl.classList.add('fade-out');
   loadingEl.addEventListener('transitionend', () => loadingEl.remove(), { once:true });
@@ -933,6 +1055,8 @@ async function init() {
 
   let isPlaying = false, seeking = false, rafId = null;
   let chartVisible = false;
+  let radarVisible = false;
+  let radarOpacity = 1;
 
   function updatePlayBtn() {
     playBtn.innerHTML = isPlaying ? PAUSE_ICON : PLAY_ICON;
@@ -964,7 +1088,8 @@ async function init() {
     audio.currentTime   = START_TIME;
     seekEl.value = Math.round((START_TIME / (audio.duration || 1)) * 10000);
     timeCur.textContent = formatTime(START_TIME);
-    requestAnimationFrame(() => renderFrame(START_TIME));
+    seekClock(START_TIME);
+    requestAnimationFrame(() => renderFrame());
   });
 
   audio.addEventListener('timeupdate', () => {
@@ -980,9 +1105,11 @@ async function init() {
     timeCur.textContent = formatTime((seekEl.value/10000)*(audio.duration||0));
   });
   seekEl.addEventListener('change', () => {
-    audio.currentTime = (seekEl.value/10000)*(audio.duration||0);
+    const t = (seekEl.value / 10000) * (audio.duration || 0);
+    audio.currentTime = t;
+    seekClock(t);
     seeking = false;
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    if (!isPlaying) requestAnimationFrame(() => renderFrame());
   });
 
   // ── Env map + pane ───────────────────────────────────────────────────────
@@ -1010,12 +1137,24 @@ async function init() {
   let camDist = 2.667;
   let camPanX = 0, camPanY = 0;
 
+  // Rotation X/Y/Z are absolute angles in degrees (not rates), so they can be
+  // driven directly from the animation JSON as a function of time.
+  let rotX = 0, rotY = 0, rotZ = 0;
+  let soundZoomStr = 0, soundPanStr = 0;
+  const DEG2RAD = Math.PI / 180;
+
+  // Sound zoom / pan are raw amounts (not strengths) — drive them directly
+  // from the animation JSON via getLevel()/getProminence().
   function updateCamera() {
-    const m = new THREE.Matrix4().makeRotationY(camYaw);
-    m.multiply(new THREE.Matrix4().makeRotationX(camPitch));
+    const totalYaw = camYaw + rotY * DEG2RAD;
+    const totalPitch = camPitch + rotX * DEG2RAD; // unclamped — rotation_x/y/z can spin freely
+    const totalRoll = rotZ * DEG2RAD;
+    const m = new THREE.Matrix4().makeRotationY(totalYaw);
+    m.multiply(new THREE.Matrix4().makeRotationX(totalPitch));
+    if (totalRoll !== 0) m.multiply(new THREE.Matrix4().makeRotationZ(totalRoll));
     pane.shared.u_camRot.value.setFromMatrix4(m);
-    pane.shared.u_camDist.value = camDist;
-    pane.shared.u_camPan.value.set(camPanX, camPanY);
+    pane.shared.u_camDist.value = Math.max(0.5, camDist + soundZoomStr);
+    pane.shared.u_camPan.value.set(camPanX + soundPanStr, camPanY);
     // Cam light: background sampled along the direction the camera is currently
     // facing (world-space), independent of bg_mix.
     pane.shared.u_camFwd.value.set(0, 0, -1).transformDirection(m);
@@ -1029,7 +1168,7 @@ async function init() {
 
   canvasWrap.addEventListener('contextmenu', e => e.preventDefault());
   canvasWrap.addEventListener('mousedown', e => {
-    if (e.target.closest('input, button, select')) return;
+    if (e.target.closest('input, button, select, textarea, #settings-panel, #env-panel, #anim-panel')) return;
     isDragging  = true;
     isRightDrag = e.button === 2;
     lastMX = e.clientX; lastMY = e.clientY;
@@ -1049,12 +1188,13 @@ async function init() {
       camPitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, camPitch + dy * Math.PI));
     }
     updateCamera();
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    if (!isPlaying) requestAnimationFrame(() => renderFrame());
   });
   canvasWrap.addEventListener('wheel', e => {
+    if (e.target.closest('#settings-panel, #env-panel, #anim-panel')) return;
     camDist = Math.max(0.5, Math.min(10.0, camDist + e.deltaY * 0.003));
     updateCamera();
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    if (!isPlaying) requestAnimationFrame(() => renderFrame());
     e.preventDefault();
   }, { passive: false });
 
@@ -1077,21 +1217,42 @@ async function init() {
       camDist = Math.max(0.5, Math.min(10.0, camDist * (d0 / Math.max(d1, 1))));
       updateCamera();
     }
-    if (!isPlaying) requestAnimationFrame(() => renderFrame(audio.currentTime));
+    if (!isPlaying) requestAnimationFrame(() => renderFrame());
     lastTouches = e.touches;
     e.preventDefault();
   }, { passive: false });
   canvasWrap.addEventListener('touchend', () => { lastTouches = null; });
 
   // ── SSAA ─────────────────────────────────────────────────────────────────
+  pane.shared.u_ssaa.value = 1; // default on
   aaBtn.addEventListener('click', () => {
     const on = aaBtn.classList.toggle('active');
     pane.shared.u_ssaa.value = on ? 1 : 0;
     aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
   });
 
-  // ── Cam-light: toggle background fill visibility ──────────────────────────
-  const bgMixEl = document.getElementById('p-bg-mix');
+  // ── Resolution ───────────────────────────────────────────────────────────
+  const NATIVE_W = mainCanvas.width, NATIVE_H = mainCanvas.height;
+
+  function applyResolution(val) {
+    let w, h;
+    if (val === 'current') {
+      w = NATIVE_W; h = NATIVE_H;
+    } else {
+      const lines = parseInt(val, 10); // 1080 or 2160
+      w = lines * 16 / 9;
+      h = lines;
+    }
+    mainCanvas.width  = w;
+    mainCanvas.height = h;
+    resizePane(pane);
+  }
+
+  resSel.addEventListener('change', () => applyResolution(resSel.value));
+  applyResolution(resSel.value); // apply default (Full HD)
+
+  // ── Cam-light: background sampled from camera-facing direction (default on) ──
+  // Independent of bg_mix — does not touch u_waveBlendBg.
   camLightBtn.addEventListener('click', () => {
     const active = camLightBtn.classList.toggle('active');
     camLightBtn.setAttribute('aria-label', active ? 'Light: cam' : 'Light: world');
@@ -1105,27 +1266,47 @@ async function init() {
     scoreBtn.setAttribute('aria-label', chartVisible ? 'Scores on' : 'Scores off');
   });
 
-  // ── Settings toggle ──────────────────────────────────────────────────────
+  // ── Radar toggle ─────────────────────────────────────────────────────────
+  radarBtn.addEventListener('click', () => {
+    radarVisible = radarBtn.classList.toggle('active');
+    radarCanvas.style.display = radarVisible ? 'block' : 'none';
+    radarBtn.setAttribute('aria-label', radarVisible ? 'Radar on' : 'Radar off');
+  });
+
+  // ── Settings / Env-and-Effects toggles (mutually exclusive) ───────────────
+  const envPanel  = document.getElementById('env-panel');
+  const envBtn    = document.getElementById('env-btn');
+  const animPanel = document.getElementById('anim-panel');
+
+  function closeSettingsPanel() {
+    settingsPanel.hidden = true;
+    settingsBtn.classList.remove('active');
+  }
+  function closeEnvPanel() {
+    envPanel.hidden  = true;
+    animPanel.hidden = true;
+    envBtn.classList.remove('active');
+  }
+
   settingsBtn.addEventListener('click', () => {
     const opening = settingsPanel.hidden;
     settingsPanel.hidden = !opening;
     settingsBtn.classList.toggle('active', opening);
+    if (opening) closeEnvPanel();
   });
 
-  buildSettingsPanel(settingsPanel, stemConfigs, pane);
+  envBtn.addEventListener('click', () => {
+    const opening = envPanel.hidden;
+    envPanel.hidden = !opening;
+    animPanel.hidden = !opening;
+    envBtn.classList.toggle('active', opening);
+    if (opening) closeSettingsPanel();
+  });
 
-  // ── Panel close button ────────────────────────────────────────────────────
-  {
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'panel-close';
-    closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => {
-      settingsPanel.hidden = true;
-      settingsBtn.classList.remove('active');
-    });
-    settingsPanel.insertBefore(closeBtn, settingsPanel.firstChild);
-  }
+  document.getElementById('env-close').addEventListener('click', closeEnvPanel);
+  document.getElementById('settings-close').addEventListener('click', closeSettingsPanel);
+
+  buildSettingsPanel(document.getElementById('settings-panel-scroll'), stemConfigs, pane);
 
   // ── Side-params wiring ───────────────────────────────────────────────────
   function wireSlider(id, valId, onChange) {
@@ -1142,35 +1323,279 @@ async function init() {
   wireSlider('p-rim',        'p-rim-v',         v => { pane.shared.u_rimStr.value        = v; });
   wireSlider('p-rim-width',  'p-rim-width-v',   v => { pane.shared.u_rimWidth.value      = v; });
   wireSlider('p-grayscale',  'p-grayscale-v',   v => { pane.shared.u_grayscale.value     = v; });
+  wireSlider('p-overlay',    'p-overlay-v',     v => { pane.shared.u_overlayAmt.value     = v; });
+  wireSlider('p-gamma',      'p-gamma-v',       v => { pane.shared.u_gamma.value          = v; });
   wireSlider('p-b-thresh',   'p-b-thresh-v',    v => { pane.bloomPass.threshold = v; });
   wireSlider('p-b-strength', 'p-b-strength-v',  v => { pane.bloomPass.strength  = v; });
   wireSlider('p-b-radius',   'p-b-radius-v',    v => { pane.bloomPass.radius    = v; });
 
+  function wireOrbitSlider(id, valId, resetId, setRate) {
+    const sl = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    sl.addEventListener('input', () => { vl.textContent = parseFloat(sl.value).toFixed(2); setRate(parseFloat(sl.value)); });
+    document.getElementById(resetId).addEventListener('click', () => { sl.value = 0; vl.textContent = '0.00'; setRate(0); });
+  }
+
+  wireOrbitSlider('p-rot-x', 'p-rot-x-v', 'p-rot-x-r', v => { rotX = v; updateCamera(); });
+  wireOrbitSlider('p-rot-y', 'p-rot-y-v', 'p-rot-y-r', v => { rotY = v; updateCamera(); });
+  wireOrbitSlider('p-rot-z', 'p-rot-z-v', 'p-rot-z-r', v => { rotZ = v; updateCamera(); });
+  wireOrbitSlider('p-dir-h', 'p-dir-h-v', 'p-dir-h-r', v => { pane.shared.u_camDir.value.x = v; });
+  wireOrbitSlider('p-dir-v', 'p-dir-v-v', 'p-dir-v-r', v => { pane.shared.u_camDir.value.y = v; });
+  wireSlider('p-s-zoom',  'p-s-zoom-v',  v => { soundZoomStr = v; });
+  wireSlider('p-s-pan',   'p-s-pan-v',   v => { soundPanStr  = v; });
+  wireOrbitSlider('p-collapse', 'p-collapse-v', 'p-collapse-r', v => { pane.shared.u_collapseY.value = v; });
+  wireSlider('p-radar-opacity', 'p-radar-opacity-v', v => { radarOpacity = v; });
+
   // Apply initial slider values to uniforms
-  pane.shared.u_waveBlendBg.value  = parseFloat(bgMixEl.value);
+  pane.shared.u_waveBlendBg.value  = parseFloat(document.getElementById('p-bg-mix').value);
   pane.shared.u_waveBlendObj.value = parseFloat(document.getElementById('p-obj-mix').value);
   pane.shared.u_rimStr.value       = parseFloat(document.getElementById('p-rim').value);
   pane.shared.u_rimWidth.value     = parseFloat(document.getElementById('p-rim-width').value);
   pane.shared.u_grayscale.value    = parseFloat(document.getElementById('p-grayscale').value);
+  pane.shared.u_overlayAmt.value   = parseFloat(document.getElementById('p-overlay').value);
+  pane.shared.u_gamma.value        = parseFloat(document.getElementById('p-gamma').value);
   pane.bloomPass.threshold = parseFloat(document.getElementById('p-b-thresh').value);
   pane.bloomPass.strength  = parseFloat(document.getElementById('p-b-strength').value);
   pane.bloomPass.radius    = parseFloat(document.getElementById('p-b-radius').value);
+  radarOpacity = parseFloat(document.getElementById('p-radar-opacity').value);
+
+  // ── Parameter animation ──────────────────────────────────────────────────
+  // Every Env and Effects param has a JSON-friendly identifier mapped to its
+  // slider. Animating a param sets the slider and dispatches 'input', so the
+  // existing wiring (value label + uniform) runs unchanged.
+  const PARAM_IDS = {
+    bg_mix:          'p-bg-mix',
+    obj_mix:         'p-obj-mix',
+    rim_light:       'p-rim',
+    rim_width:       'p-rim-width',
+    grayscale:       'p-grayscale',
+    overlay_amount:  'p-overlay',
+    gamma:           'p-gamma',
+    bloom_threshold: 'p-b-thresh',
+    bloom_strength:  'p-b-strength',
+    bloom_radius:    'p-b-radius',
+    rotation_x:      'p-rot-x',
+    rotation_y:      'p-rot-y',
+    rotation_z:      'p-rot-z',
+    direction_h:     'p-dir-h',
+    direction_v:     'p-dir-v',
+    sound_zoom:      'p-s-zoom',
+    sound_pan:       'p-s-pan',
+    collapse_y:      'p-collapse',
+    radar_opacity:   'p-radar-opacity',
+  };
+
+  // Click a param name → copy its identifier to the clipboard
+  Object.entries(PARAM_IDS).forEach(([name, sliderId]) => {
+    const label = document.getElementById(sliderId).closest('.sd-row').querySelector('.sd-label');
+    label.title = name;
+    label.addEventListener('click', () => {
+      navigator.clipboard.writeText(name).catch(() => {});
+      const orig = label.textContent;
+      label.textContent = name;
+      setTimeout(() => { label.textContent = orig; }, 800);
+    });
+  });
+
+  function smoothstep(a, b, x) {
+    const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return k * k * (3 - 2 * k);
+  }
+
+  // ── Live stem data access ────────────────────────────────────────────────
+  // getLevel(name) / getProminence(name) — non-case-sensitive; "master" works
+  // for level (from the master bin) but has no computed prominence (always 1).
+  let currentScores = STEMS.map(() => 0);
+
+  function normalizeStemId(name) {
+    return String(name).trim().toLowerCase();
+  }
+
+  function getLevel(name) {
+    const id     = normalizeStemId(name);
+    const frames = id === 'master' ? masterFrames : allFrames[id];
+    if (!frames || !frames.length) return 0;
+    const frameIdx = Math.min(Math.floor(clock.time * FPS), frames.length - 1);
+    const f = frames[frameIdx];
+    return Math.min((f.ampL + f.ampR) * 0.5, 1);
+  }
+
+  function getProminence(name) {
+    const id = normalizeStemId(name);
+    if (id === 'master') return 1;
+    const idx = STEMS.findIndex(s => s.id === id);
+    return idx < 0 ? 0 : (currentScores[idx] ?? 0);
+  }
+
+  // Currently prominent (winning) stem — same hysteresis logic the visual switcher uses.
+  function getProminentStemId() {
+    return pickWinner(currentScores);
+  }
+  function getProminentStemName() {
+    return STEMS[getProminentStemId()].id;
+  }
+
+  const animCodeEl = document.getElementById('anim-code');
+  const animErrEl  = document.getElementById('anim-error');
+  let animFns = null;
+
+  animCodeEl.value = [
+    '{',
+    '  "bg_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
+    '  "obj_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
+    '  "grayscale": (t) => 1.0 - smoothstep(0.0, duration, t),',
+    '  "bloom_strength": (t) => getLevel("master") * 2.5,',
+    '  "sound_zoom": (t) => getProminence("kick1") * 1.5,',
+    '  "rotation_y": (t) => {',
+    'if (getProminentStemName() == "pad" || ',
+    'getProminentStemName() == "hat") {',
+    'return t / duration * 30;',
+    '} else {',
+    'return getProminentStemId() * 32',
+    ' + Math.pow(Math.max(0, t - 60)/ 60, 2) * 360',
+    '}},',
+    '  "rotation_x": (t) => {',
+    'if (getProminentStemName() == "pad" || ',
+    'getProminentStemName() == "hat") {',
+    'return 0;',
+    '} else {',
+    'return t / duration * 360 * 20;',
+    '}},',
+    '  "direction_h": (t) => getLevel("master") * 2.5',
+    '   * (0.25 + t / duration * 0.75) * Math.sin(t / duration * 30),',
+    '"gamma": (t) => 0.25 + (Math.min(1.0, t / duration * 1.25) * 0.5),',
+    '"rim_light": (t)=> (1.0 - getProminence("arp")) * 0.02,',
+    '"overlay_amount": (t)=> t/duration,',
+    '"radar_opacity": (t)=> (1.0 - getLevel("master") * 3.0) * 0.5,',
+    '}',
+  ].join('\n');
+
+  function compileAnims() {
+    try {
+      const build = new Function(
+        'smoothstep', 'duration', 'getProminence', 'getLevel',
+        'getProminentStemId', 'getProminentStemName',
+        'return (' + animCodeEl.value + ');'
+      );
+      const obj = build(smoothstep, audio.duration || 0, getProminence, getLevel, getProminentStemId, getProminentStemName);
+      if (obj === null || typeof obj !== 'object') throw new Error('Definition must be an object');
+      for (const key of Object.keys(obj)) {
+        if (!(key in PARAM_IDS)) throw new Error(`Unknown param "${key}". Valid: ${Object.keys(PARAM_IDS).join(', ')}`);
+        if (typeof obj[key] !== 'function') throw new Error(`"${key}" must be a function of t`);
+      }
+      animFns = obj;
+      animErrEl.textContent = '';
+    } catch (err) {
+      animFns = null;
+      animErrEl.textContent = err.message;
+    }
+  }
+
+  animCodeEl.addEventListener('input', compileAnims);
+  audio.addEventListener('loadedmetadata', compileAnims); // recompile once duration is known
+  compileAnims();
+
+  function applyAnims(time) {
+    if (!animFns) return;
+    for (const [name, fn] of Object.entries(animFns)) {
+      let v;
+      try {
+        v = fn(time);
+      } catch (err) {
+        animErrEl.textContent = `${name}: ${err.message}`;
+        return;
+      }
+      if (typeof v !== 'number' || !isFinite(v)) continue;
+      const sl = document.getElementById(PARAM_IDS[name]);
+      sl.value = v;
+      sl.dispatchEvent(new Event('input'));
+    }
+  }
+
+  // ── Clock ────────────────────────────────────────────────────────────────
+  // Single source of truth for current time and frame delta.
+  // In recording mode both values are derived from recFrame so output is
+  // perfectly frame-accurate at 60 fps regardless of real render speed.
+  const clock = { time: START_TIME, dt: 0 };
+  let lastFrameMs = performance.now();
+
+  function seekClock(t) {
+    clock.time  = t;
+    lastFrameMs = performance.now(); // prevent dt spike after a seek
+  }
+
+  function tickClock() {
+    const nowMs = performance.now();
+    if (isRecording) {
+      clock.dt   = 1 / FPS;
+      clock.time = recFrame / FPS;
+    } else {
+      clock.dt   = Math.min((nowMs - lastFrameMs) * 0.001, 0.1);
+      clock.time = audio.currentTime;
+    }
+    lastFrameMs = nowMs;
+  }
+
+  // ── Recording ─────────────────────────────────────────────────────────────
+  let isRecording = false;
+  let recFrame = 0;
+  let recDirHandle = null;
+
+  function stopRecording() {
+    isRecording = false;
+    recDirHandle = null;
+    recBtn.classList.remove('active');
+    recBtn.setAttribute('aria-label', 'Record off');
+    if (isPlaying) audio.play().catch(() => {});
+  }
+
+  recBtn.addEventListener('click', async () => {
+    if (!isRecording) {
+      // Ask for output folder before starting
+      try {
+        recDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      } catch {
+        return; // user cancelled
+      }
+      recFrame = Math.round(audio.currentTime * FPS);
+      seekClock(audio.currentTime);
+      audio.pause();
+      isRecording = true;
+      recBtn.classList.add('active');
+      recBtn.setAttribute('aria-label', 'Record on');
+      if (!rafId) rafId = requestAnimationFrame(loop);
+    } else {
+      stopRecording();
+    }
+  });
+
+  async function saveFrame(blob, name) {
+    const fh = await recDirHandle.getFileHandle(name, { create: true });
+    const w  = await fh.createWritable();
+    await w.write(blob);
+    await w.close();
+  }
 
   // ── Render loop ──────────────────────────────────────────────────────────
-  const globalStart = performance.now() - 800;
-
-  function renderFrame(audioTime) {
-    const wallTime = (performance.now() - globalStart) * 0.001;
-    const frameIdx = Math.floor(audioTime * FPS);
+  function renderFrame() {
+    tickClock();
+    const frameIdx = Math.floor(clock.time * FPS);
 
     const scores = computeProminence(frameIdx, allFrames, onsetData);
+    currentScores = scores;
+
+    applyAnims(clock.time);
+
     const winner = soloStemId !== null ? soloStemId : pickWinner(scores);
     switchToStem(pane, winner, stemConfigs, allFrames);
 
-    updatePaneTextures(pane, pane.trackFrames, audioTime);
-    renderPane(pane, wallTime);
+    updateCamera();
+
+    updatePaneTextures(pane, pane.trackFrames, clock.time);
+    renderPane(pane, clock.time);
 
     if (chartVisible) drawProminenceChart(chartCtx, scores);
+    if (radarVisible) drawRadarChart(radarCtx, scores, radarCanvas.width, radarCanvas.height, pane.shared.u_camRot.value, radarOpacity);
 
     if (!settingsPanel.hidden) {
       settingsPanel.querySelectorAll('.sd-section[data-stem]').forEach((el, i) => {
@@ -1179,12 +1604,30 @@ async function init() {
     }
   }
 
+  // In recording mode the loop is sequential: render → encode → write to disk → next frame.
+  // Using File System Access API avoids the browser download queue entirely.
+  const REC_MAX_FRAMES = 36000; // 10 min at 60 fps — hard failsafe, regardless of track length
   function loop() {
-    rafId = requestAnimationFrame(loop);
-    renderFrame(audio.currentTime);
+    if (isRecording) {
+      if (recFrame >= REC_MAX_FRAMES || recFrame / FPS >= (audio.duration || Infinity)) {
+        stopRecording();
+        return;
+      }
+      renderFrame();
+      const name = 'f' + String(recFrame).padStart(6, '0') + '.png';
+      recFrame++;
+      mainCanvas.toBlob(blob => {
+        saveFrame(blob, name).then(() => {
+          if (isRecording) rafId = requestAnimationFrame(loop);
+        });
+      }, 'image/png');
+    } else {
+      rafId = requestAnimationFrame(loop);
+      renderFrame();
+    }
   }
 
-  requestAnimationFrame(() => renderFrame(START_TIME));
+  requestAnimationFrame(() => renderFrame());
 }
 
 init();

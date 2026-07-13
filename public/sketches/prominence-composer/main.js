@@ -832,6 +832,19 @@ async function init() {
   // ── Build settings panel ──────────────────────────────────────────────────
   buildSettingsPanel(settingsPanel, stemConfigs, pane, allFrames);
 
+  // ── Panel close button ────────────────────────────────────────────────────
+  {
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'panel-close';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => {
+      settingsPanel.hidden = true;
+      settingsBtn.classList.remove('active');
+    });
+    settingsPanel.insertBefore(closeBtn, settingsPanel.firstChild);
+  }
+
   // ── Render loop ──────────────────────────────────────────────────────────
   const globalStart = performance.now();
 

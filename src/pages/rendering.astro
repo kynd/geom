@@ -1,0 +1,37 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Rendering" slug="rendering">
+  <div class="monologue">
+    Rendering experiments. Following the <a href={`${base}/#rules-tentative`}>rule</a>, everything is deterministic — driven either by time or by the sound data.
+  </div>
+
+  <section class="demo-section" id="rendering">
+    <div class="demo-header">
+      <h2>Rendering</h2>
+      <a href={`${base}/demos/rendering/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/rendering/index.html?embedded`} title="Rendering" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        "Object settings" configures each stem's shape, the same per-stem type/category/shape/effect controls as the Multitrack visualizer. "Env and Effects" configures everything else, grouped into four sections:
+      </p>
+      <ul>
+        <li><strong>Lighting</strong> — <code>bg_mix</code> and <code>obj_mix</code> (phase portrait → anisotropic wave blend, for background and object separately), <code>rim_light</code>, <code>rim_width</code>, <code>grayscale</code>, <code>overlay_amount</code> (self-overlay contrast), and <code>gamma</code>.</li>
+        <li><strong>Bloom</strong> — <code>bloom_threshold</code>, <code>bloom_strength</code>, <code>bloom_radius</code>.</li>
+        <li><strong>Camera</strong> — absolute <code>rotation_x</code>/<code>rotation_y</code>/<code>rotation_z</code> in degrees, <code>direction_h</code>/<code>direction_v</code> (look-target offset), and raw <code>sound_zoom</code>/<code>sound_pan</code> amounts. A separate "Cam light" toggle samples the background from the camera's current facing direction instead of per-pixel.</li>
+        <li><strong>Collapse</strong> — <code>collapse_y</code>, flattening the shape along the Y axis.</li>
+      </ul>
+      <p>
+        Each of these has a plain-text identifier (shown above) that a JSON-like editor next to the panel can drive directly, writing a function of <code>t</code> — elapsed seconds — for any subset of them. The function scope also exposes <code>getLevel(stem)</code> and <code>getProminence(stem)</code> for a stem's live amplitude and prominence, <code>getProminentStemId()</code>/<code>getProminentStemName()</code> for whichever stem is currently loudest, and <code>smoothstep(a, b, t)</code> for easing between two points in time. A syntax or reference error prints inline instead of silently failing.
+      </p>
+      <p>
+        The resolution selector switches the output between the canvas's current size, Full HD (1920×1080), and 4K (3840×2160) — independent of the embedded preview size. Toggling "Rec" asks for an output folder, then walks the timeline forward one frame at a time — pausing playback, since real-time audio can't stay in sync with a renderer that's slower than 60fps — writing each frame straight to disk as a numbered PNG named after its frame index. Recording stops automatically at the end of the track, or after 10 minutes of frames, whichever comes first.
+      </p>
+    </div>
+  </section>
+</PageLayout>

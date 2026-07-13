@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rendering</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative; width: 1920px; height: 1080px; flex-shrink: 0; background: #000;
+    }
+
+    /* ── Control bar separator ─────────────────────────────────────────────── */
+    .ctrl-sep {
+      width: 1px; height: 20px; background: rgba(255,255,255,0.14); margin: 0 2px;
+      flex-shrink: 0;
+    }
+
+    /* ── Main canvas area ─────────────────────────────────────────────────── */
+    #main-canvas {
+      position: absolute; top: 0; left: 0; display: block;
+    }
+
+    /* ── Chart canvas ─────────────────────────────────────────────────────── */
+    #chart-canvas {
+      position: absolute; bottom: 80px; left: 32px;
+      pointer-events: none; display: none; z-index: 15;
+    }
+
+    /* ── Radar chart canvas ───────────────────────────────────────────────── */
+    #radar-canvas {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      pointer-events: none; display: none; z-index: 15;
+    }
+
+    /* ── Env and Effects panel ────────────────────────────────────────────── */
+    #env-panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 380px;
+      background: rgba(8,8,8,0.96); border-left: 1px solid rgba(255,255,255,0.08);
+      z-index: 30; pointer-events: all;
+    }
+    #env-panel[hidden] { display: none; }
+    #env-panel .sd-label { cursor: pointer; }
+    #env-panel .sd-label:hover { color: rgba(255,255,255,0.90); }
+    .panel-scroll {
+      position: absolute; inset: 0; overflow-y: auto; padding: 52px 16px 44px;
+    }
+
+    /* ── Animation editor panel ───────────────────────────────────────────── */
+    #anim-panel {
+      position: absolute; top: 0; right: 380px; bottom: 0; width: 420px;
+      background: rgba(8,8,8,0.94); border-left: 1px solid rgba(255,255,255,0.08);
+      z-index: 30; display: flex; flex-direction: column;
+      padding: 52px 16px 44px; pointer-events: all;
+    }
+    #anim-panel[hidden] { display: none; }
+    #anim-panel .anim-title {
+      font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: rgba(255,255,255,0.45); margin-bottom: 10px;
+    }
+    #anim-code {
+      flex: 1; width: 100%; resize: none;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 6px; padding: 10px;
+      font-family: 'Google Sans Code', monospace; font-size: 11px; line-height: 1.5;
+      color: rgba(255,255,255,0.85); outline: none; white-space: pre;
+    }
+    #anim-code:focus { border-color: rgba(255,255,255,0.25); }
+    #anim-error {
+      min-height: 34px; margin-top: 8px;
+      font-family: 'Google Sans Code', monospace; font-size: 10px; line-height: 1.4;
+      color: #ff7070; white-space: pre-wrap; word-break: break-word;
+    }
+    .params-reset {
+      flex-shrink: 0; width: 16px; height: 16px;
+      background: none; border: 1px solid rgba(255,255,255,0.14); border-radius: 3px;
+      color: rgba(255,255,255,0.30); font-size: 10px; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .params-reset:hover { border-color: rgba(255,255,255,0.35); color: rgba(255,255,255,0.70); }
+
+    /* ── Settings panel ───────────────────────────────────────────────────── */
+    #settings-panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 380px;
+      background: rgba(8,8,8,0.96); border-left: 1px solid rgba(255,255,255,0.08);
+      z-index: 30; pointer-events: all;
+    }
+    #settings-panel[hidden] { display: none; }
+
+    /* ── Seek bar ──────────────────────────────────────────────────────────── */
+    #seek-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 36px;
+      display: flex; align-items: center; gap: 10px; padding: 0 20px;
+      background: linear-gradient(to top, rgba(0,0,0,0.70) 0%, transparent 100%);
+      pointer-events: all; z-index: 20;
+    }
+    #time-current, #time-total {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.40); white-space: nowrap; min-width: 34px;
+    }
+    #time-total { text-align: right; }
+    #seek {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 2px; background: rgba(255,255,255,0.18); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    #seek::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+    #seek::-moz-range-thumb {
+      width: 10px; height: 10px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.75); cursor: pointer;
+    }
+
+    /* ── Loading overlay ───────────────────────────────────────────────────── */
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    #loading-tracks { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+    .load-row { display: flex; align-items: center; gap: 10px; }
+    .load-name {
+      font-family: 'Google Sans Code', monospace; font-size: 12px;
+      color: rgba(255,255,255,0.40); width: 52px; flex-shrink: 0;
+    }
+    .load-bar-bg {
+      flex: 1; height: 1px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .load-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.55); border-radius: 1px;
+      transition: width 0.08s linear;
+    }
+    .load-bar-fill.indeterminate {
+      width: 30%; animation: indeterminate 1.2s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(430%); }
+    }
+    .load-pct {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+
+    <!-- ── Control bar ─────────────────────────────────────────────────────── -->
+    <div id="ctrl-bar" class="ctrl-bar scrim">
+      <div class="ctrl-bar-r1">
+        <button id="score-btn" class="bar-btn" aria-label="Scores off">Scores</button>
+        <button id="radar-btn" class="bar-btn" aria-label="Radar off">Radar</button>
+        <button id="settings-btn" class="bar-btn" aria-label="Object settings">Object settings</button>
+        <button id="env-btn" class="bar-btn" aria-label="Env and effects">Env and Effects</button>
+        <div class="ctrl-bar-spacer"></div>
+        <select id="res-sel" class="bar-select" aria-label="Resolution">
+          <option value="current" selected>Current</option>
+          <option value="1080">Full HD</option>
+          <option value="2160">4K</option>
+        </select>
+        <button id="rec-btn" class="bar-btn" aria-label="Record off">Rec</button>
+        <button id="aa-btn" class="bar-btn active" aria-label="Antialiasing on">Antialias</button>
+        <button id="play-btn" class="play-btn" aria-label="Play"></button>
+      </div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
+    </div>
+
+    <!-- ── Main 3D canvas ─────────────────────────────────────────────────── -->
+    <canvas id="main-canvas" width="1920" height="1080"></canvas>
+
+    <!-- ── Prominence chart canvas ────────────────────────────────────────── -->
+    <canvas id="chart-canvas" width="420" height="240"></canvas>
+
+    <!-- ── Prominence radar canvas ──────────────────────────────────────────── -->
+    <canvas id="radar-canvas" width="960" height="960"></canvas>
+
+    <!-- ── Env and Effects panel ─────────────────────────────────────────── -->
+    <div id="env-panel" hidden>
+      <button id="env-close" class="panel-close" aria-label="Close">×</button>
+      <div class="panel-scroll">
+      <div class="sd-section">
+        <button id="cam-light-btn" class="bar-btn active" aria-label="Light: cam">Cam light</button>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Lighting</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Bg mix</span>
+          <input type="range" class="params-sl" id="p-bg-mix" min="0" max="1" step="0.01" value="0.01">
+          <span class="params-val" id="p-bg-mix-v">0.01</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Obj mix</span>
+          <input type="range" class="params-sl" id="p-obj-mix" min="0" max="1" step="0.01" value="0.50">
+          <span class="params-val" id="p-obj-mix-v">0.50</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Rim light</span>
+          <input type="range" class="params-sl" id="p-rim" min="0" max="1" step="0.01" value="0.02">
+          <span class="params-val" id="p-rim-v">0.02</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Rim width</span>
+          <input type="range" class="params-sl" id="p-rim-width" min="0" max="1" step="0.01" value="0.10">
+          <span class="params-val" id="p-rim-width-v">0.10</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Grayscale</span>
+          <input type="range" class="params-sl" id="p-grayscale" min="0" max="1" step="0.01" value="0.00">
+          <span class="params-val" id="p-grayscale-v">0.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Overlay</span>
+          <input type="range" class="params-sl" id="p-overlay" min="0" max="1" step="0.01" value="0.00">
+          <span class="params-val" id="p-overlay-v">0.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Gamma</span>
+          <input type="range" class="params-sl" id="p-gamma" min="0.1" max="1" step="0.0001" value="0.4545">
+          <span class="params-val" id="p-gamma-v">0.45</span>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Bloom</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Threshold</span>
+          <input type="range" class="params-sl" id="p-b-thresh" min="0" max="1" step="0.01" value="0.08">
+          <span class="params-val" id="p-b-thresh-v">0.08</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Strength</span>
+          <input type="range" class="params-sl" id="p-b-strength" min="0" max="3" step="0.05" value="1.00">
+          <span class="params-val" id="p-b-strength-v">1.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Radius</span>
+          <input type="range" class="params-sl" id="p-b-radius" min="0" max="1" step="0.01" value="0.35">
+          <span class="params-val" id="p-b-radius-v">0.35</span>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Camera</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Rotation X</span>
+          <input type="range" class="params-sl" id="p-rot-x" min="-100000" max="100000" step="1" value="0">
+          <span class="params-val" id="p-rot-x-v">0.00</span>
+          <button class="params-reset" id="p-rot-x-r" title="Reset">×</button>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Rotation Y</span>
+          <input type="range" class="params-sl" id="p-rot-y" min="-100000" max="100000" step="1" value="0">
+          <span class="params-val" id="p-rot-y-v">0.00</span>
+          <button class="params-reset" id="p-rot-y-r" title="Reset">×</button>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Rotation Z</span>
+          <input type="range" class="params-sl" id="p-rot-z" min="-100000" max="100000" step="1" value="0">
+          <span class="params-val" id="p-rot-z-v">0.00</span>
+          <button class="params-reset" id="p-rot-z-r" title="Reset">×</button>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Direction H</span>
+          <input type="range" class="params-sl" id="p-dir-h" min="-2" max="2" step="0.01" value="0">
+          <span class="params-val" id="p-dir-h-v">0.00</span>
+          <button class="params-reset" id="p-dir-h-r" title="Reset">×</button>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Direction V</span>
+          <input type="range" class="params-sl" id="p-dir-v" min="-2" max="2" step="0.01" value="0">
+          <span class="params-val" id="p-dir-v-v">0.00</span>
+          <button class="params-reset" id="p-dir-v-r" title="Reset">×</button>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Sound zoom</span>
+          <input type="range" class="params-sl" id="p-s-zoom" min="-2" max="2" step="0.01" value="0">
+          <span class="params-val" id="p-s-zoom-v">0.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Sound pan</span>
+          <input type="range" class="params-sl" id="p-s-pan" min="-2" max="2" step="0.01" value="0">
+          <span class="params-val" id="p-s-pan-v">0.00</span>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Collapse</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Collapse Y</span>
+          <input type="range" class="params-sl" id="p-collapse" min="0" max="1" step="0.001" value="1">
+          <span class="params-val" id="p-collapse-v">1.00</span>
+          <button class="params-reset" id="p-collapse-r" title="Reset">×</button>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Radar</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Opacity</span>
+          <input type="range" class="params-sl" id="p-radar-opacity" min="0" max="1" step="0.01" value="1">
+          <span class="params-val" id="p-radar-opacity-v">1.00</span>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- ── Settings panel ─────────────────────────────────────────────────── -->
+    <div id="settings-panel" hidden>
+      <button id="settings-close" class="panel-close" aria-label="Close">×</button>
+      <div class="panel-scroll" id="settings-panel-scroll"></div>
+    </div>
+
+    <!-- ── Animation editor ───────────────────────────────────────────────── -->
+    <div id="anim-panel" hidden>
+      <div class="anim-title">Animations</div>
+      <textarea id="anim-code" spellcheck="false"></textarea>
+      <div id="anim-error"></div>
+    </div>
+
+    <!-- ── Seek bar ────────────────────────────────────────────────────────── -->
+    <div id="seek-bar">
+      <span id="time-current">2:00</span>
+      <input id="seek" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+      <span id="time-total">0:00</span>
+    </div>
+
+    <!-- ── Loading overlay ─────────────────────────────────────────────────── -->
+    <div id="loading">
+      <div id="loading-label">Loading audio data</div>
+      <div id="loading-tracks"></div>
+    </div>
+
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const wrap = document.querySelector('.canvas-wrap');
+      wrap.style.width  = '960px';
+      wrap.style.height = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js?v=27"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
+</body>
+</html>

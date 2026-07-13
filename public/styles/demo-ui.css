@@ -183,6 +183,16 @@
 .sd-sl { width: 48px; }
 .sd-val { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.35); width: 26px; text-align: right; }
 
+/* ── Panel close button ───────────────────────────────── */
+.panel-close {
+  position: absolute; top: 14px; right: 14px; width: 24px; height: 24px;
+  border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.50); font-size: 14px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; z-index: 1;
+}
+.panel-close:hover { background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.90); }
+
 /* ── Overlay ─────────────────────────────────────────── */
 #overlay {
   position: absolute; inset: 0; pointer-events: none;
