@@ -1055,7 +1055,7 @@ async function init() {
 
   let isPlaying = false, seeking = false, rafId = null;
   let chartVisible = false;
-  let radarVisible = false;
+  let radarVisible = true;
   let radarOpacity = 1;
 
   function updatePlayBtn() {

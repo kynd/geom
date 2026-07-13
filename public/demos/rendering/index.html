@@ -47,7 +47,7 @@
     /* ── Radar chart canvas ───────────────────────────────────────────────── */
     #radar-canvas {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      pointer-events: none; display: none; z-index: 15;
+      pointer-events: none; display: block; z-index: 15;
     }
 
     /* ── Env and Effects panel ────────────────────────────────────────────── */
@@ -178,7 +178,7 @@
     <div id="ctrl-bar" class="ctrl-bar scrim">
       <div class="ctrl-bar-r1">
         <button id="score-btn" class="bar-btn" aria-label="Scores off">Scores</button>
-        <button id="radar-btn" class="bar-btn" aria-label="Radar off">Radar</button>
+        <button id="radar-btn" class="bar-btn active" aria-label="Radar on">Radar</button>
         <button id="settings-btn" class="bar-btn" aria-label="Object settings">Object settings</button>
         <button id="env-btn" class="bar-btn" aria-label="Env and effects">Env and Effects</button>
         <div class="ctrl-bar-spacer"></div>
