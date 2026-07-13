@@ -1466,7 +1466,7 @@ async function init() {
     '"gamma": (t) => 0.25 + (Math.min(1.0, t / duration * 1.25) * 0.5),',
     '"rim_light": (t)=> (1.0 - getProminence("arp")) * 0.02,',
     '"overlay_amount": (t)=> t/duration,',
-    '"radar_opacity": (t)=> (1.0 - getLevel("master") * 3.0) * 0.5,',
+    '"radar_opacity": (t)=> (1.0 - getLevel("master")) * 0.5,',
     '}',
   ].join('\n');
 
@@ -1540,6 +1540,25 @@ async function init() {
   let isRecording = false;
   let recFrame = 0;
   let recDirHandle = null;
+
+  // Offscreen canvas used to composite overlays (currently the radar chart)
+  // onto the main render before writing a frame to disk. Screen-only overlays
+  // like the bar chart / settings panels are intentionally left out.
+  const recCanvas = document.createElement('canvas');
+  const recCtx    = recCanvas.getContext('2d');
+  const RADAR_REF_W = 1920, RADAR_REF_H = 1080; // canvas-wrap reference size
+
+  function compositeRecordingFrame() {
+    recCanvas.width  = mainCanvas.width;
+    recCanvas.height = mainCanvas.height;
+    recCtx.drawImage(mainCanvas, 0, 0, recCanvas.width, recCanvas.height);
+    if (radarVisible) {
+      const rw = radarCanvas.width  / RADAR_REF_W * recCanvas.width;
+      const rh = radarCanvas.height / RADAR_REF_H * recCanvas.height;
+      recCtx.drawImage(radarCanvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
+    }
+    return recCanvas;
+  }
 
   function stopRecording() {
     isRecording = false;
@@ -1616,7 +1635,7 @@ async function init() {
       renderFrame();
       const name = 'f' + String(recFrame).padStart(6, '0') + '.png';
       recFrame++;
-      mainCanvas.toBlob(blob => {
+      compositeRecordingFrame().toBlob(blob => {
         saveFrame(blob, name).then(() => {
           if (isRecording) rafId = requestAnimationFrame(loop);
         });
