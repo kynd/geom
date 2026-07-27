@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rendering</title>
+  <title>Composition</title>
   <script type="importmap">
   {
     "imports": {
@@ -34,8 +34,29 @@
     }
 
     /* ── Main canvas area ─────────────────────────────────────────────────── */
+    #panes-row {
+      position: absolute; inset: 0; display: flex; align-items: stretch;
+    }
+    #panes-row canvas { display: block; }
+    .pane-label {
+      position: absolute; top: 12px; z-index: 12; pointer-events: none;
+      font-family: 'Google Sans Code', monospace; font-size: 11px;
+      color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.55);
+      padding: 3px 8px; border-radius: 4px; letter-spacing: 0.02em;
+      display: none;
+    }
+    .pane-label.visible { display: block; }
+    #pane-debug-overlay {
+      position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
+      z-index: 12; pointer-events: none;
+      font-family: 'Google Sans Code', monospace; font-size: 11px;
+      color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.55);
+      padding: 3px 10px; border-radius: 4px; letter-spacing: 0.02em;
+      white-space: nowrap; display: none;
+    }
+    #pane-debug-overlay.visible { display: block; }
     #main-canvas {
-      position: absolute; top: 0; left: 0; display: block;
+      display: block;
     }
 
     /* ── Chart canvas ─────────────────────────────────────────────────────── */
@@ -45,10 +66,12 @@
     }
 
     /* ── Radar chart canvas ───────────────────────────────────────────────── */
-    #radar-canvas {
+    #radar-canvas, #radar2-canvas {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      pointer-events: none; display: block; z-index: 15;
+      pointer-events: none; z-index: 15;
     }
+    #radar-canvas  { display: block; }
+    #radar2-canvas { display: none; }
 
     /* ── Env and Effects panel ────────────────────────────────────────────── */
     #env-panel {
@@ -169,6 +192,14 @@
       color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
     }
 
+    /* ── Rec button frame counter ─────────────────────────────────────────── */
+    .rec-btn-wrap { position: relative; }
+    .rec-frame-counter {
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      margin-top: 4px; display: none;
+    }
+    .rec-frame-counter.visible { display: block; }
+
   </style>
 </head>
 <body>
@@ -179,6 +210,7 @@
       <div class="ctrl-bar-r1">
         <button id="score-btn" class="bar-btn" aria-label="Scores off">Scores</button>
         <button id="radar-btn" class="bar-btn active" aria-label="Radar on">Radar</button>
+        <button id="radar2-btn" class="bar-btn" aria-label="Radar 2 off">Radar 2</button>
         <button id="settings-btn" class="bar-btn" aria-label="Object settings">Object settings</button>
         <button id="env-btn" class="bar-btn" aria-label="Env and effects">Env and Effects</button>
         <div class="ctrl-bar-spacer"></div>
@@ -187,7 +219,10 @@
           <option value="1080">Full HD</option>
           <option value="2160">4K</option>
         </select>
-        <button id="rec-btn" class="bar-btn" aria-label="Record off">Rec</button>
+        <div class="rec-btn-wrap">
+          <button id="rec-btn" class="bar-btn" aria-label="Record off">Rec</button>
+          <span id="rec-frame-counter" class="fps-inline rec-frame-counter"></span>
+        </div>
         <button id="aa-btn" class="bar-btn active" aria-label="Antialiasing on">Antialias</button>
         <button id="play-btn" class="play-btn" aria-label="Play"></button>
       </div>
@@ -196,8 +231,10 @@
       </div>
     </div>
 
-    <!-- ── Main 3D canvas ─────────────────────────────────────────────────── -->
-    <canvas id="main-canvas" width="1920" height="1080"></canvas>
+    <!-- ── Main 3D canvas(es) ────────────────────────────────────────────── -->
+    <div id="panes-row">
+      <canvas id="main-canvas" width="1920" height="1080"></canvas>
+    </div>
 
     <!-- ── Prominence chart canvas ────────────────────────────────────────── -->
     <canvas id="chart-canvas" width="420" height="240"></canvas>
@@ -205,12 +242,26 @@
     <!-- ── Prominence radar canvas ──────────────────────────────────────────── -->
     <canvas id="radar-canvas" width="960" height="960"></canvas>
 
+    <!-- ── Prominence radar canvas 2 (levels) ───────────────────────────────── -->
+    <canvas id="radar2-canvas" width="960" height="960"></canvas>
+
     <!-- ── Env and Effects panel ─────────────────────────────────────────── -->
     <div id="env-panel" hidden>
       <button id="env-close" class="panel-close" aria-label="Close">×</button>
       <div class="panel-scroll">
       <div class="sd-section">
         <button id="cam-light-btn" class="bar-btn active" aria-label="Light: cam">Cam light</button>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Panes</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Count</span>
+          <input type="range" class="params-sl" id="p-panes-count" min="1" max="7" step="1" value="1">
+          <span class="params-val" id="p-panes-count-v">1</span>
+        </div>
+        <div class="sd-row">
+          <button id="pane-labels-btn" class="bar-btn" aria-label="Pane labels off">Pane labels</button>
+        </div>
       </div>
       <div class="sd-section">
         <div class="sd-header"><span class="sd-name">Lighting</span></div>
@@ -223,6 +274,18 @@
           <span class="sd-label">Obj mix</span>
           <input type="range" class="params-sl" id="p-obj-mix" min="0" max="1" step="0.01" value="0.50">
           <span class="params-val" id="p-obj-mix-v">0.50</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Env model</span>
+          <select class="sd-select" id="p-env-model" style="flex:1" aria-label="Environment model at full mix">
+            <option value="0" selected>Anisotropic wave</option>
+            <option value="2">Drifting caustic</option>
+          </select>
+        </div>
+        <div class="sd-row" data-env-model="2">
+          <span class="sd-label">Caustic sharp</span>
+          <input type="range" class="params-sl" id="p-caustic-sharp" min="0.2" max="6" step="0.1" value="1">
+          <span class="params-val" id="p-caustic-sharp-v">1.00</span>
         </div>
         <div class="sd-row">
           <span class="sd-label">Rim light</span>
@@ -248,6 +311,24 @@
           <span class="sd-label">Gamma</span>
           <input type="range" class="params-sl" id="p-gamma" min="0.1" max="1" step="0.0001" value="0.4545">
           <span class="params-val" id="p-gamma-v">0.45</span>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Prism</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Intensity</span>
+          <input type="range" class="params-sl" id="p-prism-intensity" min="0" max="1" step="0.01" value="0.00">
+          <span class="params-val" id="p-prism-intensity-v">0.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Width</span>
+          <input type="range" class="params-sl" id="p-prism-width" min="0" max="1" step="0.01" value="0.1">
+          <span class="params-val" id="p-prism-width-v">0.10</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Angle</span>
+          <input type="range" class="params-sl" id="p-prism-angle" min="0" max="360" step="1" value="200">
+          <span class="params-val" id="p-prism-angle-v">200</span>
         </div>
       </div>
       <div class="sd-section">
@@ -327,6 +408,34 @@
           <input type="range" class="params-sl" id="p-radar-opacity" min="0" max="1" step="0.01" value="1">
           <span class="params-val" id="p-radar-opacity-v">1.00</span>
         </div>
+        <div class="sd-row">
+          <span class="sd-label">Scale</span>
+          <input type="range" class="params-sl" id="p-radar-scale" min="0" max="4" step="0.01" value="1">
+          <span class="params-val" id="p-radar-scale-v">1.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Color</span>
+          <input type="range" class="params-sl" id="p-radar-color" min="0" max="1" step="0.01" value="1">
+          <span class="params-val" id="p-radar-color-v">1.00</span>
+        </div>
+      </div>
+      <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Radar 2 (levels)</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Opacity</span>
+          <input type="range" class="params-sl" id="p-radar2-opacity" min="0" max="1" step="0.01" value="1">
+          <span class="params-val" id="p-radar2-opacity-v">1.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Scale</span>
+          <input type="range" class="params-sl" id="p-radar2-scale" min="0" max="4" step="0.01" value="1">
+          <span class="params-val" id="p-radar2-scale-v">1.00</span>
+        </div>
+        <div class="sd-row">
+          <span class="sd-label">Color</span>
+          <input type="range" class="params-sl" id="p-radar2-color" min="0" max="1" step="0.01" value="0">
+          <span class="params-val" id="p-radar2-color-v">0.00</span>
+        </div>
       </div>
       </div>
     </div>
@@ -366,7 +475,7 @@
       wrap.style.height = '540px';
     }
   </script>
-  <script type="module" src="./main.js?v=27"></script>
+  <script type="module" src="./main.js?v=30"></script>
   <script>
 (function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
   </script>

@@ -71,9 +71,9 @@ const STEM_DEFAULTS = [
   // kick1
   { type:'amplitude', category:'platonic', shapeIdx:0, effect:3, bloom:{threshold:0.08,strength:0.35,radius:0.50} },
   // kick2
-  { type:'amplitude', category:'moving', shapeIdx:2, effect:2, bloom:{threshold:0.08,strength:1.5,radius:0.42} },
+  { type:'form', formMode:8, bloom:{threshold:0.08,strength:1.5,radius:0.42} },
   // pad
-  { type:'form', formMode:8, bloom:{threshold:0.05,strength:1.0,radius:0.44} },
+  { type:'amplitude', category:'moving', shapeIdx:6, effect:2, bloom:{threshold:0.05,strength:1.0,radius:0.44} },
   // snare
   { type:'frequency', category:'moving', shapeIdx:4, effect:9, bloom:{threshold:0.08,strength:1.00,radius:0.30} },
 ];
@@ -167,6 +167,10 @@ const CAM_DECLS = [
   'uniform float u_overlayAmt;',
   'uniform int   u_camLight;',
   'uniform vec3  u_camFwd;',
+  'uniform float u_prismWidth;',
+  'uniform float u_prismAngle;',
+  'uniform float u_prismIntensity;',
+  'uniform sampler2D u_prismTex;',
 ].join('\n');
 
 // Overlay blend mode, applied to a color with itself ("self-overlay") as a
@@ -178,6 +182,133 @@ const OVERLAY_FN =
 vec3 overlayBlend(vec3 a, vec3 b) {
   return vec3(overlayChan(a.r, b.r), overlayChan(a.g, b.g), overlayChan(a.b, b.b));
 }`;
+
+// OKLCH helpers (copied from the sound-fill shader) — needed here so the
+// Prism overlay below can compute smooth, in-gamut hues directly in every
+// object/background shader, independent of the env-model fill texture.
+const OKLCH_FNS =
+`vec3 oklabToLinearRGB(float L, float a, float b) {
+  float l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  float m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  float s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+  float l  = l_ * l_ * l_;
+  float m  = m_ * m_ * m_;
+  float s  = s_ * s_ * s_;
+  return vec3(
+     4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+  );
+}
+bool inGamut(vec3 rgb) {
+  return all(greaterThanEqual(rgb, vec3(-0.001))) &&
+         all(lessThanEqual(rgb,    vec3( 1.001)));
+}
+float maxChroma(float L, float H) {
+  float lo = 0.0, hi = 0.5;
+  for (int i = 0; i < 20; i++) {
+    float mid = (lo + hi) * 0.5;
+    if (inGamut(oklabToLinearRGB(L, mid*cos(H), mid*sin(H)))) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+vec3 oklch(float L, float C, float H) {
+  return clamp(oklabToLinearRGB(L, C*cos(H), C*sin(H)), 0.0, 1.0);
+}`;
+
+// Prism rainbow overlay — independent of the env model / sound level. Hue is
+// a plain linear ramp clamped at both ends (red/violet hold solid past the
+// configured width rather than fading or wrapping), so `mask` alone controls
+// where the band is visible; the caller mixes color and mask onto the frame
+// with its own intensity, entirely separate from u_grayscale.
+const PRISM_OVERLAY_FN =
+`// Remaps mask-space position (t, 0..1) to hue-space position (0..1, where
+// hue-space maps linearly to H = 0.5 + hueT*5.1 — see prismOverlay). A plain
+// linear t->H made cyan the widest band and squeezed red/yellow/green/blue
+// down to slivers; this piecewise remap gives red/yellow/green/blue much
+// more of the visible band and cyan much less, without moving where any hue
+// actually sits on the wheel. Each segment eases in/out with smoothstep
+// (zero slope at both of its own endpoints) instead of a plain linear ramp,
+// so the hue-change rate never jumps abruptly at a segment boundary — a
+// discontinuous *rate* of change reads as a hard edge even though the color
+// itself is still continuous there.
+float prismWarpHue(float t) {
+  if (t < 0.22) return mix(0.00, 0.06, smoothstep(0.00, 0.22, t));
+  if (t < 0.28) return mix(0.06, 0.12, smoothstep(0.22, 0.28, t));
+  if (t < 0.50) return mix(0.12, 0.28, smoothstep(0.28, 0.50, t));
+  if (t < 0.66) return mix(0.28, 0.42, smoothstep(0.50, 0.66, t));
+  if (t < 0.71) return mix(0.42, 0.68, smoothstep(0.66, 0.71, t));
+  if (t < 0.86) return mix(0.68, 0.82, smoothstep(0.71, 0.86, t));
+  return mix(0.82, 1.00, smoothstep(0.86, 1.00, t));
+}
+
+vec3 prismOverlay(vec3 dir, out float mask) {
+  float ca = cos(u_prismAngle), sa = sin(u_prismAngle);
+  float ry = dir.x * sa + dir.y * ca;
+  float halfRange = max(u_prismWidth, 0.001);
+  float t    = clamp((ry + halfRange) / (2.0 * halfRange), 0.0, 1.0);
+  float blur = halfRange * 0.15;
+  mask = 1.0 - smoothstep(halfRange - blur, halfRange, abs(ry));
+  // Full spectrum red → orange → yellow → green → cyan → blue → violet.
+  // These particular H bounds (not 0/2π) are where this oklch()+maxChroma()
+  // combination actually renders pure red and pure violet.
+  float hueT = prismWarpHue(t);
+  float H = 0.5 + hueT * 5.1;
+  // Green/blue/violet read as neon at a flat L and 95%-of-gamut chroma, so
+  // both dip slightly past yellow for a bit more depth than a flat neon band
+  // — driven by hueT (true hue position), not t, so red and yellow stay
+  // bright regardless of how wide their band is. Kept shallow (not the muddy
+  // near-black cyan a deeper dip produced) — cyan/blue/violet should read as
+  // rich, not dark.
+  float dip = smoothstep(0.14, 0.75, hueT);
+  float L = 0.70 - 0.18 * dip;
+  float C = maxChroma(L, H) * (0.95 - 0.15 * dip);
+  return oklch(L, C, H);
+}`;
+
+// Bakes prismOverlay() into a small equirectangular texture once per frame
+// (see PRISM_BAKE_FRAG / prismScene below), so every object/background
+// shader just does a cheap texture lookup instead of re-running the
+// ~20-iteration maxChroma gamut search per pixel per SSAA subsample per pane.
+// Forward mapping must exactly invert PRISM_BAKE_FRAG's uv->dir mapping.
+const PRISM_MAP_FN =
+`vec4 samplePrismMap(vec3 dir) {
+  float u = atan(dir.x, -dir.z) * (0.5 / 3.14159265359) + 0.5;
+  float v = asin(clamp(dir.y, -1.0, 1.0)) / 3.14159265359 + 0.5;
+  return texture2D(u_prismTex, vec2(u, v));
+}`;
+
+// Standalone bake shader: for every texel, invert the equirect mapping back
+// to a direction, then evaluate the actual (expensive) prismOverlay() once.
+// Rendered into a small fixed-size target (see PRISM_TEX_W/H) independent of
+// canvas resolution or SSAA, so its cost never scales with either.
+const PRISM_BAKE_FRAG =
+  'precision highp float;\n' +
+  'uniform vec2 iResolution;\n' +
+  'uniform float u_prismWidth;\n' +
+  'uniform float u_prismAngle;\n' +
+  'const float PI = 3.14159265359;\n' +
+  OKLCH_FNS + '\n' +
+  PRISM_OVERLAY_FN + '\n' +
+  'void main() {\n' +
+  '  vec2 uv = gl_FragCoord.xy / iResolution.xy;\n' +
+  '  float theta = (uv.x - 0.5) * 2.0 * PI;\n' +
+  '  float phi   = (uv.y - 0.5) * PI;\n' +
+  '  float cosPhi = cos(phi);\n' +
+  '  vec3 dir = vec3(sin(theta) * cosPhi, sin(phi), -cos(theta) * cosPhi);\n' +
+  '  float mask;\n' +
+  '  vec3 col = prismOverlay(dir, mask);\n' +
+  '  gl_FragColor = vec4(col, mask);\n' +
+  '}\n';
+
+// Side channel: MISS_NEW/FILL_NEW below record which direction the
+// environment was actually sampled from at this pixel (rd/_camDir for
+// background, nor for a reflecting surface) — genuinely "behind the scene" or
+// "reflected", not a screen-space filter. GRAY_NEW then mixes Prism using
+// that direction *after* the grayscale step, so grayscale never touches it,
+// while everything else still goes through grayscale exactly as before.
+const PRISM_CHANNEL_DECL = 'vec3 gPrismDir = vec3(0.0);\nbool gPrismActive = false;';
 
 // ── Collapse injection strings ────────────────────────────────────────────────
 
@@ -272,15 +403,27 @@ const CAM_FORM =
   vec3 rd = normalize(uv.x * _uu + uv.y * _vv + 3.0 * _ww);`;
 
 // Miss-path replacements (vec3 shaders: sdf, platonic, scalar, moving)
+// Prism is mixed straight into the background/reflection color here (using
+// the same direction the environment itself is sampled with), then that
+// result is what gets multiplied by `amp` — so Prism's own visibility comes
+// only from u_prismIntensity, never from the sound-driven presence factor.
 const MISS_OLD_VEC3 =
   '      return u_lighting >= 3 ? sampleFillMap(rd) * amp : sampleEnvMap(rd) * amp;';
 const MISS_NEW_VEC3 =
   '      if (u_camLight == 1) {\n' +
-  '        vec3 _camDir = normalize(u_camFwd);\n' +
+  // Re-centers the background on the camera's current forward vector (so it
+  // still reacts to camera angle) while keeping the same per-pixel spread
+  // `rd` has — a single `normalize(u_camFwd)` sample here would flatten the
+  // whole frame to one direction (and one color), losing all gradient.
+  '        vec3 _camFwdN = normalize(u_camFwd);\n' +
+  '        vec3 _camUu   = normalize(cross(_camFwdN, vec3(0.0, 1.0, 0.0)));\n' +
+  '        vec3 _camVv   = cross(_camUu, _camFwdN);\n' +
+  '        vec3 _camDir  = normalize(uv.x * _camUu + uv.y * _camVv + 3.0 * _camFwdN);\n' +
   '        vec3 _camAniso = sampleFillMap(_camDir);\n' +
   '        vec3 _camPhase = u_lighting >= 10\n' +
   '          ? _camAniso * clamp(dot(sampleFillMapBg(_camDir), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
   '          : _camAniso;\n' +
+  '        gPrismDir = _camDir; gPrismActive = true;\n' +
   '        return mix(_camPhase, _camAniso, u_waveBlendBg) * amp;\n' +
   '      }\n' +
   '      if (u_lighting >= 3) {\n' +
@@ -288,6 +431,7 @@ const MISS_NEW_VEC3 =
   '        vec3 _phase = u_lighting >= 10\n' +
   '          ? _aniso * clamp(dot(sampleFillMapBg(rd), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
   '          : _aniso;\n' +
+  '        gPrismDir = rd; gPrismActive = true;\n' +
   '        return mix(_phase, _aniso, u_waveBlendBg) * amp;\n' +
   '      }\n' +
   '      return sampleEnvMap(rd) * amp;';
@@ -297,11 +441,19 @@ const MISS_OLD_VEC4 =
   '      return vec4(u_lighting >= 3 ? sampleFillMap(rd) * amp : sampleEnvMap(rd) * amp, 1.0);';
 const MISS_NEW_VEC4 =
   '      if (u_camLight == 1) {\n' +
-  '        vec3 _camDir = normalize(u_camFwd);\n' +
+  // Re-centers the background on the camera's current forward vector (so it
+  // still reacts to camera angle) while keeping the same per-pixel spread
+  // `rd` has — a single `normalize(u_camFwd)` sample here would flatten the
+  // whole frame to one direction (and one color), losing all gradient.
+  '        vec3 _camFwdN = normalize(u_camFwd);\n' +
+  '        vec3 _camUu   = normalize(cross(_camFwdN, vec3(0.0, 1.0, 0.0)));\n' +
+  '        vec3 _camVv   = cross(_camUu, _camFwdN);\n' +
+  '        vec3 _camDir  = normalize(uv.x * _camUu + uv.y * _camVv + 3.0 * _camFwdN);\n' +
   '        vec3 _camAniso = sampleFillMap(_camDir);\n' +
   '        vec3 _camPhase = u_lighting >= 10\n' +
   '          ? _camAniso * clamp(dot(sampleFillMapBg(_camDir), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
   '          : _camAniso;\n' +
+  '        gPrismDir = _camDir; gPrismActive = true;\n' +
   '        return vec4(mix(_camPhase, _camAniso, u_waveBlendBg) * amp, 1.0);\n' +
   '      }\n' +
   '      if (u_lighting >= 3) {\n' +
@@ -309,16 +461,20 @@ const MISS_NEW_VEC4 =
   '        vec3 _phase = u_lighting >= 10\n' +
   '          ? _aniso * clamp(dot(sampleFillMapBg(rd), vec3(0.333333)) * 3.5, 0.0, 1.5)\n' +
   '          : _aniso;\n' +
+  '        gPrismDir = rd; gPrismActive = true;\n' +
   '        return vec4(mix(_phase, _aniso, u_waveBlendBg) * amp, 1.0);\n' +
   '      }\n' +
   '      return vec4(sampleEnvMap(rd) * amp, 1.0);';
 
-// fillLight call replacements — blend phase portrait (0) → anisotropic wave (1), rim light added additively
+// fillLight call replacements — blend phase portrait (0) → anisotropic wave (1);
+// records the surface normal into the gPrism side channel (so the object
+// genuinely reflects Prism), rim light added additively as before.
 const FILL_OLD_TB   = '  if (u_lighting >= 3) return fillLight(nor, rd, tb - t);';
 const FILL_NEW_TB   =
   '  if (u_lighting >= 3) {\n' +
   '    vec3 _aniso = fillLight(nor, rd, tb - t);\n' +
   '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, tb - t) : _aniso;\n' +
+  '    gPrismDir = nor; gPrismActive = true;\n' +
   '    return mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, tb - t) * u_rimStr;\n' +
   '  }';
 const FILL_OLD_100  = '  if (u_lighting >= 3) return fillLight(nor, rd, 100.0);  // open / periodic: SSS suppressed';
@@ -326,6 +482,7 @@ const FILL_NEW_100  =
   '  if (u_lighting >= 3) {\n' +
   '    vec3 _aniso = fillLight(nor, rd, 100.0);\n' +
   '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, 100.0) : _aniso;\n' +
+  '    gPrismDir = nor; gPrismActive = true;\n' +
   '    return mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, 100.0) * u_rimStr;\n' +
   '  }';
 const FILL_OLD_VEC4 = '  if (u_lighting >= 3) return vec4(fillLight(nor, rd, tb - t), 1.0);';
@@ -333,6 +490,7 @@ const FILL_NEW_VEC4 =
   '  if (u_lighting >= 3) {\n' +
   '    vec3 _aniso = fillLight(nor, rd, tb - t);\n' +
   '    vec3 _phase = u_lighting >= 10 ? phaseFill(nor, rd, tb - t) : _aniso;\n' +
+  '    gPrismDir = nor; gPrismActive = true;\n' +
   '    return vec4(mix(_phase, _aniso, u_waveBlendObj) + rimLight(pos, nor, rd, tb - t) * u_rimStr, 1.0);\n' +
   '  }';
 
@@ -345,22 +503,42 @@ const RIM_OLD_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t), 1.0);';
 const RIM_NEW_VEC4 = '  return vec4(rimLight(pos, nor, rd, tb - t) * u_rimStr, 1.0);';
 
 // Post-process chain, applied in each screen-output shader:
-// overlay (self-overlay contrast boost) → gamma → grayscale
+// overlay (self-overlay contrast boost) → gamma → grayscale.
+// (Prism is mixed in earlier, as part of the environment sampling in
+// MISS_NEW/FILL_NEW above record the direction the environment was sampled
+// from into gPrismDir (rd/_camDir for background, nor for a reflecting
+// surface) — genuinely behind the scene / reflected, not a screen filter.
+// Prism itself is mixed in last, after grayscale, so grayscale never touches
+// it, while everything else still goes through the same chain as before.
 const GRAY_OLD_VEC3 = '  col = pow(max(col, 0.0), vec3(0.4545));\n  gl_FragColor = vec4(col, 1.0);';
 const GRAY_NEW_VEC3 =
   '  col = mix(col, overlayBlend(col, col), u_overlayAmt);\n' +
   '  col = pow(max(col, 0.0), vec3(u_gamma));\n' +
   '  col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
+  // u_prismIntensity is a uniform, so this branch costs nothing extra when
+  // false. When true, samplePrismMap is a plain texture lookup — the actual
+  // prismOverlay() gamut search already ran once per texel in the bake pass
+  // (see PRISM_BAKE_FRAG), not per pixel per SSAA subsample here.
+  '  if (gPrismActive && u_prismIntensity > 0.0) {\n' +
+  '    vec4 _p = samplePrismMap(gPrismDir);\n' +
+  '    col = mix(col, _p.rgb, _p.a * u_prismIntensity);\n' +
+  '  }\n' +
   '  gl_FragColor = vec4(col, 1.0);';
 const GRAY_OLD_VEC4 = '  gl_FragColor = vec4(pow(max(col.rgb, vec3(0.0)), vec3(0.4545)), 1.0);';
 const GRAY_NEW_VEC4 =
   '  vec3 _gc = mix(col.rgb, overlayBlend(col.rgb, col.rgb), u_overlayAmt);\n' +
   '  _gc = pow(max(_gc, 0.0), vec3(u_gamma));\n' +
   '  _gc = mix(_gc, vec3(dot(_gc, vec3(0.299, 0.587, 0.114))), u_grayscale);\n' +
+  '  if (gPrismActive && u_prismIntensity > 0.0) {\n' +
+  '    vec4 _p = samplePrismMap(gPrismDir);\n' +
+  '    _gc = mix(_gc, _p.rgb, _p.a * u_prismIntensity);\n' +
+  '  }\n' +
   '  gl_FragColor = vec4(_gc, 1.0);';
 
 function injectCommon(src) {
-  src = src.replace('precision highp float;', 'precision highp float;\n' + CAM_DECLS + '\n' + OVERLAY_FN);
+  src = src.replace('precision highp float;',
+    'precision highp float;\n' + CAM_DECLS + '\n' + PRISM_CHANNEL_DECL + '\n' +
+    OVERLAY_FN + '\n' + PRISM_MAP_FN);
   src = src.replace('}\n\nvec3 flashLight(', '}\n\n' + FILL_MAP_BG_FN + '\n\nvec3 flashLight(');
   return src;
 }
@@ -402,6 +580,14 @@ function createPane(canvas, shaders, envTex) {
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
   });
   const fillTargetBg = new THREE.WebGLRenderTarget(W, H, {
+    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+  });
+
+  // Fixed small size — the prism bake is a smooth equirect gradient, not fine
+  // detail, and keeping it independent of canvas/SSAA resolution is the
+  // whole point (cost never grows with output resolution or pane count).
+  const PRISM_TEX_W = 256, PRISM_TEX_H = 128;
+  const prismTarget = new THREE.WebGLRenderTarget(PRISM_TEX_W, PRISM_TEX_H, {
     minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
   });
 
@@ -449,7 +635,26 @@ function createPane(canvas, shaders, envTex) {
     u_overlayAmt:   { value: 0.0 },
     u_camLight:     { value: 1 },
     u_camFwd:       { value: new THREE.Vector3(0, 0, -1) },
+    u_prismWidth:     { value: 0.1 },
+    u_prismAngle:     { value: 200 * Math.PI / 180 },
+    u_prismIntensity: { value: 0.0 },
+    u_prismTex:       { value: prismTarget.texture },
   };
+
+  // Bake pass: renders prismOverlay() once per frame into prismTarget at its
+  // small fixed resolution, sharing the same u_prismWidth/u_prismAngle
+  // uniform objects as `shared` (by reference) so the existing slider wiring
+  // updates both without any extra plumbing.
+  const prismUniforms = {
+    iResolution:  { value: new THREE.Vector2(PRISM_TEX_W, PRISM_TEX_H) },
+    u_prismWidth: shared.u_prismWidth,
+    u_prismAngle: shared.u_prismAngle,
+  };
+  const prismScene = new THREE.Scene();
+  prismScene.add(new THREE.Mesh(
+    new THREE.PlaneGeometry(2,2),
+    new THREE.ShaderMaterial({ uniforms:prismUniforms, vertexShader:shaders.vert, fragmentShader:shaders.fragPrismBake }),
+  ));
 
   const sdfU    = { ...shared, u_shapeIndex:  { value: 1 } };
   const platU   = { ...shared, u_pair:        { value: 0 }, u_t:{ value:0.0 } };
@@ -487,6 +692,7 @@ function createPane(canvas, shaders, envTex) {
     u_mid:       { value: 0.0 },
     u_treble:    { value: 0.0 },
     u_amp:       { value: 0.0 },
+    u_causticSharp: { value: 1.0 },
   };
   const fillScene = new THREE.Scene();
   fillScene.add(new THREE.Mesh(
@@ -498,11 +704,13 @@ function createPane(canvas, shaders, envTex) {
     canvas, renderer, cam,
     histBuf, histTex, fftBuf, fftTex, specBuf, specTex, wavBuf, wavTex,
     fillTarget, fillTargetBg, fillScene, fillUniforms,
+    prismTarget, prismScene, prismUniforms,
     scenes, shared, sdfU, platU, scalarU, movingU,
     composer: null, bloomPass: null, renderPass: null,
     activeScene: scenes.form,
     trackFrames: null,
     config: {},
+    aniMode: 0, // 0 = Anisotropic wave, 2 = Drifting caustic, 8 = Prism rainbow — used when bg_mix/obj_mix reach 1.0
   };
 }
 
@@ -614,14 +822,24 @@ function updatePaneTextures(pane, frames, audioTime) {
 // ── Render pane ───────────────────────────────────────────────────────────────
 
 function renderPane(pane, wallTime) {
-  const { renderer,cam,fillScene,fillTarget,fillTargetBg,fillUniforms,shared,platU,activeScene } = pane;
+  const { renderer,cam,fillScene,fillTarget,fillTargetBg,fillUniforms,shared,platU,activeScene,prismScene,prismTarget } = pane;
   shared.iTime.value       = wallTime;
   fillUniforms.iTime.value = wallTime;
 
+  // Skipped entirely when Prism isn't visible — same "free when off" gate as
+  // the per-pixel mix in GRAY_NEW — so this only costs anything during the
+  // brief window Prism is actually mixed in.
+  if (shared.u_prismIntensity.value > 0.0) {
+    renderer.setRenderTarget(prismTarget);
+    renderer.render(prismScene, cam);
+    renderer.setRenderTarget(null);
+  }
+
   if (shared.u_lighting.value >= 3) {
     if (shared.u_lighting.value === LIGHTING_GLOBAL) {
-      // Mode 10: anisotropic wave (0) for object, phase portrait (1) for background
-      fillUniforms.u_mode.value = 0;
+      // Mode 10: selectable env model (aniMode: 0/2/8) for object/background at
+      // full mix, phase portrait (1) at zero mix.
+      fillUniforms.u_mode.value = pane.aniMode;
       renderer.setRenderTarget(fillTarget);
       renderer.render(fillScene, cam);
 
@@ -694,6 +912,8 @@ function switchToStem(pane, stemId, stemConfigs, allFrames) {
   document.querySelectorAll('.sd-section[data-stem]').forEach((el, i) =>
     el.classList.toggle('sd-active', i === stemId)
   );
+  const labelEl = document.getElementById('pane-label-main');
+  if (labelEl) labelEl.textContent = STEMS[stemId].label;
 }
 
 // ── Prominence chart (bar view) ───────────────────────────────────────────────
@@ -728,24 +948,26 @@ function drawProminenceChart(ctx, scores) {
 }
 
 // ── Prominence radar chart ────────────────────────────────────────────────────
-// The prominence polygon lives on a flat disc in 3D (XZ plane) and is rotated
-// by the same matrix driving the main camera, so it turns in sync with
-// Rotation X/Y/Z and mouse-drag orbit — a real 3D object, not a flat overlay.
-// No background grid — only the shape itself.
+// The prominence polygon lives on a flat disc in 3D (XY plane, facing the
+// camera at rest) and is rotated by the same matrix driving the main camera,
+// so it turns in sync with Rotation X/Y/Z and mouse-drag orbit — a real 3D
+// object, not a flat overlay. No background grid — only the shape itself.
 
 const RADAR_N      = STEMS.length;
 const RADAR_ANGLES = Array.from({ length: RADAR_N }, (_, i) => -Math.PI / 2 + (2 * Math.PI * i) / RADAR_N);
 const _radarVec3   = new THREE.Vector3();
 
-function drawRadarChart(ctx, scores, W, H, camRot3, opacity) {
+function drawRadarChart(ctx, scores, W, H, camRot3, opacity, scale, color) {
   const cx = W * 0.5, cy = H * 0.5;
-  const R  = Math.min(W, H) * 0.42;
+  const R0 = Math.min(W, H) * 0.42; // reference radius — dot size stays independent of scale
+  const R  = R0 * scale;
+  const gray = Math.round(Math.max(0, Math.min(1, color)) * 255);
 
   ctx.clearRect(0, 0, W, H);
   ctx.globalAlpha = opacity;
 
   function project(angle, radiusFrac) {
-    _radarVec3.set(Math.cos(angle) * radiusFrac, 0, Math.sin(angle) * radiusFrac);
+    _radarVec3.set(Math.cos(angle) * radiusFrac, Math.sin(angle) * radiusFrac, 0);
     _radarVec3.applyMatrix3(camRot3);
     return { x: cx + _radarVec3.x * R, y: cy - _radarVec3.y * R };
   }
@@ -756,16 +978,16 @@ function drawRadarChart(ctx, scores, W, H, camRot3, opacity) {
   ctx.beginPath();
   pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(255,255,255,0.90)';
+  ctx.strokeStyle = `rgba(${gray},${gray},${gray},0.90)`;
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // Vertex dots
-  const DOT_R = Math.max(2.5, R * 0.010);
+  // Vertex dots — fixed size, does not scale with the shape
+  const DOT_R = Math.max(2.5, R0 * 0.010);
   pts.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y, DOT_R, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillStyle = `rgba(${gray},${gray},${gray},0.95)`;
     ctx.fill();
   });
 }
@@ -890,15 +1112,19 @@ async function init() {
   const mainCanvas    = document.getElementById('main-canvas');
   const chartCanvas   = document.getElementById('chart-canvas');
   const radarCanvas   = document.getElementById('radar-canvas');
+  const radar2Canvas  = document.getElementById('radar2-canvas');
   const resSel        = document.getElementById('res-sel');
   const chartCtx      = chartCanvas.getContext('2d');
   const radarCtx      = radarCanvas.getContext('2d');
+  const radar2Ctx     = radar2Canvas.getContext('2d');
   const settingsPanel = document.getElementById('settings-panel');
   const playBtn       = document.getElementById('play-btn');
   const aaBtn         = document.getElementById('aa-btn');
   const recBtn        = document.getElementById('rec-btn');
+  const recFrameCounter = document.getElementById('rec-frame-counter');
   const scoreBtn      = document.getElementById('score-btn');
   const radarBtn      = document.getElementById('radar-btn');
+  const radar2Btn     = document.getElementById('radar2-btn');
   const settingsBtn   = document.getElementById('settings-btn');
   const camLightBtn   = document.getElementById('cam-light-btn');
   const seekEl        = document.getElementById('seek');
@@ -983,9 +1209,27 @@ async function init() {
       .replace(GRAY_OLD_VEC4, GRAY_NEW_VEC4);
   }
 
+  // Adds a sharpness control to the Drifting caustic mode's color banding —
+  // scoped to this demo only via string-patch, not the shared sound-fill shader.
+  const CAUSTIC_SHARP_DECL_OLD = 'uniform float u_waveBlend;';
+  const CAUSTIC_SHARP_DECL_NEW =
+    'uniform float u_waveBlend;\n' +
+    'uniform float u_causticSharp;';
+  const CAUSTIC_SHARP_OLD = '  float I2 = 0.5 + 0.5 * cos(I * 3.0 * PI);';
+  const CAUSTIC_SHARP_NEW =
+    '  float I2 = 0.5 + 0.5 * cos(I * 3.0 * PI);\n' +
+    '  I2 = clamp((I2 - 0.5) * u_causticSharp + 0.5, 0.0, 1.0);';
+
+  function patchFill(src) {
+    return src
+      .replace(CAUSTIC_SHARP_DECL_OLD, CAUSTIC_SHARP_DECL_NEW)
+      .replace(CAUSTIC_SHARP_OLD,      CAUSTIC_SHARP_NEW);
+  }
+
   const shaders = {
     vert:        vertSrc,
-    fragFill:    fragFillSrc,
+    fragFill:    patchFill(fragFillSrc),
+    fragPrismBake: PRISM_BAKE_FRAG,
     fragSdf: buildFrag(patchLookat(fragSdfTmpl), [
       ['// INCLUDE_SDF_FUNCTIONS',  sdfFuncSrc],
       ['// INCLUDE_RIM_LIGHTING',   rimLightPatched],
@@ -1057,6 +1301,12 @@ async function init() {
   let chartVisible = false;
   let radarVisible = true;
   let radarOpacity = 1;
+  let radarScale = 1;
+  let radarColor = 1;
+  let radar2Visible = false;
+  let radar2Opacity = 1;
+  let radar2Scale = 1;
+  let radar2Color = 0;
 
   function updatePlayBtn() {
     playBtn.innerHTML = isPlaying ? PAUSE_ICON : PLAY_ICON;
@@ -1112,10 +1362,34 @@ async function init() {
     if (!isPlaying) requestAnimationFrame(() => renderFrame());
   });
 
+  // ── Frame-by-frame stepping (paused only) ─────────────────────────────────
+  // Left/Right steps exactly one frame back/forward — for stepping through
+  // to inspect an issue frame by frame without needing real-time playback.
+  document.addEventListener('keydown', e => {
+    if (isPlaying) return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.target.closest('input, textarea, select')) return;
+    e.preventDefault();
+    const dur = audio.duration || 0;
+    const step = e.key === 'ArrowRight' ? 1 / FPS : -1 / FPS;
+    const t = Math.max(0, Math.min(dur, clock.time + step));
+    audio.currentTime = t;
+    seekClock(t);
+    seekEl.value = Math.round((t / (dur || 1)) * 10000);
+    timeCur.textContent = formatTime(t);
+    requestAnimationFrame(() => renderFrame());
+  });
+
   // ── Env map + pane ───────────────────────────────────────────────────────
   const envTex = buildEnvMapTexture(THREE, 256, 128);
   const pane   = createPane(mainCanvas, shaders, envTex);
   buildPaneComposer(pane);
+
+  // Panes beyond the first are created lazily as the Panes slider is raised;
+  // activePanes always lists the ones currently visible/rendering, so shared
+  // lighting/camera controls can stay in sync across all of them.
+  let activePanes = [pane];
+  function forEachPane(fn) { activePanes.forEach(fn); }
 
   const stemConfigs = STEM_DEFAULTS.map(d => ({ ...d, bloom: { ...d.bloom } }));
 
@@ -1145,19 +1419,27 @@ async function init() {
 
   // Sound zoom / pan are raw amounts (not strengths) — drive them directly
   // from the animation JSON via getLevel()/getProminence().
+  // Reused across calls instead of `new THREE.Matrix4()` each time — this
+  // runs every frame (60-120x/sec), so allocating fresh matrices here was
+  // avoidable GC pressure, which shows up as jank on the whole thread, not
+  // just the canvas (e.g. scroll stutter), independent of raymarch cost.
+  const _camM = new THREE.Matrix4();
+  const _camMTemp = new THREE.Matrix4();
   function updateCamera() {
     const totalYaw = camYaw + rotY * DEG2RAD;
     const totalPitch = camPitch + rotX * DEG2RAD; // unclamped — rotation_x/y/z can spin freely
     const totalRoll = rotZ * DEG2RAD;
-    const m = new THREE.Matrix4().makeRotationY(totalYaw);
-    m.multiply(new THREE.Matrix4().makeRotationX(totalPitch));
-    if (totalRoll !== 0) m.multiply(new THREE.Matrix4().makeRotationZ(totalRoll));
-    pane.shared.u_camRot.value.setFromMatrix4(m);
-    pane.shared.u_camDist.value = Math.max(0.5, camDist + soundZoomStr);
-    pane.shared.u_camPan.value.set(camPanX + soundPanStr, camPanY);
-    // Cam light: background sampled along the direction the camera is currently
-    // facing (world-space), independent of bg_mix.
-    pane.shared.u_camFwd.value.set(0, 0, -1).transformDirection(m);
+    const m = _camM.makeRotationY(totalYaw);
+    m.multiply(_camMTemp.makeRotationX(totalPitch));
+    if (totalRoll !== 0) m.multiply(_camMTemp.makeRotationZ(totalRoll));
+    forEachPane(p => {
+      p.shared.u_camRot.value.setFromMatrix4(m);
+      p.shared.u_camDist.value = Math.max(0.5, camDist + soundZoomStr);
+      p.shared.u_camPan.value.set(camPanX + soundPanStr, camPanY);
+      // Cam light: background sampled along the direction the camera is currently
+      // facing (world-space), independent of bg_mix.
+      p.shared.u_camFwd.value.set(0, 0, -1).transformDirection(m);
+    });
   }
   updateCamera();
 
@@ -1224,12 +1506,133 @@ async function init() {
   canvasWrap.addEventListener('touchend', () => { lastTouches = null; });
 
   // ── SSAA ─────────────────────────────────────────────────────────────────
-  pane.shared.u_ssaa.value = 1; // default on
+  // Deliberately on by default here (unlike other demos) — this page is used
+  // to render final video output, where the quality matters more than
+  // runtime cost. Quadruples raymarch cost per pane (and multiplies further
+  // with multiple panes active), so it is a real, intentional cost.
+  forEachPane(p => { p.shared.u_ssaa.value = 1; });
   aaBtn.addEventListener('click', () => {
     const on = aaBtn.classList.toggle('active');
-    pane.shared.u_ssaa.value = on ? 1 : 0;
+    forEachPane(p => { p.shared.u_ssaa.value = on ? 1 : 0; });
     aaBtn.setAttribute('aria-label', on ? 'Antialiasing on' : 'Antialiasing off');
   });
+
+  // ── Multi-pane (Panes slider) ─────────────────────────────────────────────
+  // Slot 0 is always the pre-existing `pane`/`mainCanvas`. Extra slots are
+  // created lazily the first time the Panes slider requests them, then cached
+  // (hidden, not destroyed) so scrubbing the slider back and forth is cheap.
+  const panesRow = document.getElementById('panes-row');
+
+  // Debug aid: shows each pane's currently-assigned stem name in its corner,
+  // so a "these two panes look the same" report can be confirmed/ruled out
+  // from the label alone instead of guessing from pixels. Off by default.
+  let paneLabelsVisible = false;
+  const mainPaneLabel = document.createElement('div');
+  mainPaneLabel.className = 'pane-label';
+  mainPaneLabel.id = 'pane-label-main';
+  panesRow.appendChild(mainPaneLabel);
+
+  // Shows the ranked stem order and exact frame count for the current
+  // frame — same toggle as the per-pane labels, so both come as one package.
+  const paneDebugOverlay = document.createElement('div');
+  paneDebugOverlay.id = 'pane-debug-overlay';
+  panesRow.appendChild(paneDebugOverlay);
+
+  const paneSlots = [{ canvas: mainCanvas, pane, label: mainPaneLabel }];
+  let paneCount = 1;
+  let totalPaneW = mainCanvas.width, totalPaneH = mainCanvas.height;
+
+  function getOrCreatePaneSlot(i) {
+    if (paneSlots[i]) return paneSlots[i];
+    const c = document.createElement('canvas');
+    panesRow.appendChild(c);
+    const p = createPane(c, shaders, envTex);
+    buildPaneComposer(p);
+    applyInitialUniforms(p);
+    const label = document.createElement('div');
+    label.className = 'pane-label' + (paneLabelsVisible ? ' visible' : '');
+    panesRow.appendChild(label);
+    const slot = { canvas: c, pane: p, label };
+    paneSlots[i] = slot;
+    return slot;
+  }
+
+  function layoutPanes() {
+    const cw = Math.max(1, Math.floor(totalPaneW / paneCount));
+    let left = 0;
+    for (let i = 0; i < paneCount; i++) {
+      const slot = getOrCreatePaneSlot(i);
+      slot.canvas.style.display = 'block';
+      panesRow.appendChild(slot.canvas); // (re)appends in left-to-right slot order
+      panesRow.appendChild(slot.label);
+      if (slot.canvas.width !== cw || slot.canvas.height !== totalPaneH) {
+        slot.canvas.width  = cw;
+        slot.canvas.height = totalPaneH;
+        resizePane(slot.pane);
+      }
+      slot.canvas.style.width  = cw + 'px';
+      slot.canvas.style.height = totalPaneH + 'px';
+      slot.label.style.left = (left + 12) + 'px';
+      left += cw;
+    }
+    paneSlots.forEach((slot, i) => {
+      if (!slot) return;
+      const active = i < paneCount;
+      slot.canvas.style.display = active ? 'block' : 'none';
+      slot.label.classList.toggle('visible', active && paneLabelsVisible);
+    });
+    activePanes = paneSlots.slice(0, paneCount).map(s => s.pane);
+    updateCamera();
+  }
+
+  function setPaneLabelsVisible(visible) {
+    paneLabelsVisible = visible;
+    paneSlots.forEach((slot, i) => {
+      if (slot) slot.label.classList.toggle('visible', visible && i < paneCount);
+    });
+    paneDebugOverlay.classList.toggle('visible', visible);
+  }
+
+  function setPaneCount(n) {
+    paneCount = n;
+    layoutPanes();
+  }
+
+  function setTotalPaneSize(w, h) {
+    totalPaneW = w;
+    totalPaneH = h;
+    layoutPanes();
+  }
+
+  // Ranks stems by current prominence, then places them into pane slots via
+  // left to right in descending order (most prominent stem in the leftmost
+  // pane), reassigning each pane's shape/config only when its assigned stem
+  // changes.
+  function assignPanesByProminence(scores, rankedStemIds) {
+    paneSlots.slice(0, paneCount).forEach(({ pane: p, label }, slot) => {
+      const stemId = rankedStemIds[slot];
+      if (p.assignedStem !== stemId) {
+        p.assignedStem = stemId;
+        p.trackFrames = allFrames[STEMS[stemId].id];
+      }
+      // Shape/scene, bloom, and the label are all reasserted every frame (not
+      // gated behind the assignedStem-changed check above), self-healing
+      // against any stray external write in between. Concretely: slot 0's
+      // pane object and label element are the *same* objects switchToStem()
+      // uses in single-pane mode (paneSlots[0].pane === the module-level
+      // `pane` variable). If paneCount ever dips to 1 for a single frame — a
+      // legitimate near-tie flicker in the panes_count script — and back,
+      // switchToStem() calls applyConfig() directly on that shared pane,
+      // silently overwriting its activeScene/shape uniforms with the
+      // single-pane winner. assignedStem never changes through that, so the
+      // guard above would otherwise skip re-applying the correct shape —
+      // leaving slot 0 rendering the wrong stem's geometry indefinitely even
+      // though its label (and now the config below) keep self-correcting.
+      applyConfig(p, stemConfigs[stemId]);
+      label.textContent = STEMS[stemId].label;
+      applyBloom(p, stemConfigs[stemId].bloom);
+    });
+  }
 
   // ── Resolution ───────────────────────────────────────────────────────────
   const NATIVE_W = mainCanvas.width, NATIVE_H = mainCanvas.height;
@@ -1246,6 +1649,7 @@ async function init() {
     mainCanvas.width  = w;
     mainCanvas.height = h;
     resizePane(pane);
+    setTotalPaneSize(w, h);
   }
 
   resSel.addEventListener('change', () => applyResolution(resSel.value));
@@ -1256,7 +1660,15 @@ async function init() {
   camLightBtn.addEventListener('click', () => {
     const active = camLightBtn.classList.toggle('active');
     camLightBtn.setAttribute('aria-label', active ? 'Light: cam' : 'Light: world');
-    pane.shared.u_camLight.value = active ? 1 : 0;
+    forEachPane(p => { p.shared.u_camLight.value = active ? 1 : 0; });
+  });
+
+  // ── Pane labels toggle (debug aid) ────────────────────────────────────────
+  const paneLabelsBtn = document.getElementById('pane-labels-btn');
+  paneLabelsBtn.addEventListener('click', () => {
+    const active = paneLabelsBtn.classList.toggle('active');
+    paneLabelsBtn.setAttribute('aria-label', active ? 'Pane labels on' : 'Pane labels off');
+    setPaneLabelsVisible(active);
   });
 
   // ── Scores toggle ────────────────────────────────────────────────────────
@@ -1266,11 +1678,16 @@ async function init() {
     scoreBtn.setAttribute('aria-label', chartVisible ? 'Scores on' : 'Scores off');
   });
 
-  // ── Radar toggle ─────────────────────────────────────────────────────────
+  // ── Radar toggles ────────────────────────────────────────────────────────
   radarBtn.addEventListener('click', () => {
     radarVisible = radarBtn.classList.toggle('active');
     radarCanvas.style.display = radarVisible ? 'block' : 'none';
     radarBtn.setAttribute('aria-label', radarVisible ? 'Radar on' : 'Radar off');
+  });
+  radar2Btn.addEventListener('click', () => {
+    radar2Visible = radar2Btn.classList.toggle('active');
+    radar2Canvas.style.display = radar2Visible ? 'block' : 'none';
+    radar2Btn.setAttribute('aria-label', radar2Visible ? 'Radar 2 on' : 'Radar 2 off');
   });
 
   // ── Settings / Env-and-Effects toggles (mutually exclusive) ───────────────
@@ -1307,6 +1724,12 @@ async function init() {
   document.getElementById('settings-close').addEventListener('click', closeSettingsPanel);
 
   buildSettingsPanel(document.getElementById('settings-panel-scroll'), stemConfigs, pane);
+  // Cached once — built in STEMS order, so index i always lines up with
+  // scores[i]. Avoids two nested querySelector calls per stem, per frame,
+  // the whole time the panel is open (was 14 DOM queries + 7 style writes
+  // every single rendered frame, competing with the main thread for UI
+  // responsiveness even though the WebGL side stays at a steady frame rate).
+  const stemBarFills = [...document.querySelectorAll('#settings-panel-scroll .sd-section[data-stem] .sd-bar-fill')];
 
   // ── Side-params wiring ───────────────────────────────────────────────────
   function wireSlider(id, valId, onChange) {
@@ -1318,16 +1741,40 @@ async function init() {
     });
   }
 
-  wireSlider('p-bg-mix',     'p-bg-mix-v',     v => { pane.shared.u_waveBlendBg.value  = v; });
-  wireSlider('p-obj-mix',    'p-obj-mix-v',     v => { pane.shared.u_waveBlendObj.value = v; });
-  wireSlider('p-rim',        'p-rim-v',         v => { pane.shared.u_rimStr.value        = v; });
-  wireSlider('p-rim-width',  'p-rim-width-v',   v => { pane.shared.u_rimWidth.value      = v; });
-  wireSlider('p-grayscale',  'p-grayscale-v',   v => { pane.shared.u_grayscale.value     = v; });
-  wireSlider('p-overlay',    'p-overlay-v',     v => { pane.shared.u_overlayAmt.value     = v; });
-  wireSlider('p-gamma',      'p-gamma-v',       v => { pane.shared.u_gamma.value          = v; });
-  wireSlider('p-b-thresh',   'p-b-thresh-v',    v => { pane.bloomPass.threshold = v; });
-  wireSlider('p-b-strength', 'p-b-strength-v',  v => { pane.bloomPass.strength  = v; });
-  wireSlider('p-b-radius',   'p-b-radius-v',    v => { pane.bloomPass.radius    = v; });
+  wireSlider('p-bg-mix',     'p-bg-mix-v',     v => { forEachPane(p => { p.shared.u_waveBlendBg.value  = v; }); });
+  wireSlider('p-obj-mix',    'p-obj-mix-v',     v => { forEachPane(p => { p.shared.u_waveBlendObj.value = v; }); });
+
+  const envModelSel  = document.getElementById('p-env-model');
+  const envModelRows = document.querySelectorAll('[data-env-model]');
+  function updateEnvModelRows() {
+    envModelRows.forEach(row => {
+      row.style.display = row.dataset.envModel === envModelSel.value ? 'flex' : 'none';
+    });
+  }
+  envModelSel.addEventListener('change', e => {
+    const mode = parseInt(e.target.value, 10);
+    forEachPane(p => { p.aniMode = mode; });
+    updateEnvModelRows();
+  });
+  updateEnvModelRows();
+
+  wireSlider('p-caustic-sharp',   'p-caustic-sharp-v',   v => { forEachPane(p => { p.fillUniforms.u_causticSharp.value = v; }); });
+  wireSlider('p-prism-intensity', 'p-prism-intensity-v', v => { forEachPane(p => { p.shared.u_prismIntensity.value = v; }); });
+  wireSlider('p-prism-width',     'p-prism-width-v',     v => { forEachPane(p => { p.shared.u_prismWidth.value = v; }); });
+  wireSlider('p-prism-angle',     'p-prism-angle-v',     v => { forEachPane(p => { p.shared.u_prismAngle.value = v * Math.PI / 180; }); });
+  wireSlider('p-rim',        'p-rim-v',         v => { forEachPane(p => { p.shared.u_rimStr.value        = v; }); });
+  wireSlider('p-rim-width',  'p-rim-width-v',   v => { forEachPane(p => { p.shared.u_rimWidth.value      = v; }); });
+  wireSlider('p-grayscale',  'p-grayscale-v',   v => { forEachPane(p => { p.shared.u_grayscale.value     = v; }); });
+  wireSlider('p-overlay',    'p-overlay-v',     v => { forEachPane(p => { p.shared.u_overlayAmt.value     = v; }); });
+  wireSlider('p-gamma',      'p-gamma-v',       v => { forEachPane(p => { p.shared.u_gamma.value          = v; }); });
+  // Bloom is part of each pane's per-stem look (see STEM_DEFAULTS / applyBloom
+  // in assignPanesByProminence) — only broadcast these sliders to every pane
+  // in single-pane mode. In multi-pane mode, forcing the same bloom onto
+  // every pane every frame (e.g. via an animated bloom_strength) would erase
+  // the distinct per-stem bloom that's the main thing telling panes apart.
+  wireSlider('p-b-thresh',   'p-b-thresh-v',    v => { if (paneCount <= 1) forEachPane(p => { p.bloomPass.threshold = v; }); });
+  wireSlider('p-b-strength', 'p-b-strength-v',  v => { if (paneCount <= 1) forEachPane(p => { p.bloomPass.strength  = v; }); });
+  wireSlider('p-b-radius',   'p-b-radius-v',    v => { if (paneCount <= 1) forEachPane(p => { p.bloomPass.radius    = v; }); });
 
   function wireOrbitSlider(id, valId, resetId, setRate) {
     const sl = document.getElementById(id);
@@ -1339,25 +1786,59 @@ async function init() {
   wireOrbitSlider('p-rot-x', 'p-rot-x-v', 'p-rot-x-r', v => { rotX = v; updateCamera(); });
   wireOrbitSlider('p-rot-y', 'p-rot-y-v', 'p-rot-y-r', v => { rotY = v; updateCamera(); });
   wireOrbitSlider('p-rot-z', 'p-rot-z-v', 'p-rot-z-r', v => { rotZ = v; updateCamera(); });
-  wireOrbitSlider('p-dir-h', 'p-dir-h-v', 'p-dir-h-r', v => { pane.shared.u_camDir.value.x = v; });
-  wireOrbitSlider('p-dir-v', 'p-dir-v-v', 'p-dir-v-r', v => { pane.shared.u_camDir.value.y = v; });
+  wireOrbitSlider('p-dir-h', 'p-dir-h-v', 'p-dir-h-r', v => { forEachPane(p => { p.shared.u_camDir.value.x = v; }); });
+  wireOrbitSlider('p-dir-v', 'p-dir-v-v', 'p-dir-v-r', v => { forEachPane(p => { p.shared.u_camDir.value.y = v; }); });
   wireSlider('p-s-zoom',  'p-s-zoom-v',  v => { soundZoomStr = v; });
   wireSlider('p-s-pan',   'p-s-pan-v',   v => { soundPanStr  = v; });
-  wireOrbitSlider('p-collapse', 'p-collapse-v', 'p-collapse-r', v => { pane.shared.u_collapseY.value = v; });
-  wireSlider('p-radar-opacity', 'p-radar-opacity-v', v => { radarOpacity = v; });
+  wireOrbitSlider('p-collapse', 'p-collapse-v', 'p-collapse-r', v => { forEachPane(p => { p.shared.u_collapseY.value = v; }); });
+  wireSlider('p-radar-opacity',  'p-radar-opacity-v',  v => { radarOpacity = v; });
+  wireSlider('p-radar-scale',    'p-radar-scale-v',    v => { radarScale = v; });
+  wireSlider('p-radar-color',    'p-radar-color-v',    v => { radarColor = v; });
+  wireSlider('p-radar2-opacity', 'p-radar2-opacity-v', v => { radar2Opacity = v; });
+  wireSlider('p-radar2-scale',   'p-radar2-scale-v',   v => { radar2Scale = v; });
+  wireSlider('p-radar2-color',   'p-radar2-color-v',   v => { radar2Color = v; });
 
-  // Apply initial slider values to uniforms
-  pane.shared.u_waveBlendBg.value  = parseFloat(document.getElementById('p-bg-mix').value);
-  pane.shared.u_waveBlendObj.value = parseFloat(document.getElementById('p-obj-mix').value);
-  pane.shared.u_rimStr.value       = parseFloat(document.getElementById('p-rim').value);
-  pane.shared.u_rimWidth.value     = parseFloat(document.getElementById('p-rim-width').value);
-  pane.shared.u_grayscale.value    = parseFloat(document.getElementById('p-grayscale').value);
-  pane.shared.u_overlayAmt.value   = parseFloat(document.getElementById('p-overlay').value);
-  pane.shared.u_gamma.value        = parseFloat(document.getElementById('p-gamma').value);
-  pane.bloomPass.threshold = parseFloat(document.getElementById('p-b-thresh').value);
-  pane.bloomPass.strength  = parseFloat(document.getElementById('p-b-strength').value);
-  pane.bloomPass.radius    = parseFloat(document.getElementById('p-b-radius').value);
-  radarOpacity = parseFloat(document.getElementById('p-radar-opacity').value);
+  // Applies every current global slider/toggle value to one pane — used both
+  // for pane 0 at startup and for panes created later by the Panes slider.
+  function applyInitialUniforms(p) {
+    p.shared.u_ssaa.value     = aaBtn.classList.contains('active') ? 1 : 0;
+    p.shared.u_camLight.value = camLightBtn.classList.contains('active') ? 1 : 0;
+    p.aniMode = parseInt(document.getElementById('p-env-model').value, 10);
+    p.fillUniforms.u_causticSharp.value = parseFloat(document.getElementById('p-caustic-sharp').value);
+    p.shared.u_prismIntensity.value = parseFloat(document.getElementById('p-prism-intensity').value);
+    p.shared.u_prismWidth.value     = parseFloat(document.getElementById('p-prism-width').value);
+    p.shared.u_prismAngle.value     = parseFloat(document.getElementById('p-prism-angle').value) * Math.PI / 180;
+    p.shared.u_waveBlendBg.value  = parseFloat(document.getElementById('p-bg-mix').value);
+    p.shared.u_waveBlendObj.value = parseFloat(document.getElementById('p-obj-mix').value);
+    p.shared.u_rimStr.value       = parseFloat(document.getElementById('p-rim').value);
+    p.shared.u_rimWidth.value     = parseFloat(document.getElementById('p-rim-width').value);
+    p.shared.u_grayscale.value    = parseFloat(document.getElementById('p-grayscale').value);
+    p.shared.u_overlayAmt.value   = parseFloat(document.getElementById('p-overlay').value);
+    p.shared.u_gamma.value        = parseFloat(document.getElementById('p-gamma').value);
+    p.bloomPass.threshold = parseFloat(document.getElementById('p-b-thresh').value);
+    p.bloomPass.strength  = parseFloat(document.getElementById('p-b-strength').value);
+    p.bloomPass.radius    = parseFloat(document.getElementById('p-b-radius').value);
+    p.shared.u_camDir.value.x  = parseFloat(document.getElementById('p-dir-h').value);
+    p.shared.u_camDir.value.y  = parseFloat(document.getElementById('p-dir-v').value);
+    p.shared.u_collapseY.value = parseFloat(document.getElementById('p-collapse').value);
+  }
+  forEachPane(applyInitialUniforms);
+
+  const panesCountSl  = document.getElementById('p-panes-count');
+  const panesCountVal = document.getElementById('p-panes-count-v');
+  panesCountSl.max = String(STEMS.length);
+  panesCountSl.addEventListener('input', () => {
+    const n = parseInt(panesCountSl.value, 10);
+    panesCountVal.textContent = String(n);
+    setPaneCount(n);
+    if (!isPlaying) requestAnimationFrame(() => renderFrame());
+  });
+  radarOpacity  = parseFloat(document.getElementById('p-radar-opacity').value);
+  radarScale    = parseFloat(document.getElementById('p-radar-scale').value);
+  radarColor    = parseFloat(document.getElementById('p-radar-color').value);
+  radar2Opacity = parseFloat(document.getElementById('p-radar2-opacity').value);
+  radar2Scale   = parseFloat(document.getElementById('p-radar2-scale').value);
+  radar2Color   = parseFloat(document.getElementById('p-radar2-color').value);
 
   // ── Parameter animation ──────────────────────────────────────────────────
   // Every Env and Effects param has a JSON-friendly identifier mapped to its
@@ -1366,6 +1847,11 @@ async function init() {
   const PARAM_IDS = {
     bg_mix:          'p-bg-mix',
     obj_mix:         'p-obj-mix',
+    env_model:       'p-env-model',
+    caustic_sharp:   'p-caustic-sharp',
+    prism_intensity: 'p-prism-intensity',
+    prism_width:     'p-prism-width',
+    prism_angle:     'p-prism-angle',
     rim_light:       'p-rim',
     rim_width:       'p-rim-width',
     grayscale:       'p-grayscale',
@@ -1382,8 +1868,19 @@ async function init() {
     sound_zoom:      'p-s-zoom',
     sound_pan:       'p-s-pan',
     collapse_y:      'p-collapse',
+    panes_count:     'p-panes-count',
     radar_opacity:   'p-radar-opacity',
+    radar_scale:     'p-radar-scale',
+    radar_color:     'p-radar-color',
+    radar2_opacity:  'p-radar2-opacity',
+    radar2_scale:    'p-radar2-scale',
+    radar2_color:    'p-radar2-color',
   };
+
+  // env_model is scripted as a compact index (0/1) rather than the select's
+  // underlying option values (0/2), so animation code doesn't need to know
+  // the internal aniMode numbering.
+  const ENV_MODEL_VALUES = [0, 2];
 
   // Click a param name → copy its identifier to the clipboard
   Object.entries(PARAM_IDS).forEach(([name, sliderId]) => {
@@ -1444,7 +1941,9 @@ async function init() {
     '  "bg_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
     '  "obj_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
     '  "grayscale": (t) => 1.0 - smoothstep(0.0, duration, t),',
-    '  "bloom_strength": (t) => getLevel("master") * 2.5,',
+    '  "bloom_strength": (t) => getLevel("master") *',
+    ' 1.5 * (Math.max(getProminence("kick2") - 0.25, 0.25) * 10.0)',
+    ',',
     '  "sound_zoom": (t) => getProminence("kick1") * 1.5,',
     '  "rotation_y": (t) => {',
     'if (getProminentStemName() == "pad" || ',
@@ -1455,7 +1954,7 @@ async function init() {
     ' + Math.pow(Math.max(0, t - 60)/ 60, 2) * 360',
     '}},',
     '  "rotation_x": (t) => {',
-    'if (getProminentStemName() == "pad" || ',
+    'if (getProminentStemName() == "kick2" || ',
     'getProminentStemName() == "hat") {',
     'return 0;',
     '} else {',
@@ -1463,10 +1962,24 @@ async function init() {
     '}},',
     '  "direction_h": (t) => getLevel("master") * 2.5',
     '   * (0.25 + t / duration * 0.75) * Math.sin(t / duration * 30),',
-    '"gamma": (t) => 0.25 + (Math.min(1.0, t / duration * 1.25) * 0.5),',
+    '"gamma": (t) => {',
+    'const base = 0.25 + (Math.min(1.0, t / duration * 1.25) * 0.5);',
+    'return base + (0.3 - base) * smoothstep(duration - 30, duration, t);',
+    '},',
     '"rim_light": (t)=> (1.0 - getProminence("arp")) * 0.02,',
     '"overlay_amount": (t)=> t/duration,',
-    '"radar_opacity": (t)=> (1.0 - getLevel("master")) * 0.5,',
+    '"radar_opacity": (t)=> (1.0 - getLevel("master")) * 0.5',
+    '   * smoothstep(0, 1, t) * (1.0 - smoothstep(duration - 1, duration, t)),',
+    '"panes_count": (t) => {',
+    'if (!((t > 83 && getProminence("kick1")) > 0.25 && Math.floor(t / 10) % 2 === 1)) return 1;',
+    'const m = ((Math.floor((t - 83) / 5) % 3) + 3) % 3;',
+    'return m === 0 ? 3 : (m === 1 ? 1 : 2);',
+    '},',
+    '"env_model": (t)=> getProminence("arp") > 0.4 ?  0 : 1,',
+    '"prism_intensity": (t)=> smoothstep(49, 50, t) * 0.5 ',
+    '* smoothstep(0.1, 0.5, getProminence("kick1"))',
+    '   * (1.0 - smoothstep(duration - 7, duration - 2, t)),',
+    '"prism_width": (t)=> getProminence("pad"),',
     '}',
   ].join('\n');
 
@@ -1495,6 +2008,13 @@ async function init() {
   audio.addEventListener('loadedmetadata', compileAnims); // recompile once duration is known
   compileAnims();
 
+  // Skips the slider-set + event-dispatch (and whatever forEachPane work its
+  // listener does) whenever a param's value is identical to what was already
+  // applied last frame — free for continuously-varying params (which rarely
+  // repeat exactly), but a real, frequent win for step/threshold ones like
+  // panes_count and env_model, which otherwise redo their full update every
+  // single frame even while sitting on the same value for seconds at a time.
+  const lastAppliedAnimValues = {};
   function applyAnims(time) {
     if (!animFns) return;
     for (const [name, fn] of Object.entries(animFns)) {
@@ -1507,8 +2027,13 @@ async function init() {
       }
       if (typeof v !== 'number' || !isFinite(v)) continue;
       const sl = document.getElementById(PARAM_IDS[name]);
-      sl.value = v;
-      sl.dispatchEvent(new Event('input'));
+      const appliedValue = name === 'env_model'
+        ? ENV_MODEL_VALUES[Math.max(0, Math.min(ENV_MODEL_VALUES.length - 1, Math.round(v)))]
+        : v;
+      if (lastAppliedAnimValues[name] === appliedValue) continue;
+      lastAppliedAnimValues[name] = appliedValue;
+      sl.value = appliedValue;
+      sl.dispatchEvent(new Event(sl.tagName === 'SELECT' ? 'change' : 'input'));
     }
   }
 
@@ -1539,6 +2064,7 @@ async function init() {
   // ── Recording ─────────────────────────────────────────────────────────────
   let isRecording = false;
   let recFrame = 0;
+  let recTotalFrames = 0;
   let recDirHandle = null;
 
   // Offscreen canvas used to composite overlays (currently the radar chart)
@@ -1549,23 +2075,68 @@ async function init() {
   const RADAR_REF_W = 1920, RADAR_REF_H = 1080; // canvas-wrap reference size
 
   function compositeRecordingFrame() {
-    recCanvas.width  = mainCanvas.width;
-    recCanvas.height = mainCanvas.height;
-    recCtx.drawImage(mainCanvas, 0, 0, recCanvas.width, recCanvas.height);
+    // mainCanvas is just paneSlots[0].canvas — in multi-pane mode it's been
+    // shrunk to a single pane's width (layoutPanes), so drawing only it here
+    // silently dropped panes 2/3 and undersized the whole recorded frame.
+    // Composite every active pane side by side at the full on-screen width
+    // instead, mirroring layoutPanes' own left-to-right placement exactly.
+    recCanvas.width  = totalPaneW;
+    recCanvas.height = totalPaneH;
+    let x = 0;
+    for (let i = 0; i < paneCount; i++) {
+      const slot = paneSlots[i];
+      recCtx.drawImage(slot.canvas, x, 0, slot.canvas.width, slot.canvas.height);
+      x += slot.canvas.width;
+    }
     if (radarVisible) {
       const rw = radarCanvas.width  / RADAR_REF_W * recCanvas.width;
       const rh = radarCanvas.height / RADAR_REF_H * recCanvas.height;
       recCtx.drawImage(radarCanvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
     }
+    if (radar2Visible) {
+      const rw = radar2Canvas.width  / RADAR_REF_W * recCanvas.width;
+      const rh = radar2Canvas.height / RADAR_REF_H * recCanvas.height;
+      recCtx.drawImage(radar2Canvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
+    }
     return recCanvas;
   }
 
-  function stopRecording() {
+  // Screen Wake Lock — recording drives itself entirely off requestAnimationFrame,
+  // which browsers throttle/stop once the screen sleeps (the most common form
+  // of "the OS went to sleep" for someone sitting at a laptop). This is the only
+  // web-exposed way to ask the OS to hold the screen awake; it can't prevent a
+  // real system sleep/hibernate (closed lid, "sleep" from the OS menu), only an
+  // idle-timeout screen-off. Re-acquired on visibility change since the browser
+  // releases it whenever the tab itself is hidden.
+  let wakeLock = null;
+  async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try { wakeLock = await navigator.wakeLock.request('screen'); }
+    catch (err) { console.warn('Wake lock request failed:', err.message); }
+  }
+  function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (isRecording && document.visibilityState === 'visible' && !wakeLock) acquireWakeLock();
+  });
+
+  function stopRecording(errorMessage) {
     isRecording = false;
     recDirHandle = null;
     recBtn.classList.remove('active');
     recBtn.setAttribute('aria-label', 'Record off');
-    if (isPlaying) audio.play().catch(() => {});
+    recFrameCounter.classList.remove('visible');
+    releaseWakeLock();
+    if (errorMessage) {
+      console.error('Recording stopped:', errorMessage);
+      const prevText = recBtn.textContent;
+      recBtn.textContent = 'Rec ✕';
+      recBtn.title = errorMessage;
+      setTimeout(() => { recBtn.textContent = prevText; recBtn.title = ''; }, 4000);
+    } else if (isPlaying) {
+      audio.play().catch(() => {});
+    }
   }
 
   recBtn.addEventListener('click', async () => {
@@ -1577,11 +2148,15 @@ async function init() {
         return; // user cancelled
       }
       recFrame = Math.round(audio.currentTime * FPS);
+      recTotalFrames = Math.min(REC_MAX_FRAMES, Math.floor((audio.duration || 0) * FPS));
       seekClock(audio.currentTime);
       audio.pause();
       isRecording = true;
       recBtn.classList.add('active');
       recBtn.setAttribute('aria-label', 'Record on');
+      recFrameCounter.textContent = `${recFrame} / ${recTotalFrames}`;
+      recFrameCounter.classList.add('visible');
+      acquireWakeLock();
       if (!rafId) rafId = requestAnimationFrame(loop);
     } else {
       stopRecording();
@@ -1604,22 +2179,39 @@ async function init() {
     currentScores = scores;
 
     applyAnims(clock.time);
-
-    const winner = soloStemId !== null ? soloStemId : pickWinner(scores);
-    switchToStem(pane, winner, stemConfigs, allFrames);
-
     updateCamera();
 
-    updatePaneTextures(pane, pane.trackFrames, clock.time);
-    renderPane(pane, clock.time);
+    const rankedStemIds = STEMS.map((_, i) => i).sort((a, b) => scores[b] - scores[a]);
+
+    if (paneCount <= 1) {
+      const winner = soloStemId !== null ? soloStemId : pickWinner(scores);
+      switchToStem(pane, winner, stemConfigs, allFrames);
+      updatePaneTextures(pane, pane.trackFrames, clock.time);
+      renderPane(pane, clock.time);
+    } else {
+      assignPanesByProminence(scores, rankedStemIds);
+      activePanes.forEach(p => {
+        updatePaneTextures(p, p.trackFrames, clock.time);
+        renderPane(p, clock.time);
+      });
+    }
+
+    if (paneLabelsVisible) {
+      paneDebugOverlay.textContent =
+        `frame ${frameIdx}  |  ranked: [${rankedStemIds.map(id => STEMS[id].id).join(', ')}]`;
+    }
 
     if (chartVisible) drawProminenceChart(chartCtx, scores);
-    if (radarVisible) drawRadarChart(radarCtx, scores, radarCanvas.width, radarCanvas.height, pane.shared.u_camRot.value, radarOpacity);
+    if (radarVisible) drawRadarChart(radarCtx, scores, radarCanvas.width, radarCanvas.height, pane.shared.u_camRot.value, radarOpacity, radarScale, radarColor);
+    if (radar2Visible) {
+      const levels = STEMS.map(s => getLevel(s.id));
+      drawRadarChart(radar2Ctx, levels, radar2Canvas.width, radar2Canvas.height, pane.shared.u_camRot.value, radar2Opacity, radar2Scale, radar2Color);
+    }
 
     if (!settingsPanel.hidden) {
-      settingsPanel.querySelectorAll('.sd-section[data-stem]').forEach((el, i) => {
-        el.querySelector('.sd-bar-fill').style.width = `${(scores[i] * 100).toFixed(1)}%`;
-      });
+      for (let i = 0; i < stemBarFills.length; i++) {
+        stemBarFills[i].style.width = `${(scores[i] * 100).toFixed(1)}%`;
+      }
     }
   }
 
@@ -1635,10 +2227,27 @@ async function init() {
       renderFrame();
       const name = 'f' + String(recFrame).padStart(6, '0') + '.png';
       recFrame++;
+      recFrameCounter.textContent = `${recFrame} / ${recTotalFrames}`;
       compositeRecordingFrame().toBlob(blob => {
-        saveFrame(blob, name).then(() => {
-          if (isRecording) rafId = requestAnimationFrame(loop);
-        });
+        // A single transient write failure (e.g. right after waking from a
+        // screen/system sleep, before file-system permissions have settled)
+        // used to leave this promise chain silently unresolved — nothing
+        // else would ever call requestAnimationFrame(loop) again, so
+        // recording just stopped with no error and no visible cause. Retry
+        // once after a short delay before giving up and surfacing it.
+        const attemptSave = (retriesLeft) => {
+          saveFrame(blob, name)
+            .then(() => { if (isRecording) rafId = requestAnimationFrame(loop); })
+            .catch(err => {
+              if (retriesLeft > 0 && isRecording) {
+                console.warn(`Write retry for ${name}:`, err.message);
+                setTimeout(() => attemptSave(retriesLeft - 1), 500);
+              } else {
+                stopRecording(`Failed to write ${name}: ${err.message}`);
+              }
+            });
+        };
+        attemptSave(1);
       }, 'image/png');
     } else {
       rafId = requestAnimationFrame(loop);

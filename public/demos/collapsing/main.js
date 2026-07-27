@@ -226,7 +226,18 @@ function camMatrix() {
     'uniform float u_rimWidth;',
     'uniform float u_grayscale;',
     'uniform float u_collapseY;',
+    'uniform int   u_fillNoFold;',
   ].join('\n');
+
+  // sampleFillMap() (defined per-shape in each object/background shader) folds
+  // its azimuth coordinate around the forward direction to guarantee a
+  // seamless wrap for the other fill modes' non-periodic patterns. Prism
+  // rainbow's pattern IS periodic across the wrap (its direction reconstruction
+  // matches at az = ±PI), so folding it only mirrors the ring into a "V" —
+  // bypassing the fold when u_fillNoFold is set gives Prism a true seamless
+  // wraparound instead.
+  const FOLD_OLD = '  uv.x = uf < 0.5 ? uf * 2.0 : (1.0 - uf) * 2.0;';
+  const FOLD_NEW = '  uv.x = u_fillNoFold == 1 ? uf : (uf < 0.5 ? uf * 2.0 : (1.0 - uf) * 2.0);';
 
   // Camera replacement — same for all shader types
   const CAM_NEW =
@@ -328,7 +339,8 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
       .replace(fillOld, makeFillNew(thickness))
       .replace(rimOld,  makeRimNew(thickness))
       .replace(GRAY_OLD, GRAY_NEW)
-      .replace(camOld,  CAM_NEW);
+      .replace(camOld,  CAM_NEW)
+      .replace(FOLD_OLD, FOLD_NEW);
   }
 
   // ── Build each category's fragment shader ────────────────────────────────────
@@ -384,6 +396,97 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
     'tb - t'
   );
 
+  // Adds a sharpness control to the Drifting caustic mode's color banding —
+  // scoped to this demo only via string-patch, not the shared sound-fill shader.
+  const CAUSTIC_SHARP_DECL_OLD = 'uniform float u_waveBlend;';
+  const CAUSTIC_SHARP_DECL_NEW =
+    'uniform float u_waveBlend;\n' +
+    'uniform float u_causticSharp;\n' +
+    'uniform float u_prismWidth;\n' +
+    'uniform float u_prismAngle;';
+  const CAUSTIC_SHARP_OLD = '  float I2 = 0.5 + 0.5 * cos(I * 3.0 * PI);';
+  const CAUSTIC_SHARP_NEW =
+    '  float I2 = 0.5 + 0.5 * cos(I * 3.0 * PI);\n' +
+    '  I2 = clamp((I2 - 0.5) * u_causticSharp + 0.5, 0.0, 1.0);';
+
+  // Adds a "Prism rainbow" mode — a straightforward spectrum on black,
+  // echoing the Dark Side of the Moon cover. Hue is a plain linear ramp, so
+  // adjacent colors blend smoothly with no hard steps.
+  const PRISM_FN =
+`// ── Mode 8 — Prism rainbow ────────────────────────────────────────────────────
+vec3 modePrism(vec2 nUV) {
+  // Reconstruct the 3D direction this texel represents — the inverse of
+  // sampleFillMap's own azimuth/elevation projection (u = atan(dir.x,-dir.z)
+  // ..., v = asin(dir.y)/PI + 0.5) — then rotate that direction around the
+  // depth (Z) axis by u_prismAngle. This genuinely spins the whole
+  // environment sphere, poles included, rather than skewing a flat 2D
+  // gradient across the texture.
+  float az  = (nUV.x - 0.5) * 2.0 * PI;
+  float el  = (nUV.y - 0.5) * PI;
+  float cel = cos(el);
+  vec3  dir = vec3(sin(az) * cel, sin(el), -cos(az) * cel);
+
+  // u_fillNoFold (set whenever this mode is active) makes sampleFillMap read
+  // this texture with a plain wrap instead of its usual azimuth-folding
+  // trick, so dir.x's true sign survives sampling — the ring rotates
+  // cleanly instead of mirroring into a "V".
+  float ca = cos(u_prismAngle), sa = sin(u_prismAngle);
+  float ry = dir.x * sa + dir.y * ca; // rotated "north/south" component; dir.z (depth) is the fixed axis
+
+  // Width: 0 = zero-thickness strip at the equator, 1 = spans pole to pole.
+  float halfRange = max(u_prismWidth, 0.001);
+  float t    = clamp((ry + halfRange) / (2.0 * halfRange), 0.0, 1.0); // 0=south, 1=north
+  float blur = halfRange * 0.15;
+  float band = 1.0 - smoothstep(halfRange - blur, halfRange, abs(ry));
+
+  // Remaps mask-space position (t, 0..1) to hue-space position (0..1, where
+  // hue-space maps linearly to H below). A plain linear t->H made cyan the
+  // widest band and squeezed red/yellow/green/blue down to slivers; this
+  // piecewise remap gives red/yellow/green/blue much more of the visible
+  // band and cyan much less, without moving where any hue actually sits on
+  // the wheel. Each segment eases in/out with smoothstep (zero slope at both
+  // of its own endpoints) so the hue-change rate never jumps abruptly at a
+  // segment boundary — a discontinuous *rate* of change reads as a hard edge
+  // even though the color itself is still continuous there.
+  float hueT;
+  if      (t < 0.22) hueT = mix(0.00, 0.06, smoothstep(0.00, 0.22, t));
+  else if (t < 0.28) hueT = mix(0.06, 0.12, smoothstep(0.22, 0.28, t));
+  else if (t < 0.50) hueT = mix(0.12, 0.28, smoothstep(0.28, 0.50, t));
+  else if (t < 0.66) hueT = mix(0.28, 0.42, smoothstep(0.50, 0.66, t));
+  else if (t < 0.71) hueT = mix(0.42, 0.68, smoothstep(0.66, 0.71, t));
+  else if (t < 0.86) hueT = mix(0.68, 0.82, smoothstep(0.71, 0.86, t));
+  else                hueT = mix(0.82, 1.00, smoothstep(0.86, 1.00, t));
+
+  // Full spectrum red → orange → yellow → green → cyan → blue → violet.
+  // These particular H bounds (not 0/2π) are where this oklch()+maxChroma()
+  // combination actually renders pure red and pure violet.
+  float H = 0.5 + hueT * 5.1;
+  // Green/blue/violet read as neon at a flat L and 95%-of-gamut chroma, so
+  // both dip slightly past yellow for a bit more depth than a flat neon band
+  // — driven by hueT (true hue position), not t, so red and yellow stay
+  // bright regardless of how wide their band is.
+  float dip = smoothstep(0.14, 0.75, hueT);
+  float L = 0.70 - 0.18 * dip;
+  float C = maxChroma(L, H) * (0.95 - 0.15 * dip);
+  vec3  col = oklch(L, C, H);
+
+  return col * band;
+}
+
+`;
+  const DISPATCH_OLD = '// ── Dispatch ──────────────────────────────────────────────────────────────────\n';
+  const FILL_DISPATCH_OLD = '  return mode7(uv);\n}';
+  const FILL_DISPATCH_NEW = '  if (u_mode == 8) return modePrism(nUV);\n  return mode7(uv);\n}';
+
+  function patchFill(src) {
+    return src
+      .replace(CAUSTIC_SHARP_DECL_OLD, CAUSTIC_SHARP_DECL_NEW)
+      .replace(CAUSTIC_SHARP_OLD,      CAUSTIC_SHARP_NEW)
+      .replace(DISPATCH_OLD,           PRISM_FN + DISPATCH_OLD)
+      .replace(FILL_DISPATCH_OLD,      FILL_DISPATCH_NEW);
+  }
+  const fragFillPatched = patchFill(fragFillSrc);
+
   // ── Fill shader scene (renders to fill/fillBg targets) ──────────────────────
   const fillUniforms = {
     iResolution: { value: new THREE.Vector2(W, H) },
@@ -399,11 +502,14 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
     u_amp:       { value: 0 },
     u_waveBlend: { value: 0 },
     u_mode:      { value: 0 },
+    u_causticSharp: { value: 1.0 },
+    u_prismWidth:   { value: 0.1 },
+    u_prismAngle:   { value: 200 * Math.PI / 180 },
   };
   const fillScene = new THREE.Scene();
   fillScene.add(new THREE.Mesh(
     new THREE.PlaneGeometry(2,2),
-    new THREE.ShaderMaterial({ uniforms: fillUniforms, vertexShader: vertSrc, fragmentShader: fragFillSrc }),
+    new THREE.ShaderMaterial({ uniforms: fillUniforms, vertexShader: vertSrc, fragmentShader: fragFillPatched }),
   ));
 
   // ── Shared 3D uniforms ───────────────────────────────────────────────────────
@@ -444,6 +550,7 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
     u_rimWidth:     { value: 0.23 },
     u_grayscale:    { value: 1.00 },
     u_collapseY:    { value: 1.0 },
+    u_fillNoFold:   { value: 0 },
     // Shape indices (each shader uses the relevant one)
     u_surfaceIndex: { value: DEFAULT_SHAPE + 1 },
     u_shapeIndex:   { value: 1 },
@@ -549,6 +656,38 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
   }
   bindParam('p-bg-mix',    'p-bg-mix-v',    'u_waveBlendBg');
   bindParam('p-obj-mix',   'p-obj-mix-v',   'u_waveBlendObj');
+
+  let aniMode = 0; // 0 = Anisotropic wave, 2 = Drifting caustic, 8 = Prism rainbow — used when bg_mix/obj_mix reach 1.0
+  const envModelSel  = document.getElementById('p-env-model');
+  const envModelRows = document.querySelectorAll('[data-env-model]');
+  function updateEnvModelRows() {
+    envModelRows.forEach(row => {
+      row.style.display = row.dataset.envModel === envModelSel.value ? 'flex' : 'none';
+    });
+  }
+  envModelSel.addEventListener('change', e => {
+    aniMode = parseInt(e.target.value, 10);
+    shared.u_fillNoFold.value = aniMode === 8 ? 1 : 0;
+    updateEnvModelRows();
+  });
+  updateEnvModelRows();
+
+  function bindFillParam(id, valId, uniform) {
+    const sl = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value);
+      fillUniforms[uniform].value = v;
+      vl.textContent = v.toFixed(2);
+    });
+  }
+  bindFillParam('p-caustic-sharp', 'p-caustic-sharp-v', 'u_causticSharp');
+  bindFillParam('p-prism-width',   'p-prism-width-v',   'u_prismWidth');
+  document.getElementById('p-prism-angle').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    fillUniforms.u_prismAngle.value = v * Math.PI / 180;
+    document.getElementById('p-prism-angle-v').textContent = v.toFixed(0);
+  });
   bindParam('p-rim',       'p-rim-v',       'u_rimStr');
   bindParam('p-rim-width', 'p-rim-width-v', 'u_rimWidth');
   bindParam('p-grayscale', 'p-grayscale-v', 'u_grayscale');
@@ -696,7 +835,7 @@ vec3 phaseFill(vec3 nor, vec3 rd, float thickness) {
     shared.u_camDist.value   = camState.dist;
     shared.u_camPan.value.set(camState.panX, camState.panY);
 
-    fillUniforms.u_mode.value = 0;
+    fillUniforms.u_mode.value = aniMode;
     renderer.setRenderTarget(fillTarget);
     renderer.render(fillScene, cam2d);
     fillUniforms.u_mode.value = 1;

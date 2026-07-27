@@ -67,12 +67,11 @@ const navItems: NavItem[] = [
   { label: 'Effects and Refinements',   href: `${base}/transitions`,               slug: 'transitions',
     subLinks: [
       { label: 'Mixed lighting',         href: '#mixed-lighting' },
-      { label: 'Dimensional expansion',  href: '#dimensional-expansion' },
       { label: 'Collapsing',             href: '#collapsing' },
       { label: 'Camera motion',          href: '#camera-motion' },
     ]
   },
-  { label: 'Rendering', href: `${base}/rendering`, slug: 'rendering' },
+  { label: 'Composition', href: `${base}/composition`, slug: 'composition' },
   ...(import.meta.env.DEV ? [
     { label: '[Sketch] Fill functions', href: `${base}/sketches/fill-functions`, slug: 'sketches/fill-functions', sketch: true,
       subLinks: [

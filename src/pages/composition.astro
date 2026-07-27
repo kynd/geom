@@ -3,25 +3,26 @@ import PageLayout from '../layouts/PageLayout.astro';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<PageLayout title="Rendering" slug="rendering">
+<PageLayout title="Composition" slug="composition">
   <div class="monologue">
-    Rendering experiments. Following the <a href={`${base}/#rules-tentative`}>rule</a>, everything is deterministic — driven either by time or by the sound data.
+    Composition experiments. Following the <a href={`${base}/#rules-tentative`}>rule</a>, everything is deterministic — driven either by time or by the sound data.
   </div>
 
-  <section class="demo-section" id="rendering">
+  <section class="demo-section" id="composition">
     <div class="demo-header">
-      <h2>Rendering</h2>
-      <a href={`${base}/demos/rendering/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+      <h2>Composition</h2>
+      <a href={`${base}/demos/composition/index.html`} target="_blank" rel="noopener">open full size ↗</a>
     </div>
     <div class="demo-embed">
-      <iframe src={`${base}/demos/rendering/index.html?embedded`} title="Rendering" scrolling="no"></iframe>
+      <iframe src={`${base}/demos/composition/index.html?embedded`} title="Composition" scrolling="no"></iframe>
     </div>
     <div class="prose">
       <p>
-        "Object settings" configures each stem's shape, the same per-stem type/category/shape/effect controls as the Multitrack visualizer. "Env and Effects" configures everything else, grouped into four sections:
+        "Object settings" configures each stem's shape, the same per-stem type/category/shape/effect controls as the Multitrack visualizer. "Env and Effects" configures everything else, grouped into five sections:
       </p>
       <ul>
-        <li><strong>Lighting</strong> — <code>bg_mix</code> and <code>obj_mix</code> (phase portrait → anisotropic wave blend, for background and object separately), <code>rim_light</code>, <code>rim_width</code>, <code>grayscale</code>, <code>overlay_amount</code> (self-overlay contrast), and <code>gamma</code>.</li>
+        <li><strong>Lighting</strong> — <code>bg_mix</code> and <code>obj_mix</code> (phase portrait → anisotropic wave blend, for background and object separately), <code>env_model</code> (0 = anisotropic wave, 1 = drifting caustic), <code>caustic_sharp</code>, <code>rim_light</code>, <code>rim_width</code>, <code>grayscale</code>, <code>overlay_amount</code> (self-overlay contrast), and <code>gamma</code>.</li>
+        <li><strong>Prism</strong> — <code>prism_intensity</code>, <code>prism_width</code>, <code>prism_angle</code>. A rainbow band mixed on top of everything else, last — independent of the sound level and unaffected by <code>grayscale</code>.</li>
         <li><strong>Bloom</strong> — <code>bloom_threshold</code>, <code>bloom_strength</code>, <code>bloom_radius</code>.</li>
         <li><strong>Camera</strong> — absolute <code>rotation_x</code>/<code>rotation_y</code>/<code>rotation_z</code> in degrees, <code>direction_h</code>/<code>direction_v</code> (look-target offset), and raw <code>sound_zoom</code>/<code>sound_pan</code> amounts. A separate "Cam light" toggle samples the background from the camera's current facing direction instead of per-pixel.</li>
         <li><strong>Collapse</strong> — <code>collapse_y</code>, flattening the shape along the Y axis.</li>
