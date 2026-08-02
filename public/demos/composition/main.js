@@ -89,6 +89,13 @@ const STEM_DEFAULTS = [
 let currentWinnerId = 0;
 let soloStemId = null;
 
+// Minimum time (ms) between actual shape switches — applies the same
+// flicker-reducing hold used by getStableProminentStemId, but to the shape
+// choice itself (single-pane mode), which isn't reachable from the
+// animation script since it's decided every frame before applyAnims runs.
+let shapeHoldMs = 50;
+let winnerSwitchedAt = 0;
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const PLAY_ICON  = '<svg viewBox="0 0 10 12" fill="currentColor" width="12" height="12"><polygon points="1,0 10,6 1,12"/></svg>';
@@ -901,17 +908,23 @@ function computeProminence(frameIdx, allFrames, onsetData) {
   return exps.map(e => e / sum);
 }
 
-function pickWinner(scores) {
+function pickWinner(scores, nowSec) {
   const max = Math.max(...scores);
   if (max < WIN_THRESH) return currentWinnerId;
-  return scores.indexOf(max);
+  const candidate = scores.indexOf(max);
+  if (candidate === currentWinnerId) return currentWinnerId;
+  // Minimum hold: even once some other stem clears WIN_THRESH, don't switch
+  // again until shapeHoldMs has passed since the last actual switch.
+  if ((nowSec - winnerSwitchedAt) * 1000 < shapeHoldMs) return currentWinnerId;
+  return candidate;
 }
 
 // ── Switch to stem ────────────────────────────────────────────────────────────
 
-function switchToStem(pane, stemId, stemConfigs, allFrames) {
+function switchToStem(pane, stemId, stemConfigs, allFrames, nowSec) {
   if (stemId === currentWinnerId) return;
   currentWinnerId = stemId;
+  winnerSwitchedAt = nowSec;
   const cfg = stemConfigs[stemId];
   applyConfig(pane, cfg);
   pane.trackFrames = allFrames[STEMS[stemId].id];
@@ -1949,6 +1962,15 @@ async function init() {
     setPaneCount(n);
     if (!isPlaying) requestAnimationFrame(() => renderFrame());
   });
+
+  const shapeHoldSl  = document.getElementById('p-shape-hold');
+  const shapeHoldVal = document.getElementById('p-shape-hold-v');
+  shapeHoldSl.addEventListener('input', () => {
+    shapeHoldMs = Math.round(parseFloat(shapeHoldSl.value));
+    shapeHoldVal.textContent = String(shapeHoldMs);
+  });
+  shapeHoldMs = Math.round(parseFloat(shapeHoldSl.value));
+
   radarOpacity    = parseFloat(document.getElementById('p-radar-opacity').value);
   radarScale      = parseFloat(document.getElementById('p-radar-scale').value);
   radarColor      = parseFloat(document.getElementById('p-radar-color').value);
@@ -2054,7 +2076,7 @@ async function init() {
 
   // Currently prominent (winning) stem — same hysteresis logic the visual switcher uses.
   function getProminentStemId() {
-    return pickWinner(currentScores);
+    return pickWinner(currentScores, clock.time);
   }
   function getProminentStemName() {
     return STEMS[getProminentStemId()].id;
@@ -2082,6 +2104,40 @@ async function init() {
       if (maxIdx === idx) return true;
     }
     return false;
+  }
+
+  // Ratio of the current render width to Full HD (1920) — 1.0 at "Current"/
+  // Full HD, 2.0 at 4K. Anything drawn in fixed screen pixels (radar stroke
+  // width, dot radius, etc.) gets relatively thinner as this grows, since the
+  // frame itself is proportionally larger; multiply an opacity or size by
+  // this from the script to compensate instead of hardcoding a resolution.
+  const REF_RES_W = 1920;
+  function getResMultiplier() {
+    return totalPaneW / REF_RES_W;
+  }
+
+  // Holds the top-prominence stem fixed for at least holdMs after it last
+  // actually changed, instead of tracking the instantaneous argmax — reduces
+  // flicker in anything keyed off "the current prominent stem" (e.g.
+  // radar_pos_x's slot). Stateful (unlike wasProminentWithin's pure
+  // look-back), but updated once per rendered frame from clock.time — same
+  // pattern as pickWinner's own hysteresis elsewhere in this file — so it's
+  // exactly reproducible for recording, which always steps every frame in
+  // order at a fixed 60fps regardless of real render speed.
+  let stableProminentId = 0;
+  let stableProminentChangedAt = 0;
+  function getStableProminentStemId(holdMs) {
+    const holdSec = (holdMs || 0) / 1000;
+    let rawId = 0;
+    for (let i = 1; i < currentScores.length; i++) if (currentScores[i] > currentScores[rawId]) rawId = i;
+    if (rawId !== stableProminentId && (clock.time - stableProminentChangedAt) >= holdSec) {
+      stableProminentId = rawId;
+      stableProminentChangedAt = clock.time;
+    }
+    return stableProminentId;
+  }
+  function getStableProminentStemName(holdMs) {
+    return STEMS[getStableProminentStemId(holdMs)].id;
   }
 
   const animCodeEl = document.getElementById('anim-code');
@@ -2164,9 +2220,14 @@ async function init() {
       const build = new Function(
         'smoothstep', 'duration', 'getProminence', 'getLevel',
         'getProminentStemId', 'getProminentStemName', 'wasProminentWithin',
+        'getResMultiplier', 'getStableProminentStemId', 'getStableProminentStemName',
         'return (' + animCodeEl.value + ');'
       );
-      const obj = build(smoothstep, audio.duration || 0, getProminence, getLevel, getProminentStemId, getProminentStemName, wasProminentWithin);
+      const obj = build(
+        smoothstep, audio.duration || 0, getProminence, getLevel,
+        getProminentStemId, getProminentStemName, wasProminentWithin,
+        getResMultiplier, getStableProminentStemId, getStableProminentStemName
+      );
       if (obj === null || typeof obj !== 'object') throw new Error('Definition must be an object');
       for (const key of Object.keys(obj)) {
         if (!(key in PARAM_IDS)) throw new Error(`Unknown param "${key}". Valid: ${Object.keys(PARAM_IDS).join(', ')}`);
@@ -2248,7 +2309,6 @@ async function init() {
   // like the bar chart / settings panels are intentionally left out.
   const recCanvas = document.createElement('canvas');
   const recCtx    = recCanvas.getContext('2d');
-  const RADAR_REF_W = 1920, RADAR_REF_H = 1080; // canvas-wrap reference size
 
   function compositeRecordingFrame() {
     // mainCanvas is just paneSlots[0].canvas — in multi-pane mode it's been
@@ -2265,14 +2325,20 @@ async function init() {
       x += slot.canvas.width;
     }
     if (radarVisible) {
-      const rw = radarCanvas.width  / RADAR_REF_W * recCanvas.width;
-      const rh = radarCanvas.height / RADAR_REF_H * recCanvas.height;
+      // radar-canvas is already resized to totalPaneW/H (see
+      // setTotalPaneSize) — exactly matching recCanvas here — so this is a
+      // direct 1:1 copy. It used to be rescaled against a fixed 1920x1080
+      // reference under the assumption radar-canvas was always a small fixed
+      // box; now that assumption is gone, that math doubled the drawn size
+      // at 4K (totalPaneW=3840, so rw = radarCanvas.width/1920*recCanvas.width
+      // = 2x recCanvas.width) instead of just copying it straight across.
+      //
       // Matches the #radar-canvas.blend-diff CSS mix-blend-mode used for live
       // preview — that's a paint-time DOM effect, invisible to drawImage's
       // raw pixel copy, so it has to be reproduced explicitly here or
       // recordings would silently come out plain source-over.
       if (radarBlendMode) recCtx.globalCompositeOperation = 'difference';
-      recCtx.drawImage(radarCanvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
+      recCtx.drawImage(radarCanvas, 0, 0);
       recCtx.globalCompositeOperation = 'source-over';
     }
     return recCanvas;
@@ -2361,8 +2427,8 @@ async function init() {
     const rankedStemIds = STEMS.map((_, i) => i).sort((a, b) => scores[b] - scores[a]);
 
     if (paneCount <= 1) {
-      const winner = soloStemId !== null ? soloStemId : pickWinner(scores);
-      switchToStem(pane, winner, stemConfigs, allFrames);
+      const winner = soloStemId !== null ? soloStemId : pickWinner(scores, clock.time);
+      switchToStem(pane, winner, stemConfigs, allFrames, clock.time);
       updatePaneTextures(pane, pane.trackFrames, clock.time);
       renderPane(pane, clock.time);
     } else {

@@ -261,6 +261,14 @@
         </div>
       </div>
       <div class="sd-section">
+        <div class="sd-header"><span class="sd-name">Shape</span></div>
+        <div class="sd-row">
+          <span class="sd-label">Hold (ms)</span>
+          <input type="range" class="params-sl" id="p-shape-hold" min="0" max="2000" step="10" value="50">
+          <span class="params-val" id="p-shape-hold-v">50</span>
+        </div>
+      </div>
+      <div class="sd-section">
         <div class="sd-header"><span class="sd-name">Lighting</span></div>
         <div class="sd-row">
           <span class="sd-label">Bg mix</span>
@@ -502,7 +510,7 @@
       wrap.style.height = '540px';
     }
   </script>
-  <script type="module" src="./main.js?v=42"></script>
+  <script type="module" src="./main.js?v=44"></script>
   <script>
 (function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
   </script>
