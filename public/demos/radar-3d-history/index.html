@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radar 3D history</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400&family=Google+Sans+Code:wght@400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../styles/demo-ui.css" />
+  <style>
+    html, body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .canvas-wrap { position: relative; width: 1920px; height: 1080px; flex-shrink: 0; }
+    #main-canvas { position: absolute; top: 0; left: 0; display: block; cursor: grab; }
+    #main-canvas.dragging { cursor: grabbing; }
+
+    /* ── Side params ───────────────────────────────────────────────────────── */
+    /* flex-wrap + a max-width tied to the (embeddable) wrapper's own width —
+       not a fixed pixel value — so the four columns wrap onto a second row
+       instead of running past the edge of a 960px-wide embedded canvas. */
+    #side-params {
+      position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
+      max-width: calc(100% - 64px);
+      display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center;
+      gap: 12px 16px;
+      pointer-events: all; z-index: 15;
+      background: rgba(0,0,0,0.45); border-radius: 8px;
+      padding: 10px 12px;
+    }
+    #side-params .params-col-label {
+      font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 300;
+      color: rgba(255,255,255,0.22); letter-spacing: 0.08em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .params-sl { width: 80px; }
+    #side-params .params-lbl { width: 50px; }
+
+    /* ── Loading ────────────────────────────────────────────────────────────── */
+    #loading {
+      position: absolute; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #000; transition: opacity 0.5s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    #loading-label {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    #loading-tracks { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+    .load-row { display: flex; align-items: center; gap: 10px; }
+    .load-name {
+      font-family: 'Google Sans Code', monospace; font-size: 12px;
+      color: rgba(255,255,255,0.40); width: 52px; flex-shrink: 0;
+    }
+    .load-bar-bg {
+      flex: 1; height: 1px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
+    }
+    .load-bar-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.55); border-radius: 1px;
+      transition: width 0.08s linear;
+    }
+    .load-bar-fill.indeterminate {
+      width: 30%; animation: indeterminate 1.2s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(430%); }
+    }
+    .load-pct {
+      font-family: 'Google Sans Code', monospace; font-size: 10px;
+      color: rgba(255,255,255,0.20); width: 30px; text-align: right; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap">
+    <canvas id="main-canvas" width="1920" height="1080"></canvas>
+
+    <div id="side-params">
+      <div>
+        <div class="params-col-label">History</div>
+        <div class="params-panel">
+          <div class="params-row">
+            <span class="params-lbl">Count</span>
+            <input type="range" class="params-sl" id="p-hist-count" min="0" max="40" step="1" value="30">
+            <span class="params-val" id="p-hist-count-v">30</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Span</span>
+            <input type="range" class="params-sl" id="p-hist-span" min="1" max="30" step="1" value="16">
+            <span class="params-val" id="p-hist-span-v">16</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="params-col-label">Shape</div>
+        <div class="params-panel">
+          <div class="params-row">
+            <span class="params-lbl">Size</span>
+            <input type="range" class="params-sl" id="p-shape-size" min="0.2" max="2.5" step="0.01" value="2">
+            <span class="params-val" id="p-shape-size-v">2</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">FFT</span>
+            <input type="range" class="params-sl" id="p-fft-size" min="0" max="1" step="0.01" value="0.25">
+            <span class="params-val" id="p-fft-size-v">0.25</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Prominence</span>
+            <input type="range" class="params-sl" id="p-prom-move" min="0" max="1" step="0.01" value="0.5">
+            <span class="params-val" id="p-prom-move-v">0.5</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Bins</span>
+            <input type="range" class="params-sl" id="p-bins" min="1" max="32" step="1" value="32">
+            <span class="params-val" id="p-bins-v">32</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="params-col-label">Rotation (°/s)</div>
+        <div class="params-panel">
+          <div class="params-row">
+            <span class="params-lbl">X</span>
+            <input type="range" class="params-sl" id="p-rot-x" min="-90" max="90" step="1" value="0">
+            <span class="params-val" id="p-rot-x-v">0</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Y</span>
+            <input type="range" class="params-sl" id="p-rot-y" min="-90" max="90" step="1" value="7">
+            <span class="params-val" id="p-rot-y-v">7</span>
+          </div>
+          <div class="params-row">
+            <span class="params-lbl">Z</span>
+            <input type="range" class="params-sl" id="p-rot-z" min="-90" max="90" step="1" value="0">
+            <span class="params-val" id="p-rot-z-v">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="progress-wrap" class="seek-bar" style="position:absolute;bottom:0;left:0;right:0;z-index:10;">
+      <span id="time-current" class="seek-time">0:00</span>
+      <input id="seek" class="seek-track" type="range" min="0" max="10000" value="0" step="1" aria-label="Seek" />
+      <span id="time-total" class="seek-time right">0:00</span>
+    </div>
+    <div id="ctrl-bar" class="ctrl-bar">
+      <div class="ctrl-bar-r1">
+        <div class="ctrl-bar-spacer"></div>
+        <button id="aa-btn" class="bar-btn" aria-label="Antialiasing off">Antialias</button>
+        <button id="play-btn" class="play-btn" aria-label="Play"></button>
+      </div>
+      <div class="ctrl-bar-r2">
+        <span class="fps-inline" id="fps-meter">-- fps</span>
+      </div>
+    </div>
+    <div id="loading">
+      <div id="loading-label">Loading audio data</div>
+      <div id="loading-tracks"></div>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).has('embedded')) {
+      const canvas = document.getElementById('main-canvas');
+      const wrap   = canvas.closest('.canvas-wrap');
+      canvas.width  = 960; canvas.height  = 540;
+      canvas.style.width  = '960px'; canvas.style.height = '540px';
+      wrap.style.width    = '960px'; wrap.style.height   = '540px';
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+  <script>
+(function(){var el=document.getElementById('fps-meter'),f=0,l=performance.now();function t(n){f++;if(n-l>=1000){el.textContent=f+' fps';f=0;l=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Sound graphics" slug="sketches/sound-graphics">
+  <div class="monologue">
+    Twenty-one ways to draw the same seven stems around a loop.
+  </div>
+
+  <section class="demo-section" id="sound-graphics">
+    <div class="demo-header">
+      <h2>Sound graphics</h2>
+      <a href={`${base}/sketches/sound-graphics/demo/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/sound-graphics/demo/index.html?embedded`} title="Sound graphics" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The first option, <em>Prominence radar</em>, is copied directly from the
+        <a href={`${base}/multitrack-visualization#stem-radar`}>Track prominence radar chart</a>:
+        each of the seven stems gets a fixed angle around the center, and the vertex on that
+        axis travels outward in proportion to the stem's combined prominence score.
+      </p>
+      <p>
+        The other twenty ideas keep that same organizing principle — map every stem to its own
+        angle around a loop — but swap in different signals (instantaneous level, prominence,
+        onset/transient strength, per-band or full FFT spectrum, and recent history) and
+        different marks (bars, petals, rings, waveforms, particles, ghost trails). Pick any of
+        them from the dropdown in the player above.
+      </p>
+      <dl class="viz-list">
+        <dt>Prominence radar (reference)</dt>
+        <dd>The heptagon polygon copied from the stem radar chart — vertex distance is each stem's softmax prominence.</dd>
+
+        <dt>Level spokes</dt>
+        <dd>A thick radial bar per stem, straight from center. Length and opacity both track that stem's instantaneous level, so the whole shape visibly breathes with the beat.</dd>
+
+        <dt>Prominence petals</dt>
+        <dd>A soft lens-shaped petal per stem instead of a straight spoke — length and width both scale with prominence, giving the dominant stem's petal a fuller, more solid shape.</dd>
+
+        <dt>Onset flash rings</dt>
+        <dd>A short arc near each stem's angle that jumps outward and brightens right on a transient, then relaxes back — a hit/attack detector rendered as a ring flash instead of a spoke length.</dd>
+
+        <dt>Circular oscilloscope</dt>
+        <dd>The circle is split into seven wedges, one per stem; each wedge draws that stem's own recent amplitude history as a little waveform trace, like seven oscilloscope channels arranged around a dial.</dd>
+
+        <dt>Frequency wheel</dt>
+        <dd>Same wedge layout, but each wedge plots the stem's full 128-bin FFT as a smooth radial mountain — bin index sweeps across the wedge, energy pushes the outline outward.</dd>
+
+        <dt>FFT radial bars</dt>
+        <dd>The same idea as the frequency wheel, but as discrete radial bars (grouped into 24 bands) instead of a smooth curve — a per-stem graphic equalizer arranged in a ring.</dd>
+
+        <dt>Band petals (bass/mid/treble)</dt>
+        <dd>Three small petals per stem, one each for bass/mid/treble energy, fanned slightly apart at that stem's angle — you can see which register is driving each stem at a glance.</dd>
+
+        <dt>Prominence donut</dt>
+        <dd>A segmented ring where each stem's angular width — not just its radius — is proportional to its prominence share, like a pie chart that tiles the whole circle.</dd>
+
+        <dt>Level ring stack (history shells)</dt>
+        <dd>Several concentric prominence polygons, one "shell" per recent time-step — the outermost is now, each ring inward is a little further in the past, so the shape's recent evolution reads as nested echoes.</dd>
+
+        <dt>Comet trail dots</dt>
+        <dd>Each stem is a dot at its level's radius, dragging a fading trail of its recent positions along the same spoke — loud, sustained stems leave long comet tails; short hits leave short flicks.</dd>
+
+        <dt>Compass needles</dt>
+        <dd>A needle per stem, based at its home angle but nudged by a small onset-driven wobble, with length tracking level — reads like a cluster of compass needles trembling as transients hit.</dd>
+
+        <dt>Master pulse + satellites</dt>
+        <dd>A central disc pulses with the master mix's level; each stem is a satellite dot orbiting at a radius set by its prominence, connected to the center by a line whose thickness is its own level.</dd>
+
+        <dt>Starburst impulse</dt>
+        <dd>On a transient, a small fan of spark lines shoots outward from that stem's angle, length scaled to onset strength — otherwise nearly silent, so only active hits show up.</dd>
+
+        <dt>Level bloom (3-layer)</dt>
+        <dd>Three overlaid polygons — instantaneous level, prominence, and a slow (1.5s) rolling average — showing how a stem's momentary loudness, its relative dominance, and its longer-term trend can all diverge.</dd>
+
+        <dt>Spectral halo</dt>
+        <dd>A single continuous ring traced at high angular resolution (not just seven points), where the radius at any angle blends the nearby stems' combined band energy — a smoother, more atmospheric aggregate than the discrete radar.</dd>
+
+        <dt>Ribbon loop (smooth blob)</dt>
+        <dd>The same seven level-vertices as the spokes/petals ideas, but connected with a smooth closed spline instead of straight edges — an organic, breathing blob rather than a faceted polygon.</dd>
+
+        <dt>Prominence clock</dt>
+        <dd>A single sweeping hand whose direction is the prominence-weighted vector sum of all seven stem angles — effectively a compass pointing toward wherever the mix's energy currently leans.</dd>
+
+        <dt>History trails (ghost radar)</dt>
+        <dd>The full reference radar polygon, redrawn faintly for several recent frames and fading with age — the whole shape leaves a motion-blurred trail as it deforms.</dd>
+
+        <dt>FFT circular waterfall</dt>
+        <dd>Seven concentric spectrum rings, one per stem, ordered by current prominence (most prominent = outermost) — each ring's own radius jitters with its 128-bin FFT, like nested spectral eyes.</dd>
+
+        <dt>Amplitude fireflies</dt>
+        <dd>Each stem streams a trail of small particles outward along its spoke, one per recent history sample — older samples drift further out and fade, like fireflies released from the center.</dd>
+      </dl>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .viz-list dt {
+    font-family: 'Sora', sans-serif; font-weight: 400; font-size: 0.95rem;
+    margin-top: 1.1em; color: rgba(255,255,255,0.92);
+  }
+  .viz-list dd {
+    margin: 0.25em 0 0; color: rgba(255,255,255,0.62);
+  }
+</style>

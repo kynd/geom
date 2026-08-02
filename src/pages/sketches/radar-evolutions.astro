@@ -1,0 +1,153 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Radar evolutions" slug="sketches/radar-evolutions">
+  <div class="monologue">
+    The same seven-vertex prominence radar, pushed one layer of data at a time.
+  </div>
+
+  <section class="demo-section" id="radar-evolutions">
+    <div class="demo-header">
+      <h2>Radar evolutions</h2>
+      <a href={`${base}/sketches/radar-evolutions/demo/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/radar-evolutions/demo/index.html?embedded`} title="Radar evolutions" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        The first option is the <a href={`${base}/multitrack-visualization#stem-radar`}>Track prominence radar chart</a>
+        itself, unchanged: seven stems at seven fixed angles, vertex distance equal to that
+        stem's softmax prominence.
+      </p>
+      <p>
+        Every option after it keeps that exact same skeleton — the same seven angles, the same
+        loop — and asks what happens if one more layer of data is folded onto it: FFT content
+        turning each vertex into a small star, history overlaid as nested echoes, stereo
+        splitting each point into a pair, the whole shape rotating, breathing, or leaving a
+        comet trail. The last option stacks several of these together into one dense view.
+      </p>
+      <dl class="viz-list">
+        <dt>1. Smooth outline (spline)</dt>
+        <dd>Replace the polygon's straight edges with a closed Catmull-Rom spline through the same seven vertices — an organic, breathing blob instead of a faceted heptagon, same data.</dd>
+
+        <dt>2. Gradient interior fill</dt>
+        <dd>Fill the polygon with a radial gradient, bright at the center and fading to the edge, so the shape's overall "fullness" reads as glow rather than only outline.</dd>
+
+        <dt>3. Dual ring: level + prominence</dt>
+        <dd>Overlay a second, fainter heptagon for instantaneous level underneath the usual prominence polygon — shows how sharply the smoothed "winner" score can diverge from raw loudness.</dd>
+
+        <dt>4. Onset-modulated vertex glow</dt>
+        <dd>Each vertex gets a soft radial glow sized by that stem's onset strength, so transients flash brightly right on the shape instead of only moving it.</dd>
+
+        <dt>5. FFT comb spikes (star vertices)</dt>
+        <dd>At each vertex, a small comb of thin spikes fans out representing that stem's FFT bins — every point becomes a tiny star, and the whole heptagon reads as a cluster of star-bursts.</dd>
+
+        <dt>6. FFT-wrapped jagged edge</dt>
+        <dd>Instead of spikes at discrete vertices, each stem's spectrum is wrapped along the edge segment leading to the next vertex, so the boundary itself turns jagged with spectral detail all the way around the loop.</dd>
+
+        <dt>7. Band-split concentric triplet</dt>
+        <dd>The single prominence heptagon becomes three nested near-heptagons — one each for bass, mid, and treble energy per stem — showing band balance without leaving the radar format.</dd>
+
+        <dt>8. Stereo twin vertices (L/R split)</dt>
+        <dd>Each stem's one vertex splits into an adjacent left/right pair, doubling the loop to fourteen points; a stem panned hard to one side visibly skews its own local pair apart.</dd>
+
+        <dt>9. History ring overlay (echoes)</dt>
+        <dd>The current prominence polygon is drawn on top of several faded, slightly shrunken copies of itself from a moment ago — recent history becomes nested echo rings inside the live shape.</dd>
+
+        <dt>10. Filled contour terrain (history)</dt>
+        <dd>The same idea as the echo rings, but the bands between consecutive past polygons are filled — the trail reads as solid, receding terrain rather than thin outlines.</dd>
+
+        <dt>11. Edge thickness = rate of change</dt>
+        <dd>Each edge's stroke width encodes how fast the two vertices it connects are currently changing — quickly evolving regions of the shape get bold edges, stable ones stay thin.</dd>
+
+        <dt>12. Cross-stem tension petals</dt>
+        <dd>Edges bow outward into petal-like bulges based on the product of each pair of neighboring stems' onsets — bulges appear where two adjacent stems hit at the same time, not from either alone.</dd>
+
+        <dt>13. Triangulated fan facets</dt>
+        <dd>Each of the seven center-to-edge triangular slices is filled and shaded by that pair of stems' combined energy, turning the polygon's interior into a faceted, gem-like surface.</dd>
+
+        <dt>14. Rotating phase heptagon</dt>
+        <dd>The whole shape slowly rotates, with its speed driven by the master mix's level — the same seven data points, but no longer pinned to fixed screen angles.</dd>
+
+        <dt>15. Master-scaled breathing frame</dt>
+        <dd>The heptagon's overall scale pulses with the master mix's level, so the entire frame breathes in and out while each vertex still moves independently within it.</dd>
+
+        <dt>16. Comet-tail vertices</dt>
+        <dd>Each vertex drags a short fading trail of its own recent radius history — fast-moving vertices smear into streaks, calm ones stay crisp dots.</dd>
+
+        <dt>17. Bloom halo (prominence-scaled)</dt>
+        <dd>A soft outer blur around the filled shape, sized by the current strongest prominence — the same bloom aesthetic used elsewhere in the project, applied directly to the 2D radar.</dd>
+
+        <dt>18. Frequency-textured edge banding</dt>
+        <dd>Brightness along each edge is modulated by the interpolated FFT content between its two vertices, giving the boundary a subtly textured, signal-carrying look instead of a flat stroke.</dd>
+
+        <dt>19. Onset shockwave ripples</dt>
+        <dd>A strong onset anywhere in the mix sends an expanding ring rippling outward from the center through the whole shape, decaying as it goes — hits read as a physical disturbance.</dd>
+
+        <dt>20. Full composite (everything)</dt>
+        <dd>A capstone combining several evolutions at once — spline edges, gradient fill and bloom, history-ring echoes, FFT comb vertices, and onset shockwaves — to see how much the base radar chart can carry while staying legible.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="demo-section" id="radar-3d">
+    <div class="demo-header">
+      <h2>Radar 3D history</h2>
+      <a href={`${base}/sketches/radar-evolutions/radar-3d/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/sketches/radar-evolutions/radar-3d/index.html?embedded`} title="Radar 3D history" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Same starting point as the reference radar, but the flat heptagon now lives on a plane
+        in 3D space and slowly rotates — drag to orbit it directly, the way the
+        <a href={`${base}/composition`}>Composition</a> demo's camera works; release and it keeps spinning.
+      </p>
+      <p>
+        Instead of showing only the current instant, it looks back through recent frames and
+        redraws each one at the same center, rotated by exactly how far the camera had spun by
+        that point — a ring from 5 frames ago sits at the rotation the shape actually had 5
+        frames ago, not offset in space, just further along in the spin. The
+        <strong>Count</strong> slider sets how many of these historical rings to draw;
+        <strong>Span</strong> sets how many frames apart each one is sampled. Every ring fades as
+        it recedes, so the oldest history is the faintest and thinnest.
+      </p>
+      <p>
+        Each of the seven main edges also carries several hidden vertices, invisible at
+        <strong>FFT size</strong> = 0 (they sit exactly on the straight edge, so the shape reads
+        identically to the plain heptagon). Raising it pushes each hidden vertex off the ring's
+        original flat plane, by an amount taken from the two neighboring stems' FFT spectra
+        blended across that edge — the outline stays a heptagon at its seven main points but
+        buckles between them into whatever the spectrum is doing. These deformed edges are part
+        of history too: every ring, not just the current one, deforms using its own frame's FFT
+        data. <strong>Size</strong> scales the whole shape. Rotation is split into independent
+        X/Y/Z speeds (degrees/sec) instead of one combined dial; drag on the canvas still adds a
+        persistent X/Y offset on top, the way the Composition demo's camera works.
+      </p>
+      <p>
+        <strong>Bins</strong> sets how many hidden points run from each stem toward its
+        neighbors — and so how many of the 128 FFT bins actually get sampled. Each neighboring
+        stem pushes a shared point independently, in its own direction, and those two pushes are
+        summed rather than blended into one, so the surface buckles unevenly rather than always
+        settling on a single compromise bulge. <strong>Prominence</strong> controls how much a
+        stem's own prominence moves its vertex at all: at 0 every vertex sits at the same fixed
+        radius, half the full size (a static, perfect septagon before any FFT deformation); at 1
+        it's the full prominence-driven radius as elsewhere.
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .viz-list dt {
+    font-family: 'Sora', sans-serif; font-weight: 400; font-size: 0.95rem;
+    margin-top: 1.1em; color: rgba(255,255,255,0.92);
+  }
+  .viz-list dd {
+    margin: 0.25em 0 0; color: rgba(255,255,255,0.62);
+  }
+</style>
