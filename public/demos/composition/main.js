@@ -49,6 +49,12 @@ const STEMS = [
   { id:'pad',   label:'Pad',    bin:'250621_a1_mix1_pad.bin'   },
   { id:'snare', label:'Snare',  bin:'250621_a1_mix1_snare.bin' },
 ];
+// Per-stem prominence bias — a multiplier applied only to the level term
+// feeding computeProminence's softmax, not to the onset term and not to
+// getLevel()'s own raw reading elsewhere. So it biases the ranking/split
+// decisions without touching how loud a stem actually looks or sounds.
+// Arp is slightly deemphasized by default (arp is STEMS[0]).
+const STEM_BIAS = STEMS.map((_, i) => i === 0 ? 0.85 : 1.0);
 const MASTER_MP3  = '250621_a1_mix1_master_88.2k24.mp3';
 const MASTER_BIN  = '250621_a1_mix1_master_88.2k24.bin';
 const SOUND_BASE  = '../../sound/full/';
@@ -890,7 +896,7 @@ function computeProminence(frameIdx, allFrames, onsetData) {
     return (f.ampL + f.ampR) * 0.5;
   });
   const onsets = STEMS.map((s, i) => onsetData[i][Math.min(frameIdx, onsetData[i].length - 1)]);
-  const exps = STEMS.map((_, i) => Math.exp(BETA * (lvls[i] + onsets[i])));
+  const exps = STEMS.map((_, i) => Math.exp(BETA * (lvls[i] * STEM_BIAS[i] + onsets[i])));
   const sum = exps.reduce((a, b) => a + b, 0) || 1;
   return exps.map(e => e / sum);
 }
@@ -947,18 +953,97 @@ function drawProminenceChart(ctx, scores) {
   });
 }
 
-// ── Prominence radar chart ────────────────────────────────────────────────────
-// The prominence polygon lives on a flat disc in 3D (XY plane, facing the
-// camera at rest) and is rotated by the same matrix driving the main camera,
-// so it turns in sync with Rotation X/Y/Z and mouse-drag orbit — a real 3D
-// object, not a flat overlay. No background grid — only the shape itself.
+// ── Prominence radar — 3D history ─────────────────────────────────────────────
+// Ported from the "Radar 3D history" sketch/demo. The prominence heptagon
+// lives on a flat disc in normalised (pre-R-scale) 3D space; several recent
+// frames are redrawn at the same center, each carrying its own accumulated
+// "own" spin (independent of the main camera, driven by frame index so it's
+// reproducible under scrubbing) — plus every ring, including the live one,
+// is then rotated by the SAME live camera matrix driving the main scene, so
+// the whole history stack can be viewed from any angle by dragging/orbiting
+// exactly as with the 3D render itself. FFT-driven hidden vertices deform
+// each edge off the disc's original plane, per the sketch's design.
 
-const RADAR_N      = STEMS.length;
-const RADAR_ANGLES = Array.from({ length: RADAR_N }, (_, i) => -Math.PI / 2 + (2 * Math.PI * i) / RADAR_N);
-const _radarVec3   = new THREE.Vector3();
+const RADAR_N        = STEMS.length;
+const RADAR_ANGLES   = Array.from({ length: RADAR_N }, (_, i) => -Math.PI / 2 + (2 * Math.PI * i) / RADAR_N);
+const RADAR_DEG2RAD  = Math.PI / 180;
+const RADAR_DEFORM_SPIN = 0.6; // rad/sec — spin rate of each stem's own FFT-push direction
+const _radarVec3     = new THREE.Vector3();
 
-function drawRadarChart(ctx, scores, W, H, camRot3, opacity, scale, color) {
-  const cx = W * 0.5, cy = H * 0.5;
+function radarFftBinsAt(allFrames, i, fi) {
+  const frames = allFrames[STEMS[i].id];
+  const f = frames[Math.min(Math.max(fi, 0), frames.length - 1)];
+  const out = new Float32Array(128);
+  for (let b = 0; b < 128; b++) out[b] = melDB((f.fftL[b] + f.fftR[b]) * 0.5);
+  return out;
+}
+
+function radarDeformDir(i, fi) {
+  const a = RADAR_ANGLES[i];
+  const phase = (i / RADAR_N) * 2*Math.PI;
+  const phi = phase + (fi / FPS) * RADAR_DEFORM_SPIN;
+  const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
+  // u = (0,0,1) [disc normal], v = (-sinA, cosA, 0) [tangential] — both
+  // already perpendicular to this stem's own radial direction.
+  return { x: -Math.sin(a)*sinPhi, y: Math.cos(a)*sinPhi, z: cosPhi };
+}
+
+function radarBandForStep(k, nSide) { return Math.min(127, Math.round(k / nSide * 127)); }
+
+// Builds one ring's points in normalised local space (radius 1 = R pixels,
+// applied later) — not yet rotated by either the ring's own spin or the
+// camera.
+function buildRadarRingPoints(allFrames, prom, fi, sizeFrac, nSide) {
+  const pts = [];
+  const bins = sizeFrac > 0 ? STEMS.map((_, i) => radarFftBinsAt(allFrames, i, fi)) : null;
+  const dirs = sizeFrac > 0 ? STEMS.map((_, i) => radarDeformDir(i, fi)) : null;
+
+  for (let i = 0; i < RADAR_N; i++) {
+    const j = (i+1) % RADAR_N;
+    const p0x = Math.cos(RADAR_ANGLES[i])*prom[i], p0y = Math.sin(RADAR_ANGLES[i])*prom[i];
+    const p1x = Math.cos(RADAR_ANGLES[j])*prom[j], p1y = Math.sin(RADAR_ANGLES[j])*prom[j];
+
+    // Main vertex i: band 0 (lowest) of its own spectrum only.
+    let vx = p0x, vy = p0y, vz = 0;
+    if (sizeFrac > 0) {
+      const mag = sizeFrac * 0.6 * (bins[i][0]*2 - 1);
+      vx += dirs[i].x*mag; vy += dirs[i].y*mag; vz += dirs[i].z*mag;
+    }
+    pts.push({ x: vx, y: vy, z: vz, vertex: true });
+
+    if (sizeFrac > 0) {
+      for (let s = 1; s <= nSide; s++) {
+        const t = s / (nSide + 1);
+        const binI = radarBandForStep(s, nSide), binJ = radarBandForStep(nSide + 1 - s, nSide);
+        const magI = sizeFrac * 0.6 * (bins[i][binI]*2 - 1);
+        const magJ = sizeFrac * 0.6 * (bins[j][binJ]*2 - 1);
+        const ox = dirs[i].x*magI + dirs[j].x*magJ;
+        const oy = dirs[i].y*magI + dirs[j].y*magJ;
+        const oz = dirs[i].z*magI + dirs[j].z*magJ;
+        pts.push({ x: p0x+(p1x-p0x)*t + ox, y: p0y+(p1y-p0y)*t + oy, z: oz, vertex: false });
+      }
+    }
+  }
+  return pts;
+}
+
+function radarRotateOwn(x, y, z, rx, ry, rz) {
+  const cZ = Math.cos(rz), sZ = Math.sin(rz);
+  const x0 = x*cZ - y*sZ, y0 = x*sZ + y*cZ, z0 = z;
+  const cY = Math.cos(ry), sY = Math.sin(ry);
+  const x1 = x0*cY - z0*sY, y1 = y0, z1 = x0*sY + z0*cY;
+  const cX = Math.cos(rx), sX = Math.sin(rx);
+  const y2 = y1*cX - z1*sX, z2 = y1*sX + z1*cX;
+  return { x: x1, y: y2, z: z2 };
+}
+
+function drawRadar3D(ctx, W, H, camRot3, allFrames, onsetData, fi, opts) {
+  const { opacity, scale, color, histCount, histSpan, sizeFrac, nSide, promMove, rotXSpeed, rotYSpeed, rotZSpeed, posX } = opts;
+  // posX is a screen-space offset, applied after 3D projection — not part of
+  // the rotated/camera-relative geometry — so it just slides the whole
+  // rendered radar left/right on screen: -1 = centered on the left edge,
+  // 0 = screen center, 1 = centered on the right edge.
+  const cx = W * 0.5 * (1 + (posX || 0)), cy = H * 0.5;
   const R0 = Math.min(W, H) * 0.42; // reference radius — dot size stays independent of scale
   const R  = R0 * scale;
   const gray = Math.round(Math.max(0, Math.min(1, color)) * 255);
@@ -966,30 +1051,41 @@ function drawRadarChart(ctx, scores, W, H, camRot3, opacity, scale, color) {
   ctx.clearRect(0, 0, W, H);
   ctx.globalAlpha = opacity;
 
-  function project(angle, radiusFrac) {
-    _radarVec3.set(Math.cos(angle) * radiusFrac, Math.sin(angle) * radiusFrac, 0);
-    _radarVec3.applyMatrix3(camRot3);
-    return { x: cx + _radarVec3.x * R, y: cy - _radarVec3.y * R };
-  }
+  // Draw oldest (most-rotated-away) first so the current frame's ring ends
+  // up drawn last, on top.
+  for (let k = histCount; k >= 0; k--) {
+    const fiK  = Math.max(0, fi - k*histSpan);
+    const prom = computeProminence(fiK, allFrames, onsetData).map(p => 0.5 + promMove * (p - 0.5));
+    const rx = (fiK / FPS) * rotXSpeed * RADAR_DEG2RAD;
+    const ry = (fiK / FPS) * rotYSpeed * RADAR_DEG2RAD;
+    const rz = (fiK / FPS) * rotZSpeed * RADAR_DEG2RAD;
 
-  const pts = RADAR_ANGLES.map((a, i) => project(a, scores[i]));
+    const localPts = buildRadarRingPoints(allFrames, prom, fiK, sizeFrac, nSide);
+    const pts = localPts.map(p3 => {
+      const r = radarRotateOwn(p3.x, p3.y, p3.z, rx, ry, rz);
+      _radarVec3.set(r.x, r.y, r.z);
+      _radarVec3.applyMatrix3(camRot3);
+      return { x: cx + _radarVec3.x * R, y: cy - _radarVec3.y * R, vertex: p3.vertex };
+    });
 
-  // Prominence polygon (outline only, no fill)
-  ctx.beginPath();
-  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-  ctx.closePath();
-  ctx.strokeStyle = `rgba(${gray},${gray},${gray},0.90)`;
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
+    const t     = histCount > 0 ? k / histCount : 0;
+    const alpha = k === 0 ? 0.95 : Math.max(0.03, 0.85 * (1 - t) * (1 - t));
 
-  // Vertex dots — fixed size, does not scale with the shape
-  const DOT_R = Math.max(2.5, R0 * 0.010);
-  pts.forEach(p => {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, DOT_R, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${gray},${gray},${gray},0.95)`;
-    ctx.fill();
-  });
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(${gray},${gray},${gray},${alpha})`;
+    ctx.lineWidth   = k === 0 ? 1.6 : 1;
+    ctx.stroke();
+
+    const dotR = k === 0 ? 3 : Math.max(1, 2.2*(1-t));
+    pts.forEach(p => {
+      if (!p.vertex) return;
+      ctx.beginPath(); ctx.arc(p.x, p.y, dotR, 0, 2*Math.PI);
+      ctx.fillStyle = `rgba(${gray},${gray},${gray},${alpha})`; ctx.fill();
+    });
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ── Settings panel ────────────────────────────────────────────────────────────
@@ -1022,6 +1118,11 @@ function buildSettingsPanel(panel, stemConfigs, pane) {
         <button class="sd-solo" data-stem="${i}">Solo</button>
       </div>
       <div class="sd-row">
+        <span class="sd-label">Bias</span>
+        <input type="range" class="params-sl s-bias" min="0" max="2" step="0.01" value="${STEM_BIAS[i]}">
+        <span class="params-val s-bias-v">${STEM_BIAS[i].toFixed(2)}</span>
+      </div>
+      <div class="sd-row">
         <span class="sd-label">Type</span>
         <select class="sd-select s-type">
           <option value="form"${cfg.type==='form'?' selected':''}>Form</option>
@@ -1051,6 +1152,14 @@ function buildSettingsPanel(panel, stemConfigs, pane) {
     `;
 
     panel.appendChild(stemEl);
+
+    const biasSl  = stemEl.querySelector('.s-bias');
+    const biasVal = stemEl.querySelector('.s-bias-v');
+    biasSl.addEventListener('input', () => {
+      const v = parseFloat(biasSl.value);
+      biasVal.textContent = v.toFixed(2);
+      STEM_BIAS[i] = v;
+    });
 
     const typeSel   = stemEl.querySelector('.s-type');
     const catSel    = stemEl.querySelector('.s-category');
@@ -1112,21 +1221,16 @@ async function init() {
   const mainCanvas    = document.getElementById('main-canvas');
   const chartCanvas   = document.getElementById('chart-canvas');
   const radarCanvas   = document.getElementById('radar-canvas');
-  const radar2Canvas  = document.getElementById('radar2-canvas');
   const resSel        = document.getElementById('res-sel');
   const chartCtx      = chartCanvas.getContext('2d');
   const radarCtx      = radarCanvas.getContext('2d');
-  const radar2Ctx     = radar2Canvas.getContext('2d');
   const settingsPanel = document.getElementById('settings-panel');
   const playBtn       = document.getElementById('play-btn');
   const aaBtn         = document.getElementById('aa-btn');
   const recBtn        = document.getElementById('rec-btn');
   const recFrameCounter = document.getElementById('rec-frame-counter');
   const scoreBtn      = document.getElementById('score-btn');
-  const radarBtn      = document.getElementById('radar-btn');
-  const radar2Btn     = document.getElementById('radar2-btn');
   const settingsBtn   = document.getElementById('settings-btn');
-  const camLightBtn   = document.getElementById('cam-light-btn');
   const seekEl        = document.getElementById('seek');
   const timeCur       = document.getElementById('time-current');
   const timeTot       = document.getElementById('time-total');
@@ -1303,10 +1407,15 @@ async function init() {
   let radarOpacity = 1;
   let radarScale = 1;
   let radarColor = 1;
-  let radar2Visible = false;
-  let radar2Opacity = 1;
-  let radar2Scale = 1;
-  let radar2Color = 0;
+  let radarHistCount = 30;
+  let radarHistSpan = 16;
+  let radarFftSize = 0.25;
+  let radarBins = 32;
+  let radarProminence = 0.5;
+  let radarRotX = 0;
+  let radarRotY = 7;
+  let radarRotZ = 0;
+  let radarPosX = 0;
 
   function updatePlayBtn() {
     playBtn.innerHTML = isPlaying ? PAUSE_ICON : PLAY_ICON;
@@ -1601,6 +1710,11 @@ async function init() {
   function setTotalPaneSize(w, h) {
     totalPaneW = w;
     totalPaneH = h;
+    // The radar overlay covers the whole on-screen frame (not a fixed small
+    // box), so Position X (a screen-space -1..1 fraction) means the same
+    // thing regardless of embedded size or the Resolution selector.
+    radarCanvas.width  = w;
+    radarCanvas.height = h;
     layoutPanes();
   }
 
@@ -1655,22 +1769,6 @@ async function init() {
   resSel.addEventListener('change', () => applyResolution(resSel.value));
   applyResolution(resSel.value); // apply default (Full HD)
 
-  // ── Cam-light: background sampled from camera-facing direction (default on) ──
-  // Independent of bg_mix — does not touch u_waveBlendBg.
-  camLightBtn.addEventListener('click', () => {
-    const active = camLightBtn.classList.toggle('active');
-    camLightBtn.setAttribute('aria-label', active ? 'Light: cam' : 'Light: world');
-    forEachPane(p => { p.shared.u_camLight.value = active ? 1 : 0; });
-  });
-
-  // ── Pane labels toggle (debug aid) ────────────────────────────────────────
-  const paneLabelsBtn = document.getElementById('pane-labels-btn');
-  paneLabelsBtn.addEventListener('click', () => {
-    const active = paneLabelsBtn.classList.toggle('active');
-    paneLabelsBtn.setAttribute('aria-label', active ? 'Pane labels on' : 'Pane labels off');
-    setPaneLabelsVisible(active);
-  });
-
   // ── Scores toggle ────────────────────────────────────────────────────────
   scoreBtn.addEventListener('click', () => {
     chartVisible = scoreBtn.classList.toggle('active');
@@ -1678,16 +1776,15 @@ async function init() {
     scoreBtn.setAttribute('aria-label', chartVisible ? 'Scores on' : 'Scores off');
   });
 
-  // ── Radar toggles ────────────────────────────────────────────────────────
-  radarBtn.addEventListener('click', () => {
-    radarVisible = radarBtn.classList.toggle('active');
-    radarCanvas.style.display = radarVisible ? 'block' : 'none';
-    radarBtn.setAttribute('aria-label', radarVisible ? 'Radar on' : 'Radar off');
-  });
-  radar2Btn.addEventListener('click', () => {
-    radar2Visible = radar2Btn.classList.toggle('active');
-    radar2Canvas.style.display = radar2Visible ? 'block' : 'none';
-    radar2Btn.setAttribute('aria-label', radar2Visible ? 'Radar 2 on' : 'Radar 2 off');
+  // ── Radar blend toggle — CSS mix-blend-mode for live preview (free, GPU
+  // compositor), matched by recCtx.globalCompositeOperation in
+  // compositeRecordingFrame so recordings show the same effect. ────────────
+  const radarBlendBtn = document.getElementById('radar-blend-btn');
+  let radarBlendMode = false;
+  radarBlendBtn.addEventListener('click', () => {
+    radarBlendMode = radarBlendBtn.classList.toggle('active');
+    radarCanvas.classList.toggle('blend-diff', radarBlendMode);
+    radarBlendBtn.setAttribute('aria-label', radarBlendMode ? 'Radar blend on' : 'Radar blend off');
   });
 
   // ── Settings / Env-and-Effects toggles (mutually exclusive) ───────────────
@@ -1791,18 +1888,37 @@ async function init() {
   wireSlider('p-s-zoom',  'p-s-zoom-v',  v => { soundZoomStr = v; });
   wireSlider('p-s-pan',   'p-s-pan-v',   v => { soundPanStr  = v; });
   wireOrbitSlider('p-collapse', 'p-collapse-v', 'p-collapse-r', v => { forEachPane(p => { p.shared.u_collapseY.value = v; }); });
-  wireSlider('p-radar-opacity',  'p-radar-opacity-v',  v => { radarOpacity = v; });
-  wireSlider('p-radar-scale',    'p-radar-scale-v',    v => { radarScale = v; });
-  wireSlider('p-radar-color',    'p-radar-color-v',    v => { radarColor = v; });
-  wireSlider('p-radar2-opacity', 'p-radar2-opacity-v', v => { radar2Opacity = v; });
-  wireSlider('p-radar2-scale',   'p-radar2-scale-v',   v => { radar2Scale = v; });
-  wireSlider('p-radar2-color',   'p-radar2-color-v',   v => { radar2Color = v; });
+  // Integer-valued radar params (count/span/bins) get plain-integer display —
+  // wireSlider's toFixed(2) would otherwise show "30.00".
+  function wireIntSlider(id, valId, onChange) {
+    const sl = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    sl.addEventListener('input', () => {
+      const v = Math.round(parseFloat(sl.value));
+      vl.textContent = String(v);
+      onChange(v);
+    });
+  }
+
+  wireSlider('p-radar-opacity',    'p-radar-opacity-v',    v => { radarOpacity = v; });
+  wireSlider('p-radar-scale',      'p-radar-scale-v',      v => { radarScale = v; });
+  wireSlider('p-radar-color',      'p-radar-color-v',      v => { radarColor = v; });
+  wireIntSlider('p-radar-hist-count', 'p-radar-hist-count-v', v => { radarHistCount = v; });
+  wireIntSlider('p-radar-hist-span',  'p-radar-hist-span-v',  v => { radarHistSpan = v; });
+  wireSlider('p-radar-fft-size',   'p-radar-fft-size-v',   v => { radarFftSize = v; });
+  wireIntSlider('p-radar-bins',       'p-radar-bins-v',       v => { radarBins = v; });
+  wireSlider('p-radar-prominence', 'p-radar-prominence-v', v => { radarProminence = v; });
+  wireSlider('p-radar-rot-x',      'p-radar-rot-x-v',      v => { radarRotX = v; });
+  wireSlider('p-radar-rot-y',      'p-radar-rot-y-v',      v => { radarRotY = v; });
+  wireSlider('p-radar-rot-z',      'p-radar-rot-z-v',      v => { radarRotZ = v; });
+  wireSlider('p-radar-pos-x',      'p-radar-pos-x-v',      v => { radarPosX = v; });
 
   // Applies every current global slider/toggle value to one pane — used both
   // for pane 0 at startup and for panes created later by the Panes slider.
   function applyInitialUniforms(p) {
     p.shared.u_ssaa.value     = aaBtn.classList.contains('active') ? 1 : 0;
-    p.shared.u_camLight.value = camLightBtn.classList.contains('active') ? 1 : 0;
+    // u_camLight defaults to 1 in `shared` and is permanently on — the
+    // toggle for it was removed.
     p.aniMode = parseInt(document.getElementById('p-env-model').value, 10);
     p.fillUniforms.u_causticSharp.value = parseFloat(document.getElementById('p-caustic-sharp').value);
     p.shared.u_prismIntensity.value = parseFloat(document.getElementById('p-prism-intensity').value);
@@ -1833,12 +1949,18 @@ async function init() {
     setPaneCount(n);
     if (!isPlaying) requestAnimationFrame(() => renderFrame());
   });
-  radarOpacity  = parseFloat(document.getElementById('p-radar-opacity').value);
-  radarScale    = parseFloat(document.getElementById('p-radar-scale').value);
-  radarColor    = parseFloat(document.getElementById('p-radar-color').value);
-  radar2Opacity = parseFloat(document.getElementById('p-radar2-opacity').value);
-  radar2Scale   = parseFloat(document.getElementById('p-radar2-scale').value);
-  radar2Color   = parseFloat(document.getElementById('p-radar2-color').value);
+  radarOpacity    = parseFloat(document.getElementById('p-radar-opacity').value);
+  radarScale      = parseFloat(document.getElementById('p-radar-scale').value);
+  radarColor      = parseFloat(document.getElementById('p-radar-color').value);
+  radarHistCount  = Math.round(parseFloat(document.getElementById('p-radar-hist-count').value));
+  radarHistSpan   = Math.round(parseFloat(document.getElementById('p-radar-hist-span').value));
+  radarFftSize    = parseFloat(document.getElementById('p-radar-fft-size').value);
+  radarBins       = Math.round(parseFloat(document.getElementById('p-radar-bins').value));
+  radarProminence = parseFloat(document.getElementById('p-radar-prominence').value);
+  radarRotX       = parseFloat(document.getElementById('p-radar-rot-x').value);
+  radarRotY       = parseFloat(document.getElementById('p-radar-rot-y').value);
+  radarRotZ       = parseFloat(document.getElementById('p-radar-rot-z').value);
+  radarPosX       = parseFloat(document.getElementById('p-radar-pos-x').value);
 
   // ── Parameter animation ──────────────────────────────────────────────────
   // Every Env and Effects param has a JSON-friendly identifier mapped to its
@@ -1869,12 +1991,18 @@ async function init() {
     sound_pan:       'p-s-pan',
     collapse_y:      'p-collapse',
     panes_count:     'p-panes-count',
-    radar_opacity:   'p-radar-opacity',
-    radar_scale:     'p-radar-scale',
-    radar_color:     'p-radar-color',
-    radar2_opacity:  'p-radar2-opacity',
-    radar2_scale:    'p-radar2-scale',
-    radar2_color:    'p-radar2-color',
+    radar_opacity:      'p-radar-opacity',
+    radar_scale:        'p-radar-scale',
+    radar_color:        'p-radar-color',
+    radar_hist_count:   'p-radar-hist-count',
+    radar_hist_span:    'p-radar-hist-span',
+    radar_fft_size:     'p-radar-fft-size',
+    radar_bins:         'p-radar-bins',
+    radar_prominence:   'p-radar-prominence',
+    radar_rot_x:        'p-radar-rot-x',
+    radar_rot_y:        'p-radar-rot-y',
+    radar_rot_z:        'p-radar-rot-z',
+    radar_pos_x:        'p-radar-pos-x',
   };
 
   // env_model is scripted as a compact index (0/1) rather than the select's
@@ -1932,6 +2060,30 @@ async function init() {
     return STEMS[getProminentStemId()].id;
   }
 
+  // Did `name` hold the single highest RAW prominence (argmax of
+  // computeProminence, not the sticky pickWinner() hysteresis) at any point
+  // within the last `windowSec` seconds? Deterministic and frame-rate
+  // independent: it's a pure function of the current audio-frame index,
+  // stepping back through the same precomputed allFrames/onsetData arrays
+  // everything else in this file already keys off of — not a counter
+  // accumulated across render calls, so it gives the same answer regardless
+  // of how fast the browser happens to be rendering.
+  function wasProminentWithin(name, windowSec) {
+    const id  = normalizeStemId(name);
+    const idx = STEMS.findIndex(s => s.id === id);
+    if (idx < 0) return false;
+    const curFrame    = Math.floor(clock.time * FPS);
+    const windowFrames = Math.round(windowSec * FPS);
+    for (let k = 0; k <= windowFrames; k++) {
+      const fi = Math.max(0, curFrame - k);
+      const scores = computeProminence(fi, allFrames, onsetData);
+      let maxIdx = 0;
+      for (let i = 1; i < scores.length; i++) if (scores[i] > scores[maxIdx]) maxIdx = i;
+      if (maxIdx === idx) return true;
+    }
+    return false;
+  }
+
   const animCodeEl = document.getElementById('anim-code');
   const animErrEl  = document.getElementById('anim-error');
   let animFns = null;
@@ -1941,8 +2093,8 @@ async function init() {
     '  "bg_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
     '  "obj_mix": (t) => smoothstep(0.0, 5.0, t - 70),',
     '  "grayscale": (t) => 1.0 - smoothstep(0.0, duration, t),',
-    '  "bloom_strength": (t) => getLevel("master") *',
-    ' 1.5 * (Math.max(getProminence("kick2") - 0.25, 0.25) * 10.0)',
+    '  "bloom_strength": (t) => Math.min(4.0, getLevel("master") *',
+    ' 1.5 * (Math.max(getProminence("kick2") - 0.25, 0.25) * 10.0))',
     ',',
     '  "sound_zoom": (t) => getProminence("kick1") * 1.5,',
     '  "rotation_y": (t) => {',
@@ -1968,10 +2120,34 @@ async function init() {
     '},',
     '"rim_light": (t)=> (1.0 - getProminence("arp")) * 0.02,',
     '"overlay_amount": (t)=> t/duration,',
-    '"radar_opacity": (t)=> (1.0 - getLevel("master")) * 0.5',
+    '"radar_opacity": (t)=> (1.0 - getLevel("master") * 2.0) * 0.5',
     '   * smoothstep(0, 1, t) * (1.0 - smoothstep(duration - 1, duration, t)),',
+    '"radar_prominence": (t) => {',
+    'const simple = 1, cur = 0.5;',
+    'const v = simple + (cur - simple) * smoothstep(60, 180, t);',
+    'return v + (simple - v) * smoothstep(220, 230, t);',
+    '},',
+    '"radar_hist_count": (t) => {',
+    'const simple = 1, cur = 16;',
+    'const v = simple + (cur - simple) * smoothstep(60, 180, t);',
+    'return Math.round(v + (simple - v) * smoothstep(220, 230, t));',
+    '},',
+    '"radar_fft_size": (t) => {',
+    'const simple = 0, cur = 0.125;',
+    'const v = simple + (cur - simple) * smoothstep(60, 180, t);',
+    'return v + (simple - v) * smoothstep(220, 230, t);',
+    '},',
+    '"radar_pos_x": (t) => {',
+    'const m = 0.8 * smoothstep(60, 90, t) * (1.0 - smoothstep(220, 230, t));',
+    'const stemOffset = Math.sin(t / Math.PI * 0.5);',
+    'return stemOffset * m;',
+    '},',
+    '"radar_scale": (t) => {',
+    'const m = 0.8 * smoothstep(60, 90, t) * (1.0 - smoothstep(220, 230, t));',
+    'return 1.0 + m * 3.0;',
+    '},',
     '"panes_count": (t) => {',
-    'if (!((t > 83 && getProminence("kick1")) > 0.25 && Math.floor(t / 10) % 2 === 1)) return 1;',
+    'if (!(t > 83 && wasProminentWithin("kick1", 1.0) && Math.floor(t / 10) % 2 === 1)) return 1;',
     'const m = ((Math.floor((t - 83) / 5) % 3) + 3) % 3;',
     'return m === 0 ? 3 : (m === 1 ? 1 : 2);',
     '},',
@@ -1987,10 +2163,10 @@ async function init() {
     try {
       const build = new Function(
         'smoothstep', 'duration', 'getProminence', 'getLevel',
-        'getProminentStemId', 'getProminentStemName',
+        'getProminentStemId', 'getProminentStemName', 'wasProminentWithin',
         'return (' + animCodeEl.value + ');'
       );
-      const obj = build(smoothstep, audio.duration || 0, getProminence, getLevel, getProminentStemId, getProminentStemName);
+      const obj = build(smoothstep, audio.duration || 0, getProminence, getLevel, getProminentStemId, getProminentStemName, wasProminentWithin);
       if (obj === null || typeof obj !== 'object') throw new Error('Definition must be an object');
       for (const key of Object.keys(obj)) {
         if (!(key in PARAM_IDS)) throw new Error(`Unknown param "${key}". Valid: ${Object.keys(PARAM_IDS).join(', ')}`);
@@ -2091,12 +2267,13 @@ async function init() {
     if (radarVisible) {
       const rw = radarCanvas.width  / RADAR_REF_W * recCanvas.width;
       const rh = radarCanvas.height / RADAR_REF_H * recCanvas.height;
+      // Matches the #radar-canvas.blend-diff CSS mix-blend-mode used for live
+      // preview — that's a paint-time DOM effect, invisible to drawImage's
+      // raw pixel copy, so it has to be reproduced explicitly here or
+      // recordings would silently come out plain source-over.
+      if (radarBlendMode) recCtx.globalCompositeOperation = 'difference';
       recCtx.drawImage(radarCanvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
-    }
-    if (radar2Visible) {
-      const rw = radar2Canvas.width  / RADAR_REF_W * recCanvas.width;
-      const rh = radar2Canvas.height / RADAR_REF_H * recCanvas.height;
-      recCtx.drawImage(radar2Canvas, (recCanvas.width - rw) / 2, (recCanvas.height - rh) / 2, rw, rh);
+      recCtx.globalCompositeOperation = 'source-over';
     }
     return recCanvas;
   }
@@ -2202,10 +2379,17 @@ async function init() {
     }
 
     if (chartVisible) drawProminenceChart(chartCtx, scores);
-    if (radarVisible) drawRadarChart(radarCtx, scores, radarCanvas.width, radarCanvas.height, pane.shared.u_camRot.value, radarOpacity, radarScale, radarColor);
-    if (radar2Visible) {
-      const levels = STEMS.map(s => getLevel(s.id));
-      drawRadarChart(radar2Ctx, levels, radar2Canvas.width, radar2Canvas.height, pane.shared.u_camRot.value, radar2Opacity, radar2Scale, radar2Color);
+    if (radarVisible) {
+      // Forced to 0 while split into multiple panes — the radar overlay sits
+      // centered over the whole frame, which reads as visual noise on top of
+      // a multi-pane layout rather than over a single full-frame render.
+      const effectiveOpacity = paneCount > 1 ? 0 : radarOpacity;
+      drawRadar3D(radarCtx, radarCanvas.width, radarCanvas.height, pane.shared.u_camRot.value, allFrames, onsetData, frameIdx, {
+        opacity: effectiveOpacity, scale: radarScale, color: radarColor,
+        histCount: radarHistCount, histSpan: radarHistSpan,
+        sizeFrac: radarFftSize, nSide: radarBins, promMove: radarProminence,
+        rotXSpeed: radarRotX, rotYSpeed: radarRotY, rotZSpeed: radarRotZ, posX: radarPosX,
+      });
     }
 
     if (!settingsPanel.hidden) {
