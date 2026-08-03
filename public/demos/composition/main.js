@@ -1050,6 +1050,13 @@ function radarRotateOwn(x, y, z, rx, ry, rz) {
   return { x: x1, y: y2, z: z2 };
 }
 
+// Reused across rings/frames — resized on demand to each ring's own bounding
+// box (not the full radar canvas), so drawing a ring's line + dots as one
+// flat-opacity layer (see drawRadar3D) stays cheap regardless of render
+// resolution or how many history rings are on screen.
+const _radarScratch    = document.createElement('canvas');
+const _radarScratchCtx = _radarScratch.getContext('2d');
+
 function drawRadar3D(ctx, W, H, camRot3, allFrames, onsetData, fi, opts) {
   const { opacity, scale, color, histCount, histSpan, sizeFrac, nSide, promMove, rotXSpeed, rotYSpeed, rotZSpeed, posX } = opts;
   // posX is a screen-space offset, applied after 3D projection — not part of
@@ -1060,9 +1067,13 @@ function drawRadar3D(ctx, W, H, camRot3, allFrames, onsetData, fi, opts) {
   const R0 = Math.min(W, H) * 0.42; // reference radius — dot size stays independent of scale
   const R  = R0 * scale;
   const gray = Math.round(Math.max(0, Math.min(1, color)) * 255);
+  // Stroke width and dot radius are otherwise fixed screen pixels, so they'd
+  // read relatively thinner/smaller at higher render resolutions even though
+  // R0 above already scales the shape itself. resMult keeps them matching
+  // the current Full HD look (1920 wide → resMult = 1) at any resolution.
+  const resMult = W / 1920;
 
   ctx.clearRect(0, 0, W, H);
-  ctx.globalAlpha = opacity;
 
   // Draw oldest (most-rotated-away) first so the current frame's ring ends
   // up drawn last, on top.
@@ -1083,20 +1094,40 @@ function drawRadar3D(ctx, W, H, camRot3, allFrames, onsetData, fi, opts) {
 
     const t     = histCount > 0 ? k / histCount : 0;
     const alpha = k === 0 ? 0.95 : Math.max(0.03, 0.85 * (1 - t) * (1 - t));
+    const lineW = 1 * resMult;
+    const dotR  = (k === 0 ? 3 : Math.max(1, 2.2*(1-t))) * resMult;
 
-    ctx.beginPath();
-    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-    ctx.closePath();
-    ctx.strokeStyle = `rgba(${gray},${gray},${gray},${alpha})`;
-    ctx.lineWidth   = k === 0 ? 1.6 : 1;
-    ctx.stroke();
+    // Line + dots are drawn once onto a small scratch buffer at full opacity
+    // (so where a vertex dot sits on top of the line, it can't stack extra
+    // alpha and read brighter than the rest of the stroke), then that whole
+    // flat layer is composited onto the real canvas in one shot at this
+    // ring's actual target alpha.
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+    const pad = dotR + lineW + 2;
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const bw = Math.max(1, Math.ceil(maxX - minX));
+    const bh = Math.max(1, Math.ceil(maxY - minY));
 
-    const dotR = k === 0 ? 3 : Math.max(1, 2.2*(1-t));
+    _radarScratch.width  = bw; // also clears the buffer
+    _radarScratch.height = bh;
+    _radarScratchCtx.beginPath();
+    pts.forEach((p, i) => i === 0 ? _radarScratchCtx.moveTo(p.x-minX, p.y-minY) : _radarScratchCtx.lineTo(p.x-minX, p.y-minY));
+    _radarScratchCtx.closePath();
+    _radarScratchCtx.strokeStyle = `rgb(${gray},${gray},${gray})`;
+    _radarScratchCtx.lineWidth   = lineW;
+    _radarScratchCtx.stroke();
+    _radarScratchCtx.fillStyle = `rgb(${gray},${gray},${gray})`;
     pts.forEach(p => {
       if (!p.vertex) return;
-      ctx.beginPath(); ctx.arc(p.x, p.y, dotR, 0, 2*Math.PI);
-      ctx.fillStyle = `rgba(${gray},${gray},${gray},${alpha})`; ctx.fill();
+      _radarScratchCtx.beginPath(); _radarScratchCtx.arc(p.x-minX, p.y-minY, dotR, 0, 2*Math.PI); _radarScratchCtx.fill();
     });
+
+    ctx.globalAlpha = opacity * alpha;
+    ctx.drawImage(_radarScratch, minX, minY);
   }
   ctx.globalAlpha = 1;
 }

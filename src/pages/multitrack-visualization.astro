@@ -21,7 +21,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         All 8 stem tracks analyzed simultaneously while the master plays.
         Each horizontal strip shows one track: the left section is the FFT magnitude spectrum (bars),
         the right section is the live waveform.
-        Use the progress bar to seek anywhere in the track.
+        A progress bar seeks to any point in the track.
       </p>
     </div>
   </section>
@@ -36,36 +36,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
     <div class="prose">
       <p>
-        Divide the view into 2, 3, or 4 panes. Each pane runs an independent shape renderer reacting to a chosen stem track.
-        Pick the shape family, deformation effect, and lighting independently per pane.
+        The view divides into 2, 3, or 4 panes. Each pane runs an independent shape renderer reacting to a chosen stem track,
+        with its own shape family, deformation effect, and lighting.
         The master track always plays; the visual in each pane reacts to whichever stem is selected.
       </p>
       <p>
-        Starts at the 2-minute mark. Use the gear icon in each pane to configure it.
+        Starts at the 2-minute mark, with a gear icon in each pane for configuring it independently.
       </p>
     </div>
   </section>
 
-  <section class="demo-section" id="sdf-blend">
-    <div class="demo-header">
-      <h2>SDF blend</h2>
-      <a href={`${base}/demos/sdf-blend/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-    </div>
-    <div class="demo-embed">
-      <iframe src={`${base}/demos/sdf-blend/index.html?embedded`} title="SDF blend" scrolling="no"></iframe>
-    </div>
-    <div class="prose">
-      <p>
-        Two SDF shapes placed side by side, blended together using a smooth union operation.
-        Each shape independently reacts to its assigned stem track — only those two stems are audible.
-        The <strong>Distance</strong> slider sets the separation between centres;
-        <strong>Blend</strong> controls the smooth union radius;
-        <strong>Intensity</strong> scales the strength of the deformation effect.
-      </p>
-    </div>
-  </section>
   <div class="monologue">
-    If we can allocate different shapes, colors, and effects to different stems (hypothetically—it's not a finalized strategy), but we don't want to draw all of them at once, how could we deterministically decide which stems are more important at the moment?
+    We could allocate different shapes, colors, and effects to different stems, but we don't want to draw all of them at once. How could we decide which stems are more important at the moment?
   </div>
   <section class="demo-section" id="prominence">
     <div class="demo-header">
@@ -170,56 +152,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
   </section>
 
-  <section class="demo-section" id="stem-shapes">
-    <div class="demo-header">
-      <h2>Scalar field interpolation</h2>
-      <a href={`${base}/demos/stem-shapes/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-    </div>
-    <div class="demo-embed">
-      <iframe src={`${base}/demos/stem-shapes/index.html?embedded`} title="Scalar field interpolation" scrolling="no"></iframe>
-    </div>
-    <div class="prose">
-      <p>
-        Each stem is assigned a scalar field. The seven fields are blended in real time using their softmax
-        prominence scores as weights — the shape of whichever stem is loudest or most transient
-        pulls the surface toward its geometry while the others fade into the mix.
-        Open the Shapes panel to reassign any stem.
-      </p>
-
-      <details>
-        <summary>Sparse weighting — why and how</summary>
-
-        <p>
-          Softmax assigns non-zero weight to every stem, always.
-          Even a completely silent stem receives {"\\(e^{\\beta \\cdot 0} = 1\\)"} before normalisation,
-          so at {"\\(\\beta = 5\\)"} a single active stem in a group of seven only claims roughly 55% of the total weight —
-          the remaining 45% leaks into six geometries no one is hearing.
-          The result is a surface that never looks fully like any one shape.
-        </p>
-
-        <h3>Relative-floor threshold</h3>
-        <p>
-          After computing the softmax distribution {"\\(\\tilde{P}_i\\)"},
-          zero out any stem whose weight falls below a fixed fraction {"\\(\\alpha\\)"} of the current peak, then renormalise over the survivors:
-        </p>
-        <p class="math-block">{"\\[ \\tau(t) = \\alpha \\cdot \\max_j \\tilde{P}_j(t) \\]"}</p>
-        <p class="math-block">{"\\[ w_i(t) = \\begin{cases} \\tilde{P}_i(t) & \\tilde{P}_i(t) \\geq \\tau(t) \\\\ 0 & \\text{otherwise} \\end{cases} \\]"}</p>
-        <p class="math-block">{"\\[ \\hat{w}_i(t) = \\frac{w_i(t)}{\\displaystyle\\sum_k w_k(t)} \\]"}</p>
-        <p>
-          With {"\\(\\alpha = 0.25\\)"}, a stem must carry at least a quarter of the peak weight to contribute to the blend.
-          The threshold is relative, so it adapts automatically: when one stem dominates,
-          the bar rises and the weaker stems fall below it; when several stems are close in prominence, more of them survive.
-          The dominant stem always survives by definition — {"\\(\\tau \\leq \\tilde{P}_{\\max}\\)"} — so the renormalisation denominator is never zero.
-        </p>
-        <p>
-          In the bass-only passage at the start, the six silent stems each receive softmax weight {"\\(\\approx 0.075\\)"}
-          while bass gets {"\\(\\approx 0.55\\)"}. The floor {"\\(\\tau = 0.25 \\times 0.55 = 0.14\\)"} is above 0.075,
-          so all six are zeroed and bass gets weight 1.0 — a clean, unambiguous shape.
-        </p>
-      </details>
-    </div>
-  </section>
-
   <section class="demo-section" id="prominence-composer">
     <div class="demo-header">
       <h2>Prominence composer</h2>
@@ -234,8 +166,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         When all stems are close in prominence or the signal is quiet, the last winner holds until something new breaks through.
       </p>
       <p>
-        Every stem is independently configurable: open Settings to assign each one a shape type, deformation effect, lighting mode, and bloom parameters.
-        Use Solo to lock a single stem and audition its visual in isolation.
+        Every stem is independently configurable: Settings assigns each one a shape type, deformation effect, lighting mode, and bloom parameters.
+        A Solo control locks a single stem to audition its visual in isolation.
       </p>
     </div>
   </section>

@@ -5,7 +5,7 @@ title: Parametric shapes
 export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 <div class="monologue">
-So, which geometric shapes make up our vocabulary? Let's start with the obvious…
+Starting from the obvious…
 </div>
 
 <section class="demo-section" id="sdf-raymarching">
@@ -17,32 +17,29 @@ So, which geometric shapes make up our vocabulary? Let's start with the obvious�
 <iframe src={`${base}/demos/01-sdf-raymarching/index.html?embedded`} title="SDF Ray Marching Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
+<div class="subhead">Signed distance functions</div>
 <p>
-  Each shape above is defined by a <a href="https://www.kynd.info/writing/signed-distance-functions/" target="_blank" rel="noopener">signed distance function</a> — one of the 3D SDFs collected by{' '}
-  <a href="https://iquilezles.org/articles/distfunctions/" target="_blank" rel="noopener">Inigo Quilez</a>.
-  The GPU evaluates millions of these functions per frame to produce the image.
+  Each shape above is defined by a <a href="https://www.kynd.info/writing/signed-distance-functions/" target="_blank" rel="noopener">signed distance function</a> taken from <a href="https://iquilezles.org/articles/distfunctions/" target="_blank" rel="noopener">Inigo Quilez's website</a>.
 </p>
 <p>
   A signed distance function {"\\("}f(\mathbf&#123;p&#125;){"\\)"} takes a point {"\\("}\mathbf&#123;p&#125;{"\\)"} in space and returns
   how far it is from the nearest surface of a shape — positive outside, negative inside, zero
   exactly on the surface. That sign is what makes it "signed."
 </p>
-<p>
+<div class="page-note">
   A sphere of radius {"\\("}r{"\\)"} centered at the origin is the cleanest example.
   The distance from any point {"\\("}\mathbf&#123;p&#125;{"\\)"} to the sphere's surface is simply how far {"\\("}\mathbf&#123;p&#125;{"\\)"}
   is from the origin, minus the radius:
-</p>
-<div class="math-block">{"\\["} f(\mathbf&#123;p&#125;) = {"\\|"}\mathbf&#123;p&#125;{"\\|"} - r {"\\]"}</div>
-<p>
+  <div class="math-block">{"\\["} f(\mathbf&#123;p&#125;) = {"\\|"}\mathbf&#123;p&#125;{"\\|"} - r {"\\]"}</div>
   The surface itself is the set of all points where {"\\("}f(\mathbf&#123;p&#125;) = 0{"\\)"}.
   This is the <em>implicit representation</em> of a shape: rather than listing vertices or triangles,
   you write an equation whose zero-set <em>is</em> the shape.
   Any closed-form function produces a valid shape, which makes it easy to
   blend, subtract, or transform shapes by composing their distance functions.
-</p>
+</div>
+<div class="subhead">Ray marching</div>
 <p>
-  To render these shapes, the fragment shader uses <em>ray marching</em>.
-  A ray is cast from the camera through each pixel.
+  To render these shapes, the fragment shader uses <a href="https://www.kynd.info/writing/ray-marching/" target="_blank" rel="noopener">ray marching</a>: a ray is cast from the camera through each pixel.
   At each step along the ray, the SDF is evaluated to find the distance to the nearest surface.
   That distance is safe to advance — stepping that far in any direction can't overshoot the surface.
   This continues until the distance is nearly zero (a hit) or the ray travels too far (a miss).
@@ -92,23 +89,25 @@ Or we can leave behind piecewise constructions for geometry born function-first,
 </div>
 <div class="prose">
 <p>
-  A scalar field assigns a single number to every point in space — temperature, pressure, elevation.
+  A <a href="https://www.kynd.info/writing/scalar-fields/" target="_blank" rel="noopener">scalar field</a> assigns a single number to every point in space — temperature, pressure, elevation.
   The shapes above are <em>level sets</em> of scalar fields: the set of all points where the field equals a fixed value.
   Written as an equation, that is {"\\("}F(x, y, z) = 0{"\\)"}, where {"\\("}F{"\\)"} is the field function.
 </p>
-<p>
+<div class="page-note">
+  <strong>Quadric surfaces.</strong>
   When one or two of the variables appear squared (or multiplied together), the resulting surfaces are called{' '}
   <em>quadric surfaces</em> — the 3D cousins of the conic sections you draw in 2D.
   The elliptic paraboloid {"\\("}y = x^2 + z^2{"\\)"} is a bowl: horizontal cross-sections are circles, vertical ones are parabolas.
   Flip one sign and you get the hyperbolic paraboloid {"\\("}y = x^2 - z^2{"\\)"} — a saddle that curves up in one direction
   and down in the other, popular in architecture because it can be built from straight beams.
   The cone {"\\("}y^2 = x^2 + z^2{"\\)"} is the boundary case between them.
-</p>
-<p>
+  <br /><br />
+  <strong>Higher-degree surfaces.</strong>
   Higher-degree polynomials produce richer geometry.
   The monkey saddle {"\\("}y = x^3 - 3xz^2{"\\)"} has three valleys meeting at the origin — enough room for two legs and a tail.
   The torus and hyperboloid come from quadratics involving a square root, encoding the distance to a circle rather than a point.
-</p>
+</div>
+<div class="subhead">Rendering</div>
 <p>
   These surfaces are rendered the same way as the SDF demo — a ray is cast per pixel and marched through space —
   but without a true distance field to guide the step size.
@@ -133,16 +132,6 @@ Or we can leave behind piecewise constructions for geometry born function-first,
   but now {"\\("}t{"\\)"} is part of the equation, not just the camera rotation.
   The marcher re-evaluates the full field every frame.
 </p>
-<p>
-  The surfaces can be grouped loosely by what moves. <em>Amplitude</em> shapes — sphere, saddle, ellipsoid —
-  scale or stretch a fixed geometry. <em>Phase</em> shapes — ripple, wave sheet, rippled cone, bumpy sphere —
-  push a pattern around the surface without changing its envelope.
-  <em>Threshold</em> shapes — Schwartz P, Schoen I-WP, tanglecube — hold the function fixed and slide the
-  level value, revealing different members of the same family of isosurfaces.
-  <em>Topology-changing</em> shapes — gyroid, Chmutov, permuted cubic — can gain or lose handles and sheets
-  as a parameter passes through a critical value.
-</p>
-
 
 <details>
 <summary>Shape index</summary>
@@ -360,10 +349,6 @@ a degenerate parabolic cylinder each time one coefficient crosses zero.
   {"\\(F_{\\text{blend}}(p) = (1-t)\\,F_A(p) + t\\,F_B(p)\\)"}. The zero set of this blended field
   is a new surface that continuously deforms from one to the other as {"\\(t\\)"} goes from 0 to 1.
 </p>
-<p>
-  Because the field values are interpolated rather than the surfaces themselves, the topology can change
-  mid-blend — handles can appear or disappear, sheets can split or merge — wherever the level sets of
-  {"\\(F_A\\)"} and {"\\(F_B\\)"} happen to intersect.
-</p>
 </div>
 </section>
+

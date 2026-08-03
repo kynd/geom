@@ -28,7 +28,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         directly with lighting.
       </p>
       <details>
-        <summary>Radial expansion, Axial compression, Normal extrusion</summary>
+        <summary>Mode index</summary>
         <div class="shape-desc">
           <strong>Radial expansion</strong>
           <p>Mono amplitude shifts the scalar threshold — the marcher
@@ -65,15 +65,21 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
     <div class="prose">
       <p>
-        A 256-frame ring buffer (~4 seconds at 60 fps) stores past amplitude values.
-        Each method maps a spatial coordinate to a time offset, so the shape holds a visible
-        record of recent sound. <strong>Duration</strong> narrows the history window — at low values
+        Instead of reacting only to the current instant, these modes keep a short memory of the
+        sound — about four seconds — and paint that memory across the shape, so recent past and
+        present are visible on the surface at once. <strong>Duration</strong> narrows the history window — at low values
         only the most recent frames are visible, compressing the timeline onto the surface.
         <strong>Soften</strong> applies a Gaussian blur across adjacent history frames, smoothing
         sharp transients into gradual waves.
       </p>
+      <div class="page-note">
+        <strong>How the memory is stored.</strong>
+        A 256-frame ring buffer (~4 seconds at 60 fps) holds past amplitude values. Each deformation
+        method maps a spatial coordinate on the shape to an offset into that buffer, so different
+        points on the surface read different moments in the recent past.
+      </div>
       <details>
-        <summary>Radial displacement, Banded displacement, Axial rotation</summary>
+        <summary>Mode index</summary>
         <div class="shape-desc">
           <strong>Radial displacement</strong>
           <p>The bottom of the shape samples the current frame;
@@ -111,7 +117,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         ranges map to different spatial regions or axes.
       </p>
       <details>
-        <summary>Spectral displacement, Spectral contours, Spectral shear</summary>
+        <summary>Mode index</summary>
         <div class="shape-desc">
           <strong>Spectral displacement</strong>
           <p>Vertical position on the shape maps continuously to a frequency
@@ -152,7 +158,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         Instead of deforming a base shape, these modes construct geometry directly from audio data.
       </p>
       <details>
-        <summary>Spectral fan, Interference rings, Spectrogram cylinder, Spectral tube, Waveform sphere, Harmonic rings, Spectrogram cone, Spectral terrain, Spectral helix, Spectral ribbon</summary>
+        <summary>Mode index</summary>
         <div class="shape-desc">
           <strong>Spectral fan</strong>
           <p>A cylinder whose cross-section at every height is the

@@ -42,14 +42,19 @@ Let's start by building basic sound analysis methods for whatever comes next. To
 </div>
 <div class="prose">
 <p>
-  Select a stem from the dropdown and press play.
-  The top graph traces the overall RMS amplitude over the last 15 seconds — a running picture of how loud the signal is.
-  The bottom chart shows the frequency content of the current frame: 128 Mel-spaced bands, updated at 60 fps.
-  The frequency label in the corner shows the active range the analysis detected for that stem.
+  Each stem has two live views: a running RMS amplitude trace over the last 15 seconds, and the frequency
+  content of the current frame as 128 Mel-spaced bands, both updating at 60 fps. The frequency label in the
+  corner shows the active range the analysis detected for that stem.
 </p>
+<div class="subhead">Offline analysis</div>
 <p>
-  A Python script analyses each sound file offline before the browser touches it.
-  It computes a full-file <a href="https://en.wikipedia.org/wiki/Short-time_Fourier_transform" target="_blank" rel="noopener">STFT</a> at 2048-point resolution, then builds a global energy profile across all frequencies.
+  We use a Python script to precompute this data before the browser ever sees it, so every frame's visual
+  state comes from a fixed row of numbers — the same input always renders the same output, with no runtime
+  signal processing and no timing drift between audio and visuals during video export.
+</p>
+<div class="page-note">
+  <strong>How the analysis works.</strong>
+  A full-file <a href="https://en.wikipedia.org/wiki/Short-time_Fourier_transform" target="_blank" rel="noopener">STFT</a> at 2048-point resolution builds a global energy profile across all frequencies.
   Spectral roll-off at 5 % and 85 % of cumulative energy marks where the track actually lives — ignoring sub-bass rumble
   below the content and empty headroom above it.
   A <a href="https://en.wikipedia.org/wiki/Mel_scale" target="_blank" rel="noopener">Mel-scale</a> filterbank then maps 128 bands logarithmically across that active range, concentrating resolution
@@ -57,19 +62,13 @@ Let's start by building basic sound analysis methods for whatever comes next. To
   The script processes left and right channels separately and writes one row of numbers per frame at 60 fps:
   L and R RMS amplitude followed by 128 Mel band magnitudes for each channel.
   The output is stored as raw little-endian 32-bit floats — 258 values per frame, 1032 bytes per frame —
-  which the browser can load directly into a typed array without any parsing overhead.
-</p>
+  which the browser loads directly into a typed array without any parsing overhead.
+</div>
+<div class="subhead">Playback</div>
 <p>
-  The browser fetches that binary file and advances through it in lockstep with the audio,
-  without doing any signal processing at runtime.
-  This matters for video export: every frame's visual state comes from a specific row in the data file,
-  so rendering the same frame twice always produces the same result —
-  no timing drift, no decoding variance between the audio and the visuals.
-</p>
-<p>
-  The demo skips the silent part at the start of each stem.
-  It scans the data file for the first frame where amplitude exceeds a small threshold,
-  then cues both the audio and the display to that point.
+  The browser fetches that file once and advances through it frame by frame in step with the audio, skipping
+  each stem's silent lead-in by scanning for the first frame whose amplitude clears a small threshold and
+  cueing both audio and display to that point.
 </p>
 <div class="page-note">
   <strong>Linear vs. log scaling.</strong>
@@ -107,75 +106,8 @@ Let's start by building basic sound analysis methods for whatever comes next. To
 </div>
 </section>
 
-<div class="monologue">
-Now testing the data using a few visualization techniques.
-</div>
-
-<section class="demo-section" id="wave">
-<div class="demo-header">
-<h2>Wave</h2>
-<a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-</div>
-<div class="demo-embed">
-<iframe src={`${base}/demos/sound-wave/index.html?embedded`} title="Sound Wave Demo" scrolling="no" allow="autoplay"></iframe>
-</div>
-<div class="prose">
-<p>
-  Each frequency band drives a sine wave across the surface at a different spatial frequency.
-  Low bands produce slow, wide swells; high bands add fast fine ripples on top.
-  The waves travel forward continuously.
-</p>
-</div>
-</section>
-
-<section class="demo-section" id="warp">
-<div class="demo-header">
-<h2>Warp</h2>
-<a href={`${base}/demos/warp/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-</div>
-<div class="demo-embed">
-<iframe src={`${base}/demos/warp/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
-</div>
-<div class="prose">
-<p>
-  A thin bar in 3D space, viewed through a per-column camera whose height is set by the amplitude at that moment.
-  The centre of the screen is the current playback position; the left half traces the past two seconds, the right half the next two.
-  When a moment is loud the camera rises with the bar, and the top face of the shape comes into view.
-  When it is quiet the bar sits level and appears edge-on — almost a line.
-  Because every column is at a different moment in the track, the varying camera heights bend and twist the bar across the full width of the screen.
-</p>
-</div>
-</section>
-
-<section class="demo-section" id="ridge">
-<div class="demo-header">
-<h2>Ridge</h2>
-<a href={`${base}/demos/ridge/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-</div>
-<div class="demo-embed">
-<iframe src={`${base}/demos/ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
-</div>
-<div class="prose">
-<p>
-  Five seconds of spectrum rendered as a height field. The front edge is the current moment;
-  older data recedes into the background as new frames arrive.
-  The left half shows the L channel and the right half the R channel.
-  Both are mirrored so the lowest active frequencies meet at the centre,
-  with the highest frequencies at the outer edges.
-  Silent areas stay flat — peaks only appear where there is energy.
-</p>
-</div>
-</section>
-
 
 <style>{`
-  .page-note {
-    max-width: 800px; margin-bottom: 2.5rem; padding: 0.9rem 1.1rem;
-    border-left: 3px solid var(--border);
-    font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted);
-  }
-  .page-note a { color: var(--fg-muted); text-decoration: underline; }
-  .page-note strong { color: var(--fg); font-weight: 500; }
   .spectrograms { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
   .spec-row { display: flex; align-items: center; gap: 1rem; }
   .spec-meta {

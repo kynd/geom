@@ -5,7 +5,7 @@ title: Lighting and rendering
 export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 <div class="monologue">
-Testing ways to light and render shapes.
+You cannot see objects without light, and how things are lit completely changes how they appear.
 </div>
 
 <section class="demo-section" id="rim-light">
@@ -17,13 +17,23 @@ Testing ways to light and render shapes.
 <iframe src={`${base}/demos/lighting-rendering/index.html?embedded`} title="Rim Light Demo" scrolling="no" allow="autoplay"></iframe>
 </div>
 <div class="prose">
+<div class="subhead">Rim lighting</div>
 <p>
-  Rim intensity is {"\\( r = (1 - |\\, n \\cdot (-d) \\,|)^{p} \\)"} — bright at silhouette edges,
-  dark face-on. The subsurface scattering (SSS) term fires a secondary ray through the shape's
-  interior to measure thickness, then {"\\( e^{-\\,\\text{thickness} \\times \\text{density}} \\)"}
-  lets thin regions glow from within. SSS is only applied to closed solid shapes (SDF shapes and
-  Platonic duals); scalar and moving scalar fields are open surfaces with no enclosed interior, so
-  there is no meaningful thickness to march through.
+  Silhouette edges brighten and face-on surfaces darken, based on how directly the surface normal points at the camera.
+</p>
+<div class="page-note">
+  Rim intensity is {"\\( r = (1 - |\\, n \\cdot (-d) \\,|)^{p} \\)"} — bright at silhouette edges, dark face-on.
+</div>
+<div class="subhead">Subsurface scattering</div>
+<p>
+  A secondary ray marches through the shape's interior to measure its thickness, letting thin regions glow from within.
+  SSS is only applied to closed solid shapes (SDF shapes and Platonic duals) — scalar and moving scalar fields are open
+  surfaces with no enclosed interior to march through.
+</p>
+<div class="page-note">
+  Glow strength falls off as {"\\( e^{-\\,\\text{thickness} \\times \\text{density}} \\)"}.
+</div>
+<p>
   The sliders expose rim exponent, face-on fill, SSS strength, and density.
 </p>
 </div>
@@ -64,5 +74,3 @@ Testing ways to light and render shapes.
 </div>
 </section>
 
-<style>{`
-`}</style>

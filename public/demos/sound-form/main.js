@@ -209,10 +209,7 @@ async function init() {
 
   let rafId = null;
 
-  function loop(ts) {
-    rafId = requestAnimationFrame(loop);
-    const wallTime  = (ts - globalStart) * 0.001;
-    const audioTime = audio ? audio.currentTime : 0;
+  function renderFrame(wallTime, audioTime) {
     const fr = frames.length > 0
       ? frames[Math.min(Math.floor(audioTime * FPS), frames.length - 1)]
       : null;
@@ -232,6 +229,11 @@ async function init() {
     }
 
     composer.render();
+  }
+
+  function loop(ts) {
+    rafId = requestAnimationFrame(loop);
+    renderFrame((ts - globalStart) * 0.001, audio ? audio.currentTime : 0);
   }
 
   function setPlaying(play) {
@@ -271,6 +273,8 @@ async function init() {
       audio.currentTime = findStartFrame(frames) / FPS;
     });
     playBtn.innerHTML = playIcon();
+
+    if (!wasPlaying) renderFrame(0, startFrame / FPS);
   }
 
   playBtn.innerHTML = playIcon();

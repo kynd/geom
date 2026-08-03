@@ -1,0 +1,135 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<PageLayout title="Archive" slug="sketches/archive">
+  <div class="monologue">
+    Earlier sound-reactive demos, kept here for reference.
+  </div>
+
+  <section class="demo-section" id="wave">
+    <div class="demo-header">
+      <h2>Wave</h2>
+      <a href={`${base}/demos/sound-wave/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sound-wave/index.html?embedded`} title="Sound Wave Demo" scrolling="no" allow="autoplay"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Each frequency band drives a sine wave across the surface at a different spatial frequency.
+        Low bands produce slow, wide swells; high bands add fast fine ripples on top.
+        The waves travel forward continuously.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="warp">
+    <div class="demo-header">
+      <h2>Warp</h2>
+      <a href={`${base}/demos/warp/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/warp/index.html?embedded`} title="Sound Warp Demo" scrolling="no" allow="autoplay"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        A thin bar in 3D space, viewed through a per-column camera whose height is set by the amplitude at that moment.
+        The centre of the screen is the current playback position; the left half traces the past two seconds, the right half the next two.
+        When a moment is loud the camera rises with the bar, and the top face of the shape comes into view.
+        When it is quiet the bar sits level and appears edge-on — almost a line.
+        Because every column is at a different moment in the track, the varying camera heights bend and twist the bar across the full width of the screen.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="ridge">
+    <div class="demo-header">
+      <h2>Ridge</h2>
+      <a href={`${base}/demos/ridge/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/ridge/index.html?embedded`} title="Sound Ridge Demo" scrolling="no" allow="autoplay"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Five seconds of spectrum rendered as a height field. The front edge is the current moment;
+        older data recedes into the background as new frames arrive.
+        The left half shows the L channel and the right half the R channel.
+        Both are mirrored so the lowest active frequencies meet at the centre,
+        with the highest frequencies at the outer edges.
+        Silent areas stay flat — peaks only appear where there is energy.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="sdf-blend">
+    <div class="demo-header">
+      <h2>SDF blend</h2>
+      <a href={`${base}/demos/sdf-blend/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/sdf-blend/index.html?embedded`} title="SDF blend" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Two SDF shapes placed side by side, blended together using a smooth union operation.
+        Each shape independently reacts to its assigned stem track — only those two stems are audible.
+        The <strong>Distance</strong> slider sets the separation between centres;
+        <strong>Blend</strong> controls the smooth union radius;
+        <strong>Intensity</strong> scales the strength of the deformation effect.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="stem-shapes">
+    <div class="demo-header">
+      <h2>Scalar field interpolation</h2>
+      <a href={`${base}/demos/stem-shapes/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/stem-shapes/index.html?embedded`} title="Scalar field interpolation" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <p>
+        Each stem is assigned a scalar field. The seven fields are blended in real time using their softmax
+        prominence scores as weights — the shape of whichever stem is loudest or most transient
+        pulls the surface toward its geometry while the others fade into the mix.
+        The Shapes panel reassigns any stem to a different field.
+      </p>
+
+      <details>
+        <summary>Sparse weighting — why and how</summary>
+
+        <p>
+          Softmax assigns non-zero weight to every stem, always.
+          Even a completely silent stem receives {"\\(e^{\\beta \\cdot 0} = 1\\)"} before normalisation,
+          so at {"\\(\\beta = 5\\)"} a single active stem in a group of seven only claims roughly 55% of the total weight —
+          the remaining 45% leaks into six geometries no one is hearing.
+          The result is a surface that never looks fully like any one shape.
+        </p>
+
+        <h3>Relative-floor threshold</h3>
+        <p>
+          After computing the softmax distribution {"\\(\\tilde{P}_i\\)"},
+          zero out any stem whose weight falls below a fixed fraction {"\\(\\alpha\\)"} of the current peak, then renormalise over the survivors:
+        </p>
+        <p class="math-block">{"\\[ \\tau(t) = \\alpha \\cdot \\max_j \\tilde{P}_j(t) \\]"}</p>
+        <p class="math-block">{"\\[ w_i(t) = \\begin{cases} \\tilde{P}_i(t) & \\tilde{P}_i(t) \\geq \\tau(t) \\\\ 0 & \\text{otherwise} \\end{cases} \\]"}</p>
+        <p class="math-block">{"\\[ \\hat{w}_i(t) = \\frac{w_i(t)}{\\displaystyle\\sum_k w_k(t)} \\]"}</p>
+        <p>
+          With {"\\(\\alpha = 0.25\\)"}, a stem must carry at least a quarter of the peak weight to contribute to the blend.
+          The threshold is relative, so it adapts automatically: when one stem dominates,
+          the bar rises and the weaker stems fall below it; when several stems are close in prominence, more of them survive.
+          The dominant stem always survives by definition — {"\\(\\tau \\leq \\tilde{P}_{\\max}\\)"} — so the renormalisation denominator is never zero.
+        </p>
+        <p>
+          In the bass-only passage at the start, the six silent stems each receive softmax weight {"\\(\\approx 0.075\\)"}
+          while bass gets {"\\(\\approx 0.55\\)"}. The floor {"\\(\\tau = 0.25 \\times 0.55 = 0.14\\)"} is above 0.075,
+          so all six are zeroed and bass gets weight 1.0 — a clean, unambiguous shape.
+        </p>
+      </details>
+    </div>
+  </section>
+</PageLayout>

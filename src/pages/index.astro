@@ -7,6 +7,6 @@ const page = allPages.find(p => p.slug === 'index')!;
 const { Content } = await page.render();
 ---
 
-<PageLayout title={page.data.title} slug="" isProse={true}>
+<PageLayout title={page.data.title} slug="">
   <Content />
 </PageLayout>

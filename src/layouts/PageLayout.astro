@@ -4,7 +4,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 interface Props {
   title: string;
   slug: string;
-  isProse?: boolean;
 }
 
 interface NavItem {
@@ -15,18 +14,14 @@ interface NavItem {
   subLinks?: { label: string; href: string }[];
 }
 
-const { title, slug, isProse = false } = Astro.props;
+const { title, slug } = Astro.props;
 
 const navItems: NavItem[] = [
   { label: 'Geom',               href: `${base}/`,                          slug: '' },
-  { label: 'Naming policies',   href: `${base}/naming-policies`,           slug: 'naming-policies' },
   { label: 'Sound analysis',     href: `${base}/sound-analysis`,            slug: 'sound-analysis',
     subLinks: [
       { label: 'Amplitude and spectrum', href: '#amplitude-and-spectrum' },
       { label: 'Spectrograms',           href: '#spectrograms' },
-      { label: 'Wave',                   href: '#wave' },
-      { label: 'Warp',                   href: '#warp' },
-      { label: 'Ridge',                  href: '#ridge' },
     ]
   },
   { label: 'Parametric shapes',  href: `${base}/parametric-shapes`,         slug: 'parametric-shapes',
@@ -58,11 +53,9 @@ const navItems: NavItem[] = [
     subLinks: [
       { label: 'Visualizer',        href: '#visualizer' },
       { label: 'Shape composer',    href: '#composer' },
-      { label: 'SDF blend',         href: '#sdf-blend' },
       { label: 'Prominence',        href: '#prominence' },
       { label: 'Track prominence radar chart', href: '#stem-radar' },
       { label: 'Radar 3D history', href: '#stem-radar-3d' },
-      { label: 'Scalar field interpolation', href: '#stem-shapes' },
     ]
   },
   { label: 'Effects and Refinements',   href: `${base}/transitions`,               slug: 'transitions',
@@ -73,6 +66,7 @@ const navItems: NavItem[] = [
     ]
   },
   { label: 'Composition', href: `${base}/composition`, slug: 'composition' },
+  { label: 'Appendix', href: `${base}/appendix`, slug: 'appendix' },
   ...(import.meta.env.DEV ? [
     { label: '[Sketch] Fill functions', href: `${base}/sketches/fill-functions`, slug: 'sketches/fill-functions', sketch: true,
       subLinks: [
@@ -89,8 +83,22 @@ const navItems: NavItem[] = [
     { label: '[Sketch] Sound graphics', href: `${base}/sketches/sound-graphics`, slug: 'sketches/sound-graphics', sketch: true },
     { label: '[Sketch] Radar evolutions', href: `${base}/sketches/radar-evolutions`, slug: 'sketches/radar-evolutions', sketch: true },
     { label: '[Sketch] UI guide', href: `${base}/sketches/ui-guide`, slug: 'sketches/ui-guide', sketch: true },
+    { label: '[Sketch] Archive', href: `${base}/sketches/archive`, slug: 'sketches/archive', sketch: true,
+      subLinks: [
+        { label: 'Wave',  href: '#wave' },
+        { label: 'Warp',  href: '#warp' },
+        { label: 'Ridge', href: '#ridge' },
+        { label: 'SDF blend', href: '#sdf-blend' },
+        { label: 'Scalar field interpolation', href: '#stem-shapes' },
+      ]
+    },
   ] : []),
 ];
+
+const publicItems = navItems.filter(item => !item.sketch);
+const currentIdx  = publicItems.findIndex(item => item.slug === slug);
+const nextItem    = currentIdx >= 0 && currentIdx < publicItems.length - 1 ? publicItems[currentIdx + 1] : null;
+const isPublic    = currentIdx >= 0;
 ---
 
 <!DOCTYPE html>
@@ -256,6 +264,7 @@ const navItems: NavItem[] = [
     .monologue p { margin: 0; }
     .monologue a { color: var(--fg-muted); text-decoration: underline; text-decoration-color: var(--fg-muted); text-underline-offset: 3px; transition: text-decoration-color 0.15s; }
     .monologue a:hover { text-decoration-color: var(--fg); }
+    .monologue strong { color: var(--fg); font-weight: 500; }
 
     /* Demo sections */
     .demo-section { width: 960px; max-width: calc(100% - 1.5rem); margin: 0 0 4rem 1.5rem; }
@@ -280,6 +289,11 @@ const navItems: NavItem[] = [
     .demo-embed.sq { width: 540px; height: 540px; }
     .demo-embed.sq iframe { width: 540px; height: 540px; }
 
+    /* Top-level content blocks (not nested in a .demo-section) match the
+       same left indent and bottom rhythm so pages without demos still line up. */
+    .main-inner > .prose { margin-left: 1.5rem; margin-bottom: 4rem; }
+    .main-inner > .demo-embed { margin-left: 1.5rem; margin-bottom: 4rem; }
+
     /* Prose */
     .prose {
       max-width: 800px; margin-top: 2.5rem;
@@ -296,6 +310,15 @@ const navItems: NavItem[] = [
     .prose .math-block { margin: 1.4rem 0; text-align: left; overflow-x: auto; }
     .prose .math-block .katex-display { text-align: left; }
     .prose .math-block .katex-display > .katex { text-align: left; }
+    .page-note {
+      max-width: 800px; margin: 1.5rem 0; padding: 0.9rem 1.1rem;
+      border-left: 3px solid var(--border);
+      font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted);
+    }
+    .page-note a { color: var(--fg-muted); text-decoration: underline; }
+    .page-note strong { color: var(--fg); font-weight: 500; }
+    .page-note p:last-child { margin-bottom: 0; }
+    .page-note .math-block { margin: 1rem 0; }
     .prose h3 {
       font-size: 0.92rem; font-weight: 600; letter-spacing: -0.005em;
       margin-top: 2rem; margin-bottom: 0.6rem;
@@ -304,19 +327,29 @@ const navItems: NavItem[] = [
       font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
       margin-top: 2.5rem; margin-bottom: 0.8rem;
     }
+    .prose .subhead {
+      font-family: 'Sora', sans-serif; font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-muted);
+      margin-top: 2rem; margin-bottom: 0.6rem;
+    }
     .prose ul { list-style: disc; padding-left: 1.4rem; }
     .prose ul li { margin-bottom: 0.4rem; }
     .prose ol { list-style: decimal; padding-left: 1.4rem; }
     .prose ol li { margin-bottom: 0.4rem; }
     .prose .shape-desc p,
     .prose .shape-desc li { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
+    .prose .shape-desc strong,
+    .prose details strong { color: var(--fg); font-weight: 500; }
     .prose > details { margin-top: 1rem; }
     .prose details p,
     .prose details h3,
-    .prose details strong { font-size: 0.82rem; line-height: 1.6; color: var(--fg-muted); }
+    .prose details strong { font-size: 0.82rem; line-height: 1.6; }
+    .prose details p,
+    .prose details h3 { color: var(--fg-muted); }
     .prose > details > summary {
       display: inline-block; list-style: none; cursor: pointer;
-      font-size: 0.82rem; color: var(--fg-muted); opacity: 0.6;
+      font-family: 'Sora', sans-serif; font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-muted); opacity: 0.6;
       padding: 0.2rem 0;
     }
     .prose > details > summary::-webkit-details-marker { display: none; }
@@ -358,6 +391,35 @@ const navItems: NavItem[] = [
       opacity: 1;
       pointer-events: auto;
     }
+
+    /* ── Page footer ──────────────────────────────────────────────────── */
+    .page-footer {
+      margin-top: 4rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer-row {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: 0.75rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .next-page {
+      font-family: 'Sora', sans-serif; font-size: 0.85rem; font-weight: 500;
+      color: var(--fg); text-decoration: none;
+    }
+    .next-page:hover { text-decoration: underline; }
+    .site-footer {
+      display: flex; flex-wrap: wrap; gap: 1.25rem;
+      margin-left: auto;
+      font-family: var(--font-body); font-size: 0.8rem;
+    }
+    .footer-license {
+      max-width: 700px;
+      font-family: var(--font-body); font-size: 0.75rem; line-height: 1.6;
+      color: var(--fg-muted);
+    }
+    .footer-license a { color: var(--fg-muted); text-decoration: underline; }
+    .footer-license a:hover { color: var(--fg); }
+    .site-footer a { color: var(--fg-muted); text-decoration: none; transition: color 0.15s; }
+    .site-footer a:hover { color: var(--fg); }
 
     @media (max-width: 768px) {
       .shell.sidebar-open .main-wrap { margin-left: 0; }
@@ -410,12 +472,23 @@ const navItems: NavItem[] = [
     <main class="main-wrap">
       <div class="main-inner">
         <h1>{title}</h1>
-        {isProse ? (
-          <div class="prose">
-            <slot />
-          </div>
-        ) : (
-          <slot />
+        <slot />
+        {isPublic && (
+          <footer class="page-footer">
+            <div class="footer-row">
+              {nextItem && <a class="next-page" href={nextItem.href}>Next: {nextItem.label} →</a>}
+              <div class="site-footer">
+                <a href={`${base}/`}>Geom</a>
+                <a href="https://www.kynd.info/" target="_blank" rel="noopener">kynd.info</a>
+              </div>
+            </div>
+            <div class="footer-license">
+              Code and writing: <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> — Kenichi Yoneda (Kynd).
+              Sound files: <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a> — Yaporigami (Yu Miyashita).
+              Final video (<a href="https://vimeo.com/1215067660" target="_blank" rel="noopener">Vimeo</a>): <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>.
+              See the <a href="https://github.com/kynd/geom/blob/main/README.md" target="_blank" rel="noopener">full license details</a>.
+            </div>
+          </footer>
         )}
       </div>
     </main>
