@@ -55,13 +55,13 @@ const navItems: NavItem[] = [
       { label: 'Shape composer',    href: '#composer' },
       { label: 'Prominence',        href: '#prominence' },
       { label: 'Track prominence radar chart', href: '#stem-radar' },
+      { label: 'Prominence composer', href: '#prominence-composer' },
       { label: 'Radar 3D history', href: '#stem-radar-3d' },
     ]
   },
   { label: 'Effects and Refinements',   href: `${base}/transitions`,               slug: 'transitions',
     subLinks: [
       { label: 'Mixed lighting',         href: '#mixed-lighting' },
-      { label: 'Collapsing',             href: '#collapsing' },
       { label: 'Camera motion',          href: '#camera-motion' },
     ]
   },
@@ -88,6 +88,7 @@ const navItems: NavItem[] = [
         { label: 'Wave',  href: '#wave' },
         { label: 'Warp',  href: '#warp' },
         { label: 'Ridge', href: '#ridge' },
+        { label: 'Collapsing', href: '#collapsing' },
         { label: 'SDF blend', href: '#sdf-blend' },
         { label: 'Scalar field interpolation', href: '#stem-shapes' },
       ]
@@ -344,8 +345,8 @@ const isPublic    = currentIdx >= 0;
     .prose details p,
     .prose details h3,
     .prose details strong { font-size: 0.82rem; line-height: 1.6; }
-    .prose details p,
-    .prose details h3 { color: var(--fg-muted); }
+    .prose details p { color: var(--fg-muted); }
+    .prose details h3 { color: var(--fg); font-weight: 500; }
     .prose > details > summary {
       display: inline-block; list-style: none; cursor: pointer;
       font-family: 'Sora', sans-serif; font-size: 0.72rem; font-weight: 500;

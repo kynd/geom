@@ -17,39 +17,32 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <iframe src={`${base}/sketches/prominence-composer/demo/index.html?embedded`} title="Mixed lighting" scrolling="no"></iframe>
     </div>
     <div class="prose">
-      <p>Enables transition between different looks by mixing a phase portrait against one of three selectable environment models:</p>
-      <ul>
-        <li><strong>Phase portrait</strong> — treats the frequency spectrum as an environment map, projecting the audio's tonal character onto the surface as a slowly shifting spherical light field. Always sits at the 0 end of the mix.</li>
-        <li><strong>Anisotropic wave</strong> — generates a rainbow-spectrum directional wave driven by bass and treble amplitude, producing vivid rapidly cycling colors.</li>
-        <li><strong>Drifting caustic</strong> — seven waves drifting at different rates, sharpened into shifting light-and-dark bands.</li>
-        <li><strong>Prism rainbow</strong> — new: a plain spectrum band wrapped around the environment sphere like a slice through a rainbow, red at one pole and violet at the other.</li>
-        <li><strong>Rim light</strong> — a view-dependent silhouette glow that fires where the surface normal is nearly perpendicular to the camera ray.</li>
-      </ul>
-      <p>Sliders:</p>
-      <ul>
-        <li><strong>Bg mix</strong> — blends the background from phase portrait (0) to the selected environment model (1).</li>
-        <li><strong>Obj mix</strong> — does the same for the object surface shading.</li>
-        <li><strong>Env model</strong> — chooses which of the three models above sits at the 1 end of the mix.</li>
-        <li><strong>Caustic sharp</strong> — Drifting caustic only: steepens the transition between its light and dark bands.</li>
-        <li><strong>Prism width</strong> — Prism rainbow only: how far the spectrum reaches from the equator toward the poles; 0 collapses it to a line, 1 reaches both poles.</li>
-        <li><strong>Prism angle</strong> — Prism rainbow only: spins the whole environment sphere around the depth axis, rotating where the poles sit.</li>
-        <li><strong>Rim light</strong> — intensity of the silhouette glow, added on top regardless of the other sliders.</li>
-        <li><strong>Rim width</strong> — angular spread of the rim; higher values widen the glow across more of the surface.</li>
-        <li><strong>Grayscale</strong> — desaturates the full frame.</li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="demo-section" id="collapsing">
-    <div class="demo-header">
-      <h2>Collapsing</h2>
-      <a href={`${base}/demos/collapsing/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-    </div>
-    <div class="demo-embed">
-      <iframe src={`${base}/demos/collapsing/index.html?embedded`} title="Collapsing" scrolling="no"></iframe>
-    </div>
-    <div class="prose">
-      <p>Collapses any shape along the Y axis to transition between flat and 3D.</p>
+      <p>Enables transition between different looks by mixing a phase portrait against one of three selectable environment models.</p>
+      <div class="subhead">Environment models</div>
+      <div class="page-note">
+        The transition always runs between the phase portrait and whichever of the other models is selected — never between two non-phase-portrait models.
+        <ul>
+          <li><strong>Phase portrait</strong> — treats the frequency spectrum as an environment map, projecting the audio's tonal character onto the surface as a slowly shifting spherical light field. Always sits at the 0 end of the mix.</li>
+          <li><strong>Anisotropic wave</strong> — generates a rainbow-spectrum directional wave driven by bass and treble amplitude, producing vivid rapidly cycling colors.</li>
+          <li><strong>Drifting caustic</strong> — seven waves drifting at different rates, sharpened into shifting light-and-dark bands.</li>
+          <li><strong>Prism rainbow</strong> — a plain spectrum band wrapped around the environment sphere like a slice through a rainbow, red at one pole and violet at the other.</li>
+          <li><strong>Rim light</strong> — a view-dependent silhouette glow that fires where the surface normal is nearly perpendicular to the camera ray.</li>
+        </ul>
+      </div>
+      <div class="subhead">Sliders</div>
+      <div class="page-note">
+        <ul>
+          <li><strong>Bg mix</strong> — blends the background from phase portrait (0) to the selected environment model (1).</li>
+          <li><strong>Obj mix</strong> — does the same for the object surface shading.</li>
+          <li><strong>Env model</strong> — chooses which of the three models above sits at the 1 end of the mix.</li>
+          <li><strong>Caustic sharp</strong> — Drifting caustic only: steepens the transition between its light and dark bands.</li>
+          <li><strong>Prism width</strong> — Prism rainbow only: how far the spectrum reaches from the equator toward the poles; 0 collapses it to a line, 1 reaches both poles.</li>
+          <li><strong>Prism angle</strong> — Prism rainbow only: spins the whole environment sphere around the depth axis, rotating where the poles sit.</li>
+          <li><strong>Rim light</strong> — intensity of the silhouette glow, added on top regardless of the other sliders.</li>
+          <li><strong>Rim width</strong> — angular spread of the rim; higher values widen the glow across more of the surface.</li>
+          <li><strong>Grayscale</strong> — desaturates the full frame.</li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -62,15 +55,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <iframe src={`${base}/demos/camera-motion/index.html?embedded`} title="Camera motion" scrolling="no"></iframe>
     </div>
     <div class="prose">
-      <p>A sandbox for exploring camera motion on any shape. Camera controls:</p>
-      <ul>
-        <li><strong>Orbit X / Y / Z</strong> — constant rotation rates around each axis; set negative for the opposite direction. Reset button returns each to zero.</li>
-        <li><strong>Direction H / V</strong> — offsets the look target left/right and up/down relative to the camera's current orientation, so the view always tilts toward that side of the world center.</li>
-        <li><strong>Sound zoom</strong> — scales the camera distance by the current amplitude; higher values pull the camera in more on loud transients.</li>
-        <li><strong>Sound pan</strong> — shakes the view using the stem's amplitude and frequency content.</li>
-        <li><strong>Stem</strong> — selects which stem drives the camera effects above.</li>
-      </ul>
-      <p>Dragging orbits the camera, right-dragging pans, and scrolling zooms. Orbit and direction sliders stack on top of the mouse position.</p>
+      <p>A sandbox for exploring camera motion on any shape. Dragging orbits the camera, right-dragging pans, and scrolling zooms; orbit and direction sliders stack on top of the mouse position.</p>
+      <div class="subhead">Controls</div>
+      <div class="page-note">
+        <ul>
+          <li><strong>Orbit X / Y / Z</strong> — constant rotation rates around each axis; set negative for the opposite direction. Reset button returns each to zero.</li>
+          <li><strong>Direction H / V</strong> — offsets the look target left/right and up/down relative to the camera's current orientation, so the view always tilts toward that side of the world center.</li>
+          <li><strong>Sound zoom</strong> — scales the camera distance by the current amplitude; higher values pull the camera in more on loud transients.</li>
+          <li><strong>Sound pan</strong> — shakes the view using the stem's amplitude and frequency content.</li>
+          <li><strong>Stem</strong> — selects which stem drives the camera effects above.</li>
+        </ul>
+      </div>
     </div>
   </section>
 </PageLayout>

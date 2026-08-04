@@ -15,15 +15,16 @@
     #main-canvas.dragging { cursor: grabbing; }
 
     /* ── Side params ───────────────────────────────────────────────────────── */
-    /* flex-wrap + a max-width tied to the (embeddable) wrapper's own width —
-       not a fixed pixel value — so the four columns wrap onto a second row
-       instead of running past the edge of a 960px-wide embedded canvas. */
+    /* One row spanning the full width, spaced left/center/right so the three
+       panels never wrap or overlap the shape above them, even at the 960px
+       embedded canvas size. */
     #side-params {
-      position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
-      max-width: calc(100% - 64px);
-      display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center;
-      gap: 12px 16px;
+      position: absolute; bottom: 32px; left: 32px; right: 32px;
+      display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: space-between;
+      align-items: flex-start;
       pointer-events: all; z-index: 15;
+    }
+    #side-params > div {
       background: rgba(0,0,0,0.45); border-radius: 8px;
       padding: 10px 12px;
     }

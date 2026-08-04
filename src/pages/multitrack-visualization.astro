@@ -124,34 +124,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
   </section>
 
-  <section class="demo-section" id="stem-radar-3d">
-    <div class="demo-header">
-      <h2>Radar 3D history</h2>
-      <a href={`${base}/demos/radar-3d-history/index.html`} target="_blank" rel="noopener">open full size ↗</a>
-    </div>
-    <div class="demo-embed">
-      <iframe src={`${base}/demos/radar-3d-history/index.html?embedded`} title="Radar 3D history" scrolling="no"></iframe>
-    </div>
-    <div class="prose">
-      <p>
-        The same prominence radar lifted into 3D: the seven-vertex shape lives on a plane that
-        rotates independently on all three axes — drag to orbit it directly, the way the
-        <a href={`${base}/composition`}>Composition</a> demo's camera works. Rather than showing
-        only the current instant, it also redraws several recent frames at the same center, each
-        rotated by exactly how far the shape had spun by that point in time — <strong>Count</strong>
-        sets how many of these historical rings to draw, <strong>Span</strong> sets how many frames
-        apart each one is sampled, and every ring fades with age.
-      </p>
-      <p>
-        Each of the seven edges also carries hidden vertices driven by the two neighboring stems'
-        FFT spectra — invisible at <strong>FFT</strong> = 0 (a plain heptagon), buckling further
-        off the ring's original plane as it rises. <strong>Bins</strong> sets how many FFT bins get
-        sampled per edge; <strong>Prominence</strong> sets how much a stem's own prominence moves
-        its vertex at all, down to a fixed half-size septagon at 0.
-      </p>
-    </div>
-  </section>
-
   <section class="demo-section" id="prominence-composer">
     <div class="demo-header">
       <h2>Prominence composer</h2>
@@ -168,6 +140,35 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <p>
         Every stem is independently configurable: Settings assigns each one a shape type, deformation effect, lighting mode, and bloom parameters.
         A Solo control locks a single stem to audition its visual in isolation.
+      </p>
+    </div>
+  </section>
+
+  <section class="demo-section" id="stem-radar-3d">
+    <div class="demo-header">
+      <h2>Radar 3D history</h2>
+      <a href={`${base}/demos/radar-3d-history/index.html`} target="_blank" rel="noopener">open full size ↗</a>
+    </div>
+    <div class="demo-embed">
+      <iframe src={`${base}/demos/radar-3d-history/index.html?embedded`} title="Radar 3D history" scrolling="no"></iframe>
+    </div>
+    <div class="prose">
+      <div class="subhead">Orbit and history</div>
+      <p>
+        The same prominence radar lifted into 3D: the seven-vertex shape lives on a plane that
+        rotates independently on all three axes and can be dragged to orbit directly.
+        Rather than showing only the current instant, it also redraws several recent frames at the
+        same center, each rotated by exactly how far the shape had spun by that point in time.
+        <strong>Count</strong> sets how many of these historical rings to draw, <strong>Span</strong>
+        sets how many frames apart each one is sampled, and every ring fades with age.
+      </p>
+      <div class="subhead">Edge spectra</div>
+      <p>
+        Each of the seven edges also carries hidden vertices driven by the two neighboring stems'
+        FFT spectra — invisible at <strong>FFT</strong> = 0 (a plain heptagon), buckling further
+        off the ring's original plane as it rises. <strong>Bins</strong> sets how many FFT bins get
+        sampled per edge; <strong>Prominence</strong> sets how much a stem's own prominence moves
+        its vertex at all, down to a fixed half-size septagon at 0.
       </p>
     </div>
   </section>

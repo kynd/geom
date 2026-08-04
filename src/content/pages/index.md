@@ -23,7 +23,8 @@ We set a set of tentative, self-imposed rules.
 </div>
 
 <div class="monologue">
-Here's the final video. <strong>Watch, like, and share</strong> before reading the rest!
+Here's the final video.<br />
+<strong>Watch, like, and share</strong> before reading the rest!
 </div>
 
 <div class="demo-embed">

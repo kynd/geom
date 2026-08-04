@@ -1273,6 +1273,13 @@ async function init() {
   const aaBtn         = document.getElementById('aa-btn');
   const recBtn        = document.getElementById('rec-btn');
   const recFrameCounter = document.getElementById('rec-frame-counter');
+
+  // Recording and resolution export are local-only tools — hide them once deployed.
+  const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
+  if (!isLocal) {
+    resSel.style.display = 'none';
+    document.getElementById('rec-btn').closest('.rec-btn-wrap').style.display = 'none';
+  }
   const scoreBtn      = document.getElementById('score-btn');
   const settingsBtn   = document.getElementById('settings-btn');
   const seekEl        = document.getElementById('seek');
