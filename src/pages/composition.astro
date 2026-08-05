@@ -34,6 +34,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <div class="subhead">Scripting</div>
       <p>
         Each parameter has a plain-text identifier (shown above) that a JSON-like editor next to the panel can drive directly, writing a function of <code>t</code> — elapsed seconds — for any subset of them.
+        This is, in effect, keyframing — a compromise against our own <a href={`${base}/#rules-tentative`}>rule</a> against it, made so the video can feel like it's going somewhere rather than just reacting in place.
       </p>
       <div class="page-note">
         The function scope also exposes <code>getLevel(stem)</code> and <code>getProminence(stem)</code> for a stem's live amplitude and prominence, <code>getProminentStemId()</code>/<code>getProminentStemName()</code> for whichever stem is currently loudest, and <code>smoothstep(a, b, t)</code> for easing between two points in time. A syntax or reference error prints inline instead of silently failing.

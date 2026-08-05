@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { buildEnvMapTexture } from '../../../js/oklch-envmap.js';
+import { buildEnvMapTexture } from '../../js/oklch-envmap.js';
 
 // ── Catalogues ────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ const STEMS = [
   { id:'snare', label:'Snare',  bin:'250621_a1_mix1_snare.bin' },
 ];
 const MASTER_MP3  = '250621_a1_mix1_master_88.2k24.mp3';
-const SOUND_BASE  = '../../../sound/full/';
+const SOUND_BASE  = '../../sound/full/';
 const FPS         = 60;
 const HIST        = 256;
 const PLAT_CYCLE  = 5.0;
@@ -830,20 +830,20 @@ async function init() {
     platonicFuncSrc, movingScalarSrc, rimLightSrc, deformSrc,
     fragFillSrc, fragFormTmpl,
   ] = await Promise.all([
-    fetch('../../../demos/sound-shapes/shaders/fragment-sdf.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-platonic.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-scalar.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/fragment-moving.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/vertex.glsl').then(r=>r.text()),
-    fetch('../../../shaders/sdf-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/sdf-marcher.glsl').then(r=>r.text()),
-    fetch('../../../shaders/scalar-marcher.glsl').then(r=>r.text()),
-    fetch('../../../shaders/platonic-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/moving-scalar-functions.glsl').then(r=>r.text()),
-    fetch('../../../shaders/rim-lighting.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-shapes/shaders/deform.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-fill/shaders/fragment.glsl').then(r=>r.text()),
-    fetch('../../../demos/sound-form/shaders/fragment.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-sdf.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-platonic.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-scalar.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/fragment-moving.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/vertex.glsl').then(r=>r.text()),
+    fetch('../../shaders/sdf-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/sdf-marcher.glsl').then(r=>r.text()),
+    fetch('../../shaders/scalar-marcher.glsl').then(r=>r.text()),
+    fetch('../../shaders/platonic-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/moving-scalar-functions.glsl').then(r=>r.text()),
+    fetch('../../shaders/rim-lighting.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-shapes/shaders/deform.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-fill/shaders/fragment.glsl').then(r=>r.text()),
+    fetch('../../demos/sound-form/shaders/fragment.glsl').then(r=>r.text()),
   ]);
 
   // buildFrag applies an ordered list of [old, new] string substitutions
